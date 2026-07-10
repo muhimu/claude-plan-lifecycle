@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+#
+# stamp-plans — stamp a PR number into every local/plans file of one slug group.
+#
+# Sets `pr: <N>` (bare YAML integer — no quotes, no '#') in the frontmatter of
+# EVERY *.md under local/plans whose `slug:` matches. A design doc and its
+# implementation plan share a slug, so both get stamped in one call — the whole
+# group carries the join key `reap-plans` uses to check merge state.
+#
+# The slug comes from (first match wins):
+#   -s SLUG           explicit
+#   -f PLAN_FILE      read from that file's frontmatter (the plans dir then
+#                     defaults to the file's directory)
+#   current branch    prefix segment stripped (alice/on-demand-mode -> on-demand-mode)
+# local/plans is resolved through realpath, so it works from
+# worktrees where local/ is a symlink.
+#
+# Usage:
+#   stamp-plans <pr-number>                 # slug derived from current branch
+#   stamp-plans -f local/plans/x-plan.md <pr-number>
+#   stamp-plans -s SLUG <pr-number>
+#   stamp-plans -n <pr-number>              # dry run
+#   stamp-plans -d DIR <pr-number>          # override plans dir (or set PLANS_DIR)
+#
+# Files without frontmatter are ignored (legacy plans use a body "PR: #N" line;
+# stamp those by hand). A member already stamped with a DIFFERENT PR is
+# overwritten with a warning.
+
+set -euo pipefail
+
+dry_run=0
+plans_dir=""
+slug=""
+from_file=""
+
+while getopts "ns:f:d:h" opt; do
+  case "$opt" in
+    n) dry_run=1 ;;
+    s) slug="$OPTARG" ;;
+    f) from_file="$OPTARG" ;;
+    d) plans_dir="$OPTARG" ;;
+    h)
+      sed -n '3,27p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
+    *) echo "stamp-plans: unknown option" >&2; exit 2 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if (( $# != 1 )) || [[ ! "$1" =~ ^[0-9]+$ ]]; then
+  echo "stamp-plans: expected exactly one argument: the PR number (digits only)" >&2
+  exit 2
+fi
+pr="$1"
+
+# has_frontmatter FILE — line 1 is '---' and a later '---' closes the block.
+has_frontmatter() {
+  awk '
+    NR==1 { if ($0 != "---") exit 1; next }
+    $0 == "---" { found=1; exit 0 }
+    END { exit (found ? 0 : 1) }
+  ' "$1"
+}
+
+# fm_field FILE KEY — value of KEY inside the frontmatter block, trimmed,
+# surrounding quotes stripped; for `pr`, a leading '#' is also stripped.
+fm_field() {
+  local file="$1" key="$2"
+  awk -v key="$key" '
+    NR==1 && $0=="---" { infm=1; next }
+    infm && $0=="---"  { exit }
+    infm {
+      if (match($0, "^[[:space:]]*" key "[[:space:]]*:[[:space:]]*")) {
+        v = substr($0, RLENGTH+1)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+        if (v ~ /^".*"$/ || v ~ /^'"'"'.*'"'"'$/) v = substr(v, 2, length(v)-2)
+        if (key == "pr") sub(/^#/, "", v)
+        print v
+        exit
+      }
+    }
+  ' "$file"
+}
+
+if [[ -n "$from_file" ]]; then
+  if [[ -n "$slug" ]]; then
+    echo "stamp-plans: -s and -f are mutually exclusive" >&2
+    exit 2
+  fi
+  if [[ ! -f "$from_file" ]] || ! has_frontmatter "$from_file"; then
+    echo "stamp-plans: $from_file is not a frontmatter-bearing plan file" >&2
+    exit 1
+  fi
+  slug="$(fm_field "$from_file" slug)"
+  if [[ -z "$slug" ]]; then
+    echo "stamp-plans: $from_file has no slug: in its frontmatter" >&2
+    exit 1
+  fi
+  [[ -z "$plans_dir" ]] && plans_dir="$(dirname "$from_file")"
+fi
+
+if [[ -z "$slug" ]]; then
+  branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  if [[ -z "$branch" || "$branch" == "HEAD" ]]; then
+    echo "stamp-plans: cannot derive slug (no branch); pass -s SLUG or -f FILE" >&2
+    exit 1
+  fi
+  slug="${branch#*/}"
+fi
+
+[[ -z "$plans_dir" ]] && plans_dir="${PLANS_DIR:-local/plans}"
+
+# Resolve through a possible worktree symlink; not every tool follows it.
+if [[ ! -d "$plans_dir" ]]; then
+  echo "stamp-plans: no such directory: $plans_dir (run from a repo root, or pass -d/-f)" >&2
+  exit 1
+fi
+plans_dir="$(realpath "$plans_dir")"
+
+# stamp_pr FILE N — rewrite `pr:` inside the frontmatter to `pr: N`; insert the
+# line before the closing '---' if absent. Frontmatter-only edit.
+stamp_pr() {
+  local file="$1" n="$2" tmp
+  tmp="$(mktemp)"
+  if ! awk -v n="$n" '
+    NR==1 && $0=="---" { infm=1; print; next }
+    infm && $0=="---"  {
+      if (!stamped) print "pr: " n
+      infm=0; print; next
+    }
+    infm && /^[[:space:]]*pr[[:space:]]*:/ { print "pr: " n; stamped=1; next }
+    { print }
+  ' "$file" > "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  mv "$tmp" "$file"
+}
+
+shopt -s nullglob
+plans=("$plans_dir"/*.md)
+shopt -u nullglob
+
+stamped=0
+for plan in "${plans[@]}"; do
+  has_frontmatter "$plan" || continue
+  [[ "$(fm_field "$plan" slug)" == "$slug" ]] || continue
+
+  existing="$(fm_field "$plan" pr)"
+  if [[ -n "$existing" && "$existing" != "$pr" ]]; then
+    echo "warn: $(basename "$plan") already stamped pr: $existing; overwriting with $pr" >&2
+  fi
+
+  if (( dry_run )); then
+    echo "would stamp pr: $pr : $(basename "$plan")"
+  else
+    if ! stamp_pr "$plan" "$pr"; then
+      echo "error: failed to stamp $(basename "$plan")" >&2
+      exit 1
+    fi
+    echo "stamped pr: $pr : $(basename "$plan")"
+  fi
+  ((stamped++)) || true
+done
+
+if (( stamped == 0 )); then
+  echo "stamp-plans: no frontmatter-bearing plans with slug '$slug' in $plans_dir" >&2
+  exit 1
+fi

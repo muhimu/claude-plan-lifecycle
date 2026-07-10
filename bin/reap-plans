@@ -1,0 +1,248 @@
+#!/usr/bin/env bash
+#
+# reap-plans — move merged implementation plans into local/plans/done/.
+#
+# Each plan is grouped by its frontmatter `slug:` (files sharing a slug form one
+# unit — e.g. a design and its implementation plan). A group is reaped when the
+# PR it names is MERGED on GitHub: `status: merged` is stamped into every
+# frontmatter-bearing member, then the whole group moves to local/plans/done/.
+#
+# Files WITHOUT frontmatter fall back to the legacy behavior: grep for a
+# "PR: #N" line and reap that single file if the PR is merged. Files with no PR
+# at all are left untouched (treated as work-in-progress). A group containing an
+# `status: abandoned` member is skipped and reported, never reaped.
+#
+# Usage:
+#   reap-plans            # run from a repo root (uses ./local/plans)
+#   reap-plans -n         # dry run: show what would move, change nothing
+#   reap-plans -d DIR     # plans dir override (or set PLANS_DIR)
+#
+# Requires: gh (authenticated), git (to resolve the repo for `gh pr view`).
+
+set -euo pipefail
+
+dry_run=0
+plans_dir="${PLANS_DIR:-local/plans}"
+
+while getopts "nd:h" opt; do
+  case "$opt" in
+    n) dry_run=1 ;;
+    d) plans_dir="$OPTARG" ;;
+    h)
+      sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
+    *) echo "reap-plans: unknown option" >&2; exit 2 ;;
+  esac
+done
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "reap-plans: 'gh' not found on PATH" >&2
+  exit 1
+fi
+
+if [[ ! -d "$plans_dir" ]]; then
+  echo "reap-plans: no such directory: $plans_dir (run from a repo root, or pass -d)" >&2
+  exit 1
+fi
+
+done_dir="$plans_dir/done"
+
+# has_frontmatter FILE — true if the file opens a YAML frontmatter block on
+# line 1 ('---') AND closes it with a later '---'. A block that is opened but
+# never closed is malformed and treated as NOT having frontmatter, so it falls
+# back to the legacy PR-grep path.
+has_frontmatter() {
+  awk '
+    NR==1 { if ($0 != "---") exit 1; next }
+    $0 == "---" { found=1; exit 0 }
+    END { exit (found ? 0 : 1) }
+  ' "$1"
+}
+
+# fm_field FILE KEY — echo the value of KEY from the YAML frontmatter block
+# (the lines between the first '---' and the next '---'). Empty if absent or no
+# frontmatter. Trims surrounding whitespace and a matching pair of surrounding
+# quotes (so `pr: "2405"` yields 2405, matching how YAML would parse it); for
+# the `pr` key only, additionally strips a leading '#' so `pr: 2346`,
+# `pr: "2346"`, and `pr: #2346` all yield `2346`.
+fm_field() {
+  local file="$1" key="$2"
+  has_frontmatter "$file" || return 0
+  awk -v key="$key" '
+    NR==1 && $0=="---" { infm=1; next }
+    infm && $0=="---"  { exit }
+    infm {
+      if (match($0, "^[[:space:]]*" key "[[:space:]]*:[[:space:]]*")) {
+        v = substr($0, RLENGTH+1)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+        # Strip a matching pair of surrounding quotes (YAML-quoted scalar).
+        if (v ~ /^".*"$/ || v ~ /^'"'"'.*'"'"'$/) v = substr(v, 2, length(v)-2)
+        if (key == "pr") sub(/^#/, "", v)
+        print v
+        exit
+      }
+    }
+  ' "$file"
+}
+
+# legacy_pr FILE — echo the first PR number from a legacy "PR: #N" line, or
+# empty. This is the pre-frontmatter behavior, used as a fallback.
+legacy_pr() {
+  local line
+  line="$(grep -m1 -E '^[[:space:]]*PR:[[:space:]]*#?[0-9]+' "$1" || true)"
+  [[ -z "$line" ]] && return 0
+  printf '%s' "$line" | grep -oE '[0-9]+' | head -n1
+}
+
+# pr_state PR — echo the GitHub state of PR (MERGED/OPEN/CLOSED), or UNKNOWN.
+pr_state() {
+  gh pr view "$1" --json state --jq .state 2>/dev/null || echo "UNKNOWN"
+}
+
+shopt -s nullglob
+plans=("$plans_dir"/*.md)
+shopt -u nullglob
+
+if (( ${#plans[@]} == 0 )); then
+  echo "reap-plans: no plans in $plans_dir"
+  exit 0
+fi
+
+declare -A file_group
+declare -A file_status
+declare -A group_pr
+declare -A group_abandoned
+
+for plan in "${plans[@]}"; do
+  slug=""
+  status=""
+  pr=""
+  if has_frontmatter "$plan"; then
+    # Frontmatter is authoritative. An empty `pr:` means "no PR yet" — do NOT
+    # fall back to a body `PR:` line (prose may quote example PR numbers).
+    slug="$(fm_field "$plan" slug)"
+    status="$(fm_field "$plan" status)"
+    pr="$(fm_field "$plan" pr)"
+  else
+    # No frontmatter: legacy behavior — grep the body for a `PR: #N` line.
+    pr="$(legacy_pr "$plan")"
+  fi
+
+  if [[ -n "$slug" ]]; then
+    group_key="$slug"
+  else
+    group_key="solo:$plan"
+  fi
+
+  file_group["$plan"]="$group_key"
+  file_status["$plan"]="$status"
+
+  if [[ -n "$pr" ]]; then
+    if [[ -z "${group_pr[$group_key]:-}" ]]; then
+      group_pr["$group_key"]="$pr"
+    elif [[ "${group_pr[$group_key]}" != "$pr" ]]; then
+      echo "warn: slug '$group_key' has conflicting PRs ${group_pr[$group_key]} and $pr; using ${group_pr[$group_key]}" >&2
+    fi
+  fi
+
+  if [[ "$status" == "abandoned" ]]; then
+    group_abandoned["$group_key"]=1
+  fi
+done
+
+moved=0
+skipped_no_pr=0
+skipped_open=0
+skipped_abandoned=0
+
+mapfile -t group_keys < <(printf '%s\n' "${file_group[@]}" | sort -u)
+
+declare -a reap_groups=()
+
+for gk in "${group_keys[@]}"; do
+  members=()
+  for p in "${plans[@]}"; do
+    [[ "${file_group[$p]}" == "$gk" ]] && members+=("$p")
+  done
+  label=""
+  for m in "${members[@]}"; do label+="$(basename "$m") "; done
+  label="${label% }"
+
+  if [[ -n "${group_abandoned[$gk]:-}" ]]; then
+    echo "skip (abandoned) : $label"
+    ((skipped_abandoned++)) || true
+    continue
+  fi
+
+  pr="${group_pr[$gk]:-}"
+  if [[ -z "$pr" ]]; then
+    echo "skip (no PR)   : $label"
+    ((skipped_no_pr++)) || true
+    continue
+  fi
+
+  state="$(pr_state "$pr")"
+  if [[ "$state" != "MERGED" ]]; then
+    echo "skip (PR #$pr $state) : $label"
+    ((skipped_open++)) || true
+    continue
+  fi
+
+  reap_groups+=("$gk")
+done
+
+# stamp_merged FILE — set `status: merged` in FILE's frontmatter in place,
+# rewriting only the status line. No-op for files without frontmatter. Returns
+# non-zero if the rewrite fails, so the caller can abort before moving a file
+# that was not successfully stamped.
+stamp_merged() {
+  local file="$1" tmp
+  has_frontmatter "$file" || return 0
+  tmp="$(mktemp)"
+  if ! awk '
+    NR==1 && $0=="---" { infm=1; print; next }
+    infm && $0=="---"  { infm=0; print; next }
+    infm && /^[[:space:]]*status[[:space:]]*:/ { print "status: merged"; next }
+    { print }
+  ' "$file" > "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  mv "$tmp" "$file"
+}
+
+for gk in "${reap_groups[@]}"; do
+  members=()
+  for p in "${plans[@]}"; do
+    [[ "${file_group[$p]}" == "$gk" ]] && members+=("$p")
+  done
+  pr="${group_pr[$gk]}"
+  label=""
+  for m in "${members[@]}"; do label+="$(basename "$m") "; done
+  label="${label% }"
+
+  if (( dry_run )); then
+    echo "would move (PR #$pr merged) : $label -> $done_dir/"
+    moved=$(( moved + ${#members[@]} ))
+    continue
+  fi
+
+  mkdir -p "$done_dir"
+  for m in "${members[@]}"; do
+    if ! stamp_merged "$m"; then
+      echo "error: failed to stamp 'status: merged' into $(basename "$m"); not moving it" >&2
+      continue
+    fi
+    mv "$m" "$done_dir/"
+    moved=$(( moved + 1 ))
+  done
+  echo "moved (PR #$pr merged)      : $label -> $done_dir/"
+done
+
+echo "---"
+if (( dry_run )); then
+  echo "dry run: $moved would move, $skipped_open open/unknown, $skipped_abandoned abandoned, $skipped_no_pr without PR"
+else
+  echo "done: $moved moved, $skipped_open open/unknown, $skipped_abandoned abandoned, $skipped_no_pr without PR"
+fi
