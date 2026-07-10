@@ -47,7 +47,7 @@ Sort each remaining comment into one bucket:
 | **Pushback** | Suggestion is wrong for this codebase | Draft a reply explaining why |
 | **Stale** | Comment is on code that's since been changed | Skip, note it |
 
-**Before classifying, invoke the `superpowers:receiving-code-review` skill via the `Skill` tool.** That skill owns the verify-before-implementing discipline, YAGNI checks, and pushback patterns — do not re-derive them here.
+**Before classifying, invoke the `superpowers:receiving-code-review` skill via the `Skill` tool.** That skill owns the verify-before-implementing discipline, YAGNI checks, and pushback patterns — do not re-derive them here. If the skill is not available (superpowers plugin not installed), proceed without it and apply the same discipline yourself: verify each claim against the code before implementing, and push back with technical reasoning instead of performative agreement.
 
 Present the full plan to the user as a table:
 

@@ -38,7 +38,7 @@ aggressive about writing plans without accumulating a graveyard.
 | `plan-frontmatter` | skill | Frontmatter spec, status ownership, and the stacked-PR slicing convention (`## PR N:` headings) |
 | `reap-plans` | skill | Wraps `bin/reap-plans` with run order and conventions |
 | `handoff-prompt` | skill | Generates a self-contained prompt to continue work in a fresh session |
-| `/execute-plan` | command | Drives a plan end-to-end in a worktree: execution skill → `make test`/`make lint` → draft PR → stamp. Plans with `## PR N:` slice headings become a stacked-PR chain |
+| `/execute-plan` | command | Drives a plan end-to-end in a worktree: execution skill → test/lint verify → draft PR → stamp. Plans with `## PR N:` slice headings become a stacked-PR chain |
 | `/restack` | command | After a stack's bottom PR squash-merges: cascade-rebase surviving branches, verify the tip, force-with-lease push behind a confirmation gate, retarget the new bottom PR |
 | `/pr-fix` | command | Fetch PR review comments, plan fixes, implement and push; drafts replies for you to post (never posts to GitHub itself) |
 | `/bug-hunt` | command | Autonomous red-green-refactor bug hunter with a reviewer-subagent gate |
@@ -101,10 +101,11 @@ stamping, reaping into `<plans-dir>/done/` — works identically.
 
 - **`gh`** authenticated (PR creation, merge-state checks).
 - **[superpowers](https://github.com/obra/superpowers)** plugin — `/execute-plan` drives plans via
-  `superpowers:executing-plans` or `superpowers:subagent-driven-development`, and `/pr-fix` invokes
-  `superpowers:receiving-code-review`.
-- **`make test` and `make lint`** targets — `/execute-plan` and `/restack` refuse to open/push
-  anything unverified.
+  `superpowers:executing-plans` or `superpowers:subagent-driven-development` (checked pre-flight);
+  `/pr-fix` uses `superpowers:receiving-code-review` when present and degrades gracefully without it.
+- **Test and lint verify commands** — declare them in the repo's CLAUDE.md, or provide `make test`
+  / `make lint` targets (the default). `/execute-plan` and `/restack` refuse to open/push anything
+  unverified.
 - **Worktrees** — `/execute-plan` and `/restack` refuse to run in the main checkout. If you use a
   gitignored plans dir with worktrees, share it (e.g. symlink `local/` from the main checkout into
   each worktree); the scripts resolve symlinks via `realpath`.
@@ -118,7 +119,7 @@ headings (the `plan-frontmatter` skill says when and where to cut — size, not 
 `/execute-plan` then opens one draft PR per slice, each based on the previous, each independently
 green, and cross-links them with a `## Stack` table. Only the tip PR gets stamped into the plan —
 under squash-merge cascade, tip-merged ⇔ stack-merged. After each bottom PR merges, `/restack`
-rebases the survivors and retargets the new bottom PR to `main`.
+rebases the survivors and retargets the new bottom PR to the default branch.
 
 ## License
 

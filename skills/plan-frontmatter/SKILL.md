@@ -98,8 +98,8 @@ headings:
   numbers consecutive from 1.
 - The text after the colon is the PR title **verbatim**, so write it
   Conventional-Commits-shaped.
-- Slices execute in heading order; each must leave `make test` + `make lint`
-  green standalone on top of the previous slices.
+- Slices execute in heading order; each must leave the repo's test + lint
+  verify commands green standalone on top of the previous slices.
 - No task in slice N may depend on code written in slice N+1.
 - No `## PR N:` headings ⇒ `/execute-plan` runs its normal single-PR flow.
 - Branches are named `<ns>/<prefix>-<N>-<slice-slug>` (`<ns>` = your branch
@@ -110,20 +110,19 @@ headings:
 the squash-merge cascade the tip merges last, so tip-merged ⇔ whole stack
 merged, and `reap-plans` needs no changes.
 
-**Merge cascade — run `/restack`.** After PR K squash-merges to main, run
+**Merge cascade — run `/restack`.** After PR K squash-merges to the default branch, run
 `/restack` in the stack's worktree: it discovers the stack from GitHub,
-cascade-rebases the surviving branches, verifies the tip with `make test` +
-`make lint`, and — after one confirmation — force-with-lease pushes and
-retargets the new bottom PR to main. Force-with-lease is sanctioned only
+cascade-rebases the surviving branches, verifies the tip (test + lint), and — after one confirmation — force-with-lease pushes and
+retargets the new bottom PR to the default branch. Force-with-lease is sanctioned only
 inside `/restack` after its confirmation gate, or by hand via the manual
 recipe below.
 
 Manual recipe (reference — what `/restack` automates). After PR K
-squash-merges to main:
+squash-merges to the default branch:
 
 1. `git fetch origin`
-2. `git rebase --onto origin/main <old-base-branch> <branch-K+1>`
-3. `gh pr edit <K+1> --base main`
+2. `git rebase --onto origin/<default-branch> <old-base-branch> <branch-K+1>`
+3. `gh pr edit <K+1> --base <default-branch>`
 4. Push the rebased branch with `--force-with-lease`.
 5. Repeat up the stack in order.
 
