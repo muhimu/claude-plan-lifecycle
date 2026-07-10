@@ -1,11 +1,11 @@
 ---
-description: "Execute a plan from the repo's plans dir in the current worktree — runs the chosen execution skill (subagent-driven-development or executing-plans), then make test/lint, opens draft PR, stamps the plan's frontmatter pr: field. Plans with \"## PR N:\" slice headings execute as a stacked-PR chain (one draft PR per slice, each based on the previous; tip PR stamped)."
+description: "Execute a plan from the repo's plans dir in the current worktree — runs the chosen execution skill (subagent-driven-development or executing-plans), then verifies (test/lint), opens draft PR, stamps the plan's frontmatter pr: field. Plans with \"## PR N:\" slice headings execute as a stacked-PR chain (one draft PR per slice, each based on the previous; tip PR stamped)."
 argument-hint: [plan-path — optional, auto-detected from branch name]
 ---
 
 # Execute Plan
 
-Drive one plan from the plans dir end-to-end in the current worktree: invoke the chosen execution skill (`superpowers:subagent-driven-development` or `superpowers:executing-plans`) against it, verify with `make test` and `make lint`, commit and push, open a draft PR, and stamp the plan file with the PR number.
+Drive one plan from the plans dir end-to-end in the current worktree: invoke the chosen execution skill (`superpowers:subagent-driven-development` or `superpowers:executing-plans`) against it, verify (test/lint per the verify convention), commit and push, open a draft PR, and stamp the plan file with the PR number.
 
 This command runs in a dedicated git worktree (created by your worktree manager of choice or plain `git worktree add`). It refuses to run in the main checkout.
 
@@ -27,17 +27,21 @@ Run each check in order. On any failure, **stop**: print the message and end the
 
    If output contains `.git/worktrees/<name>`, you're in a worktree. Continue.
 
-3. **Branch is not `main`/`master`?**
+3. **Branch is not the default branch?** Resolve the repo's default branch once — every later mention of `$DEFAULT_BRANCH` in this command means this value:
    ```bash
+   DEFAULT_BRANCH="$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')"
+   [ -n "$DEFAULT_BRANCH" ] || DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)"
    git rev-parse --abbrev-ref HEAD
    ```
-   If `main` or `master`, stop: "Worktree is on a protected branch. Switch to a feature branch first."
+   If the current branch is `$DEFAULT_BRANCH` (or `main`/`master`), stop: "Worktree is on a protected branch. Switch to a feature branch first."
 
 4. **Tree state:**
    ```bash
    git status --porcelain
    ```
    If non-empty, warn ("Worktree has uncommitted changes — `executing-plans` will likely commit them as part of execution") but continue.
+
+5. **Execution skills available?** This command drives plans via the superpowers plugin. If neither `superpowers:executing-plans` nor `superpowers:subagent-driven-development` appears in the available-skills list, stop: "The superpowers plugin is required (https://github.com/obra/superpowers). Install it and re-run."
 
 ## Step 2 — Resolve the plan
 
@@ -100,21 +104,13 @@ When it returns control, proceed to Step 4. If the skill aborts (user cancels, b
 
 ## Step 4 — Verification (mandatory, halt-on-red)
 
-Both checks must pass before the PR is opened.
+Resolve the verify commands once (the verify convention): if the repo's CLAUDE.md declares test and lint commands, use those as `TEST_CMD` / `LINT_CMD`; otherwise default to `TEST_CMD="make test"`, `LINT_CMD="make lint"`. Both checks must pass before the PR is opened.
 
-1. **Tests:**
-   ```bash
-   make test
-   ```
-   Capture exit code and the last ~20 lines of output as `TEST_TAIL`. If non-zero, **stop**: "Tests failed. Worktree preserved. Fix and re-run when ready." Do not attempt to fix forward — that's the user's call.
+1. **Tests:** run `$TEST_CMD`. Capture exit code and the last ~20 lines of output as `TEST_TAIL`. If non-zero, **stop**: "Tests failed. Worktree preserved. Fix and re-run when ready." Do not attempt to fix forward — that's the user's call.
 
-2. **Lint:**
-   ```bash
-   make lint
-   ```
-   Capture exit code and the last ~20 lines of output as `LINT_TAIL`. If non-zero, stop: "Lint failed. Worktree preserved. Fix and re-run when ready." Do not fix forward.
+2. **Lint:** run `$LINT_CMD`. Capture exit code and the last ~20 lines of output as `LINT_TAIL`. If non-zero, stop: "Lint failed. Worktree preserved. Fix and re-run when ready." Do not fix forward.
 
-If a `make` target is missing (`make: *** No rule to make target`), stop with: "Repo does not expose `make test` / `make lint`. This command requires both."
+If a resolved command does not exist (e.g. `make: *** No rule to make target` on the defaults), stop with: "No verify commands found. Declare the repo's test and lint commands in CLAUDE.md, or provide `make test` / `make lint` targets."
 
 ## Step 5 — Commit anything still staged
 
@@ -127,7 +123,7 @@ git add -A
 git commit -m "<PLAN_TITLE>"
 ```
 
-Use plain `git commit` — no `--no-verify`, no AI-attribution footer.
+Use plain `git commit` — no `--no-verify`. Follow the repo's commit-message conventions.
 
 ## Step 6 — Push and open draft PR
 
@@ -148,12 +144,12 @@ Use plain `git commit` — no `--no-verify`, no AI-attribution footer.
 
    ## Verification
 
-   ### `make test`
+   ### Tests (`$TEST_CMD`)
    ```
    <TEST_TAIL>
    ```
 
-   ### `make lint`
+   ### Lint (`$LINT_CMD`)
    ```
    <LINT_TAIL>
    ```
@@ -161,7 +157,7 @@ Use plain `git commit` — no `--no-verify`, no AI-attribution footer.
    )"
    ```
 
-   No AI-attribution footer.
+   Follow the repo's PR-description conventions.
 
 3. **Capture the PR number** from `gh`'s output (it prints the URL on the last line). Extract the number from `https://github.com/<owner>/<repo>/pull/<N>`. Call it `PR_NUM`.
 
@@ -184,8 +180,8 @@ Print one final message to chat:
 ```
 Plan executed: <basename of PLAN_PATH>
 PR: <PR URL> (#<PR_NUM>, draft)
-make test: passed
-make lint: passed
+$TEST_CMD: passed
+$LINT_CMD: passed
 Plan stamped with PR number.
 ```
 
@@ -214,7 +210,7 @@ in Step 3 is reused for every slice.
    the namespace segment of the worktree's current branch
    (`alice/on-demand-mode` -> `alice`). Print the
    full table (N, branch, PR title, base) before executing anything — this is
-   the plan of record for the loop. Base of slice 1 is `main`; base of slice
+   the plan of record for the loop. Base of slice 1 is `$DEFAULT_BRANCH`; base of slice
    N>1 is `BRANCH[N-1]`.
 
 ### S2 — Resume check
@@ -248,7 +244,7 @@ is already done.
    implemented on this branch. Do not implement anything from later slices.
    The branch may already contain partial work for this slice from an
    earlier failed run — verify per-task state before redoing steps."
-3. **Verify** — identical to Step 4 (make test, make lint, halt-on-red),
+3. **Verify** — identical to Step 4 (`$TEST_CMD`, `$LINT_CMD`, halt-on-red),
    capturing `TEST_TAIL[N]` / `LINT_TAIL[N]`. On red, stop: "Slice <N>
    failed <check>. Slices 1..<N-1> are pushed and green; worktree preserved
    on <BRANCH[N]>. Fix and re-run /execute-plan — the resume check will skip
@@ -259,7 +255,7 @@ is already done.
 
    ```bash
    git push -u origin "BRANCH[N]"
-   gh pr create --draft --title "<SLICE_TITLE>" --base "<main or BRANCH[N-1]>" --body "$(cat <<'EOF'
+   gh pr create --draft --title "<SLICE_TITLE>" --base "<DEFAULT_BRANCH or BRANCH[N-1]>" --body "$(cat <<'EOF'
    ## Summary
 
    <2–4 sentences describing what THIS slice changes and why it is
@@ -273,12 +269,12 @@ is already done.
 
    ## Verification
 
-   ### `make test`
+   ### Tests (`$TEST_CMD`)
    ```
    <TEST_TAIL[N]>
    ```
 
-   ### `make lint`
+   ### Lint (`$LINT_CMD`)
    ```
    <LINT_TAIL[N]>
    ```
@@ -301,7 +297,7 @@ sections untouched:
 
 | PR | Slice | Base |
 |----|-------|------|
-| #<PR_NUM[1]> | <slice 1 title> | main |
+| #<PR_NUM[1]> | <slice 1 title> | <DEFAULT_BRANCH> |
 | #<PR_NUM[2]> | <slice 2 title> | <BRANCH[1]> |
 | ... | ... | ... |
 ```
@@ -319,28 +315,28 @@ Final report:
 
 ```
 Stack opened (<M> draft PRs):
-#<PR_NUM[1]>  <slice 1 title>   base: main         make test/lint: passed
-#<PR_NUM[2]>  <slice 2 title>   base: <BRANCH[1]>  make test/lint: passed
+#<PR_NUM[1]>  <slice 1 title>   base: <DEFAULT_BRANCH>  test/lint: passed
+#<PR_NUM[2]>  <slice 2 title>   base: <BRANCH[1]>   test/lint: passed
 ...
 Plan stamped with tip PR #<PR_NUM[M]>.
 Merging is a cascade: after each squash-merge, run /restack in this
 worktree — it rebases the surviving branches, verifies the tip, and
-retargets the next PR to main.
+retargets the next PR to `$DEFAULT_BRANCH`.
 ```
 
 ## Hard rules
 
 - **Worktree only.** Refuse to run in the main checkout.
-- **Never run on `main`/`master`.** Pre-flight stops this.
-- **Never push to main.** Only pushes the current feature branch via `git push -u`.
-- **No `--force` push, no `--force-with-lease`, no `--no-verify`, no AI-attribution footers.** Plain commits, plain pushes.
+- **Never run on the default branch.** Pre-flight stops this.
+- **Never push to the default branch.** Only pushes the current feature branch via `git push -u`.
+- **No `--force` push, no `--force-with-lease`, no `--no-verify`.** Plain commits, plain pushes; the repo's conventions govern message format.
 - **Halt-on-red.** Tests or lint red means stop. Do not fix forward, do not retry.
 - **No GitHub mutations beyond `gh pr create --draft`, `gh pr view`/`gh pr list` (read-only), and — stacked mode only — the S4 `gh pr edit` on bodies of PRs this stack created.** No auto-merge, no comment posting, no thread resolution.
 - **Plan file is read for execution but never rewritten except to stamp the PR number** (frontmatter `pr:` field, or a legacy `PR: #N` line for plans without frontmatter). No content edits.
 - **Stop semantics:** print the indicated message and end the turn. Do not advance to subsequent steps.
 - **Stacked mode:** slice branches are created/renamed only by the main
   session, never by subagents. Slice N's PR always bases on slice N−1's
-  branch (slice 1 on `main`). Never open a PR for an unverified slice —
+  branch (slice 1 on `$DEFAULT_BRANCH`). Never open a PR for an unverified slice —
   halt-on-red halts the whole loop. Resume never rewrites already-pushed
   slices: no force-push, including on re-run.
 - **PR bodies are public-facing** in both modes: no plans-dir paths,
