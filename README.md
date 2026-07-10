@@ -59,24 +59,35 @@ Put the two scripts on your PATH:
 cp bin/stamp-plans bin/reap-plans ~/.local/bin/
 ```
 
-## Where plans live
+## Where plans live — the plans-dir convention
 
-Default: `local/plans/` at the repo root, with `local/` in the repo's `.gitignore` —
-a personal scratch area that never hits the remote.
+Every component (scripts, commands, skills) resolves the plans directory the same way;
+first match wins:
 
-Prefer plans **committed to git**? Use any directory (e.g. `docs/plans/`):
+1. an explicit flag — `stamp-plans -d`/`-f`, `reap-plans -d`
+2. the `PLANS_DIR` environment variable
+3. `git config plans.dir` — per-clone and persistent; set it once per repo
+4. the default: `local/plans/`
 
-1. Declare it in your CLAUDE.md (see snippet below).
-2. Export `PLANS_DIR=docs/plans` — `stamp-plans`, `reap-plans`, and `/execute-plan` all honor it
-   (the scripts also take `-d DIR` per invocation).
-3. Commit what stamping and reaping change; everything else works identically.
+The default is a personal scratch area: put `local/` in the repo's `.gitignore` and plans
+never hit the remote.
+
+Prefer plans **committed to git**? Point the convention at a tracked directory:
+
+```bash
+git config plans.dir docs/plans
+```
+
+then declare it in the repo's CLAUDE.md (so new plans get *written* there too — see the
+snippet below) and commit what stamping and reaping change. Everything else — frontmatter,
+stamping, reaping into `<plans-dir>/done/` — works identically.
 
 ## Suggested CLAUDE.md snippet
 
 ```markdown
 ### Plan Lifecycle
 
-- Plans live in `local/plans/` (gitignored scratch). <!-- or your committed dir + PLANS_DIR -->
+- Plans live in `local/plans/` (gitignored scratch). <!-- committed variant: `docs/plans/` + `git config plans.dir docs/plans` -->
 - **Frontmatter:** every plan/design doc carries YAML frontmatter — invoke the
   `plan-frontmatter` skill whenever writing one.
 - **Stamp on PR open:** as soon as a PR is opened, run `stamp-plans <pr-number>`.

@@ -1,12 +1,13 @@
 ---
 name: plan-frontmatter
-description: Use when writing any implementation plan or design doc to local/plans/ — defines the YAML frontmatter (title/slug/status/pr) every plan must carry and the rule that a design and its implementation plan share one slug.
+description: Use when writing any implementation plan or design doc to the repo's plans dir — defines the YAML frontmatter (title/slug/status/pr) every plan must carry and the rule that a design and its implementation plan share one slug.
 ---
 
 # Plan Frontmatter
 
-Every plan or design doc written to the plans dir (default `local/plans/`;
-follow the convention your CLAUDE.md declares) starts with YAML frontmatter:
+Every plan or design doc written to the plans dir (resolved per the plans-dir
+convention: `PLANS_DIR` env, else `git config plans.dir`, else default
+`local/plans/`) starts with YAML frontmatter:
 
 ```yaml
 ---
