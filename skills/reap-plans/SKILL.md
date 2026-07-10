@@ -44,7 +44,6 @@ field spec. What matters for reaping:
 - **`pr:`** must resolve to a real PR. Empty (`pr:`) = no PR yet = work-in-progress, never reaped.
 - **`status: merged` is script-owned.** Never hand-write it — the script sets it from GitHub merge state so it can't drift. You set `draft`/`in-progress`/`abandoned` only.
 - **`slug:`** groups a design + its impl plan so they reap together.
-- **Legacy plans without frontmatter** fall back to a body `PR: #<N>` line (hand-stamped; `stamp-plans` ignores them).
 
 ## Do not
 

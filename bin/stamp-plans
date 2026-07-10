@@ -23,9 +23,8 @@
 #   stamp-plans -n <pr-number>              # dry run
 #   stamp-plans -d DIR <pr-number>          # override the plans dir
 #
-# Files without frontmatter are ignored (legacy plans use a body "PR: #N" line;
-# stamp those by hand). A member already stamped with a DIFFERENT PR is
-# overwritten with a warning.
+# Files without frontmatter are ignored. A member already stamped with a
+# DIFFERENT PR is overwritten with a warning.
 
 set -euo pipefail
 
@@ -41,7 +40,7 @@ while getopts "ns:f:d:h" opt; do
     f) from_file="$OPTARG" ;;
     d) plans_dir="$OPTARG" ;;
     h)
-      sed -n '3,28p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,27p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) echo "stamp-plans: unknown option" >&2; exit 2 ;;

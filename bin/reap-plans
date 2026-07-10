@@ -7,10 +7,9 @@
 # PR it names is MERGED on GitHub: `status: merged` is stamped into every
 # frontmatter-bearing member, then the whole group moves to <plans-dir>/done/.
 #
-# Files WITHOUT frontmatter fall back to the legacy behavior: grep for a
-# "PR: #N" line and reap that single file if the PR is merged. Files with no PR
-# at all are left untouched (treated as work-in-progress). A group containing an
-# `status: abandoned` member is skipped and reported, never reaped.
+# Files without frontmatter are left untouched (add frontmatter per the
+# plan-frontmatter skill to make them reapable). Groups with no PR are
+# work-in-progress, never reaped; `status: abandoned` groups are skipped.
 #
 # Usage:
 #   reap-plans            # run from a repo root (uses the repo's plans dir)
@@ -36,7 +35,7 @@ while getopts "nd:h" opt; do
     n) dry_run=1 ;;
     d) plans_dir="$OPTARG" ;;
     h)
-      sed -n '3,22p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,21p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) echo "reap-plans: unknown option" >&2; exit 2 ;;
@@ -62,8 +61,8 @@ done_dir="$plans_dir/done"
 
 # has_frontmatter FILE — true if the file opens a YAML frontmatter block on
 # line 1 ('---') AND closes it with a later '---'. A block that is opened but
-# never closed is malformed and treated as NOT having frontmatter, so it falls
-# back to the legacy PR-grep path.
+# never closed is malformed and treated as NOT having frontmatter, so the
+# file is ignored.
 has_frontmatter() {
   awk '
     NR==1 { if ($0 != "---") exit 1; next }
@@ -98,15 +97,6 @@ fm_field() {
   ' "$file"
 }
 
-# legacy_pr FILE — echo the first PR number from a legacy "PR: #N" line, or
-# empty. This is the pre-frontmatter behavior, used as a fallback.
-legacy_pr() {
-  local line
-  line="$(grep -m1 -E '^[[:space:]]*PR:[[:space:]]*#?[0-9]+' "$1" || true)"
-  [[ -z "$line" ]] && return 0
-  printf '%s' "$line" | grep -oE '[0-9]+' | head -n1
-}
-
 # pr_state PR — echo the GitHub state of PR (MERGED/OPEN/CLOSED), or UNKNOWN.
 pr_state() {
   gh pr view "$1" --json state --jq .state 2>/dev/null || echo "UNKNOWN"
@@ -135,9 +125,6 @@ for plan in "${plans[@]}"; do
     slug="$(fm_field "$plan" slug)"
     status="$(fm_field "$plan" status)"
     pr="$(fm_field "$plan" pr)"
-  else
-    # No frontmatter: legacy behavior — grep the body for a `PR: #N` line.
-    pr="$(legacy_pr "$plan")"
   fi
 
   if [[ -n "$slug" ]]; then
