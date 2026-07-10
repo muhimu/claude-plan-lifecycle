@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+#
+# link-plans — share a gitignored plans dir into a git worktree.
+#
+# Symlinks the first path segment of the plans dir (e.g. `local` for the
+# default local/plans) from the main checkout into a worktree, so plans
+# written from any worktree land in the SAME directory as the main checkout.
+#
+# Only needed when the plans dir is gitignored (the default convention): a
+# git-tracked plans dir (e.g. docs/plans) is materialized by checkout in
+# every worktree, and the script exits 0 without linking.
+#
+# The plans dir resolves PLANS_DIR > `git config plans.dir` > local/plans.
+#
+# Usage:
+#   link-plans                  # from inside the worktree
+#   link-plans <worktree-path>  # explicit target (e.g. from a hook)
+#
+# Hook integration — ccmanager (~/.config/ccmanager/config.json) runs
+# post_creation hooks with cwd = the new worktree and sets
+# CCMANAGER_GIT_ROOT / CCMANAGER_WORKTREE_PATH (both honored when present):
+#   "worktreeHooks": { "post_creation": { "command": "link-plans", "enabled": true } }
+# Plain git:
+#   git worktree add ../wt my-branch && link-plans ../wt
+
+set -euo pipefail
+
+worktree="${1:-${CCMANAGER_WORKTREE_PATH:-}}"
+if [ -z "$worktree" ]; then
+  worktree="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+fi
+if [ -z "$worktree" ] || [ ! -d "$worktree" ]; then
+  echo "link-plans: could not resolve the worktree path (pass it as an argument)" >&2
+  exit 1
+fi
+
+git_root="${CCMANAGER_GIT_ROOT:-}"
+if [ -z "$git_root" ]; then
+  # The first entry of `git worktree list` is always the main checkout.
+  git_root="$(git -C "$worktree" worktree list --porcelain 2>/dev/null |
+    awk 'NR==1 { sub(/^worktree /, ""); print; exit }')"
+fi
+if [ -z "$git_root" ]; then
+  echo "link-plans: could not resolve the main checkout ($worktree is not in a git repo?)" >&2
+  exit 1
+fi
+
+if [ "$git_root" = "$worktree" ]; then
+  echo "link-plans: $worktree is the main checkout; nothing to link"
+  exit 0
+fi
+
+plans_dir="${PLANS_DIR:-$(git -C "$git_root" config --get plans.dir 2>/dev/null || true)}"
+plans_dir="${plans_dir:-local/plans}"
+
+case "$plans_dir" in
+  /*)
+    echo "link-plans: plans dir $plans_dir is absolute — already shared; nothing to link"
+    exit 0
+    ;;
+esac
+
+top="${plans_dir%%/*}"
+
+if [ -n "$(git -C "$git_root" ls-files -- "$top" | head -n1)" ]; then
+  echo "link-plans: $top/ is tracked in git — worktrees get it from checkout; nothing to link"
+  exit 0
+fi
+
+mkdir -p "$git_root/$plans_dir"
+
+link="$worktree/$top"
+target="$git_root/$top"
+
+if [ -e "$link" ] && [ ! -L "$link" ]; then
+  echo "link-plans: $link exists and is not a symlink — resolve by hand" >&2
+  exit 1
+fi
+
+# -s symlink, -f replace an existing (possibly stale) symlink, -n don't
+# descend into it
+ln -sfn "$target" "$link"
+echo "link-plans: $link -> $target"

@@ -44,6 +44,7 @@ aggressive about writing plans without accumulating a graveyard.
 | `/bug-hunt` | command | Autonomous red-green-refactor bug hunter with a reviewer-subagent gate |
 | `bin/stamp-plans` | script | Stamps `pr: <N>` into every plan file sharing a slug |
 | `bin/reap-plans` | script | Archives merged plan groups into `<plans-dir>/done/` |
+| `bin/link-plans` | script | Shares a gitignored plans dir into a worktree — run manually or as a post-worktree-creation hook |
 
 ## Install
 
@@ -53,10 +54,10 @@ aggressive about writing plans without accumulating a graveyard.
 /plugin install plan-lifecycle@claude-plan-lifecycle
 ```
 
-Put the two scripts on your PATH:
+Put the scripts on your PATH:
 
 ```bash
-cp bin/stamp-plans bin/reap-plans ~/.local/bin/
+cp bin/* ~/.local/bin/
 ```
 
 ## Where plans live — the plans-dir convention
@@ -109,8 +110,10 @@ stamping, reaping into `<plans-dir>/done/` — works identically.
   / `make lint` targets (the default). `/execute-plan` and `/restack` refuse to open/push anything
   unverified.
 - **Worktrees** — `/execute-plan` and `/restack` refuse to run in the main checkout. If you use a
-  gitignored plans dir with worktrees, share it (e.g. symlink `local/` from the main checkout into
-  each worktree); the scripts resolve symlinks via `realpath`.
+  gitignored plans dir with worktrees, share it with `link-plans`: run it inside a new worktree
+  (`link-plans` or `link-plans <worktree-path>`), or wire it as a post-worktree-creation hook —
+  ccmanager is supported out of the box (config snippet in the script header). Tracked plans dirs
+  need nothing; the scripts resolve symlinks via `realpath`.
 - Branch names use a `<namespace>/<slug>` shape (e.g. `alice/split-state-enum`); stacked branches
   become `<namespace>/<prefix>-<N>-<slice>`.
 

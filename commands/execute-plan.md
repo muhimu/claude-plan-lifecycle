@@ -170,7 +170,7 @@ Per the plan-lifecycle convention: every plans file of the effort must carry the
    stamp-plans -f "$PLAN_PATH" <PR_NUM>
    ```
    It reads the slug from `PLAN_PATH`, finds every sibling file with that slug, and sets `pr: <PR_NUM>` (bare YAML integer — no quotes, no `#`) in each one's frontmatter. It reports each stamped file; a non-zero exit means nothing was stamped — surface the error, don't hand-edit around it. Do **not** touch `status` — it stays `in-progress` (this command opens a *draft* PR; `merged` is owned by `reap-plans`). Do not add a body `PR: #<N>` line — frontmatter is authoritative.
-2. **No frontmatter (legacy plan)** — `stamp-plans` ignores such files by design; fall back to the old format by hand: if a `PR: #` line already exists anywhere in the file, replace it with `PR: #<PR_NUM>`; otherwise insert `PR: #<PR_NUM>` as a new line directly after the first `# ` heading, with a blank line above and below.
+2. **No frontmatter** — stop: "Plan has no frontmatter — add it per the `plan-frontmatter` skill, then stamp with `stamp-plans -f <plan> <PR_NUM>`."
 3. If the plans dir is gitignored (the default `local/` convention), the stamp needs no commit — `reap-plans` reads it from the filesystem in any worktree. If your plans dir is tracked in git, commit the stamped file(s) to the branch instead.
 
 ## Step 8 — Report
@@ -333,7 +333,7 @@ retargets the next PR to `$DEFAULT_BRANCH`.
 - **No `--force` push, no `--force-with-lease`, no `--no-verify`.** Plain commits, plain pushes; the repo's conventions govern message format.
 - **Halt-on-red.** Tests or lint red means stop. Do not fix forward, do not retry.
 - **No GitHub mutations beyond `gh pr create --draft`, `gh pr view`/`gh pr list` (read-only), and — stacked mode only — the S4 `gh pr edit` on bodies of PRs this stack created.** No auto-merge, no comment posting, no thread resolution.
-- **Plan file is read for execution but never rewritten except to stamp the PR number** (frontmatter `pr:` field, or a legacy `PR: #N` line for plans without frontmatter). No content edits.
+- **Plan file is read for execution but never rewritten except to stamp the PR number** (frontmatter `pr:` field). No content edits.
 - **Stop semantics:** print the indicated message and end the turn. Do not advance to subsequent steps.
 - **Stacked mode:** slice branches are created/renamed only by the main
   session, never by subagents. Slice N's PR always bases on slice N−1's
