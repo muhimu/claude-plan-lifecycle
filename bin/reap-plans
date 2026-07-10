@@ -19,9 +19,14 @@
 #
 # The plans dir resolves -d > PLANS_DIR > `git config plans.dir` > local/plans.
 #
-# Requires: gh (authenticated), git (to resolve the repo for `gh pr view`).
+# Requires: gh (authenticated), git, bash >= 4 (associative arrays).
 
 set -euo pipefail
+
+if (( BASH_VERSINFO[0] < 4 )); then
+  echo "reap-plans: requires bash >= 4 (macOS ships 3.2 — brew install bash)" >&2
+  exit 1
+fi
 
 dry_run=0
 plans_dir=""
@@ -117,7 +122,6 @@ if (( ${#plans[@]} == 0 )); then
 fi
 
 declare -A file_group
-declare -A file_status
 declare -A group_pr
 declare -A group_abandoned
 
@@ -143,7 +147,6 @@ for plan in "${plans[@]}"; do
   fi
 
   file_group["$plan"]="$group_key"
-  file_status["$plan"]="$status"
 
   if [[ -n "$pr" ]]; then
     if [[ -z "${group_pr[$group_key]:-}" ]]; then

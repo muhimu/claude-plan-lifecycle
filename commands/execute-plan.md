@@ -163,7 +163,7 @@ Use plain `git commit` — no `--no-verify`. Follow the repo's commit-message co
 
 ## Step 7 — Stamp the plan group with the PR number
 
-Per the user's plan-lifecycle convention: every plans file of the effort must carry the PR number so `reap-plans` can archive the group after merge. Stamping is **per slug group** — the design doc and the implementation plan share a `slug` and BOTH get `pr: <N>`. Use the dedicated `stamp-plans` script (this plugin ships it in `bin/`; it must be on PATH):
+Per the plan-lifecycle convention: every plans file of the effort must carry the PR number so `reap-plans` can archive the group after merge. Stamping is **per slug group** — the design doc and the implementation plan share a `slug` and BOTH get `pr: <N>`. Use the dedicated `stamp-plans` script (this plugin ships it in `bin/`; it must be on PATH):
 
 1. **Has frontmatter** (first line is exactly `---`, closed by a later `---`) — run:
    ```bash
@@ -206,9 +206,10 @@ in Step 3 is reused for every slice.
    has no scope, kebab-case the first two descriptive words after the colon.
    If two slices produce the same slug, append a disambiguating word from the
    title (`api` → `api-db`).
-3. **Branch names:** `BRANCH[N] = <ns>/<PREFIX>-<N>-<slice-slug>`, where `<ns>` is
-   the namespace segment of the worktree's current branch
-   (`alice/on-demand-mode` -> `alice`). Print the
+3. **Branch names:** `BRANCH[N] = <ns>/<PREFIX>-<N>-<slice-slug>`, where
+   `<ns>` is the namespace segment of the worktree's current branch
+   (`alice/on-demand-mode` -> `alice`); if the branch has no `/`, omit the
+   namespace (`BRANCH[N] = <PREFIX>-<N>-<slice-slug>`). Print the
    full table (N, branch, PR title, base) before executing anything — this is
    the plan of record for the loop. Base of slice 1 is `$DEFAULT_BRANCH`; base of slice
    N>1 is `BRANCH[N-1]`.

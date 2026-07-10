@@ -100,6 +100,8 @@ stamping, reaping into `<plans-dir>/done/` — works identically.
 ## Requirements & assumptions
 
 - **`gh`** authenticated (PR creation, merge-state checks).
+- **bash ≥ 4** for `bin/reap-plans` (macOS ships 3.2 — `brew install bash`; the script exits with a
+  clear message on older versions).
 - **[superpowers](https://github.com/obra/superpowers)** plugin — `/execute-plan` drives plans via
   `superpowers:executing-plans` or `superpowers:subagent-driven-development` (checked pre-flight);
   `/pr-fix` uses `superpowers:receiving-code-review` when present and degrades gracefully without it.
