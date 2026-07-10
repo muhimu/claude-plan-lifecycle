@@ -103,8 +103,8 @@ headings:
 - No task in slice N may depend on code written in slice N+1.
 - No `## PR N:` headings ⇒ `/execute-plan` runs its normal single-PR flow.
 - Branches are named `<ns>/<prefix>-<N>-<slice-slug>` (`<ns>` = your branch
-  namespace, prefix derived from the
-  plan slug, slice slug from the heading's Conventional-Commits scope).
+  namespace, prefix derived from the plan slug, slice slug from the heading's
+  Conventional-Commits scope).
 
 **Stamping a stack.** Stamp ONLY the tip (last) PR number into `pr:` — under
 the squash-merge cascade the tip merges last, so tip-merged ⇔ whole stack
