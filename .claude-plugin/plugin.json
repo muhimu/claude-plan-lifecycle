@@ -1,7 +1,6 @@
 {
   "name": "plan-lifecycle",
   "description": "Plan-driven development lifecycle: frontmattered plans, stacked-PR execution, PR stamping, restacking after squash-merges, and merge-driven reaping.",
-  "version": "0.1.0",
   "author": {
     "name": "Krzysztof Konieczny"
   }
