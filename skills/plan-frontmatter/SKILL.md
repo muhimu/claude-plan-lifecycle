@@ -1,11 +1,13 @@
 ---
 name: plan-frontmatter
-description: Use when writing any implementation plan or design doc to local/plans/ — defines the YAML frontmatter (title/slug/status/pr) every plan must carry and the rule that a design and its implementation plan share one slug.
+description: Use when writing any implementation plan or design doc to the repo's plans dir — defines the YAML frontmatter (title/slug/status/pr) every plan must carry and the rule that a design and its implementation plan share one slug.
 ---
 
 # Plan Frontmatter
 
-Every plan or design doc written to `local/plans/` starts with YAML frontmatter:
+Every plan or design doc written to the plans dir (resolved per the plans-dir
+convention: `PLANS_DIR` env, else `git config plans.dir`, else default
+`local/plans/`) starts with YAML frontmatter:
 
 ```yaml
 ---
@@ -30,16 +32,6 @@ pr:
   is a YAML integer, so no quotes and no `#`. Leave empty (`pr:`, parses as null)
   until then. (`reap-plans` tolerates a stray quote or leading `#`, but the clean
   form is the bare number.)
-
-## Plans directory
-
-The default plans dir is `local/plans/` — a gitignored personal scratch area
-(put `local/` in the repo's `.gitignore`). Prefer your plans versioned? Point
-the convention at a committed directory (e.g. `docs/plans/`): declare it in
-your CLAUDE.md and export `PLANS_DIR=<dir>` so `stamp-plans`, `reap-plans`,
-and `/execute-plan` pick it up. Everything else (frontmatter, stamping,
-reaping into `<plans-dir>/done/`) works the same — just commit what stamping
-and reaping change.
 
 ## Status ownership
 

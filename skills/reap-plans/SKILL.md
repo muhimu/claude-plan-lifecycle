@@ -1,6 +1,6 @@
 ---
 name: reap-plans
-description: Use when asked to reap plans, clean up merged/finished implementation plans in local/plans/, or archive plans whose PRs have merged into local/plans/done/.
+description: Use when asked to reap plans, clean up merged/finished implementation plans in the plans dir, or archive plans whose PRs have merged into <plans-dir>/done/.
 ---
 
 # Reap Plans
@@ -11,10 +11,10 @@ the run order and the conventions the script relies on.
 
 ## What the script does
 
-Groups `local/plans/*.md` by frontmatter `slug:` (a design + its impl plan reap
+Groups the plans dir's `*.md` by frontmatter `slug:` (a design + its impl plan reap
 as one group), checks each group's `pr:` merge state via `gh`, and for MERGED
 groups stamps `status: merged` into every member and moves them to
-`local/plans/done/`. Groups with no resolvable PR, or any `status: abandoned`
+`<plans-dir>/done/`. Groups with no resolvable PR, or any `status: abandoned`
 member, are left untouched.
 
 ## How to run
@@ -26,9 +26,10 @@ reap-plans -n      # show what would move, change nothing
 reap-plans         # stamp status: merged and move merged groups to done/
 ```
 
-Run from the repo root (it defaults to `./local/plans`; set `PLANS_DIR` or
-pass `-d` if your plans dir differs). Requires an authenticated `gh`. If the
-plans dir is tracked in git, commit the moves and stamps afterwards.
+Run from the repo root. The script resolves the plans dir itself
+(`-d` flag, else `PLANS_DIR` env, else `git config plans.dir`, else default
+`local/plans`). Requires an authenticated `gh`. If the plans dir is tracked
+in git, commit the moves it makes.
 
 Read the dry-run output before the real run. Flag anything odd to the user:
 `UNKNOWN` states (a PR number the script couldn't resolve), conflicting-PR

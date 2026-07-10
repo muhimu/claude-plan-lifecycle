@@ -1,11 +1,11 @@
 ---
-description: "Execute a plan from local/plans/ in the current worktree — runs the chosen execution skill (subagent-driven-development or executing-plans), then make test/lint, opens draft PR, stamps the plan's frontmatter pr: field. Plans with \"## PR N:\" slice headings execute as a stacked-PR chain (one draft PR per slice, each based on the previous; tip PR stamped)."
+description: "Execute a plan from the repo's plans dir in the current worktree — runs the chosen execution skill (subagent-driven-development or executing-plans), then make test/lint, opens draft PR, stamps the plan's frontmatter pr: field. Plans with \"## PR N:\" slice headings execute as a stacked-PR chain (one draft PR per slice, each based on the previous; tip PR stamped)."
 argument-hint: [plan-path — optional, auto-detected from branch name]
 ---
 
 # Execute Plan
 
-Drive one plan from `local/plans/` end-to-end in the current worktree: invoke the chosen execution skill (`superpowers:subagent-driven-development` or `superpowers:executing-plans`) against it, verify with `make test` and `make lint`, commit and push, open a draft PR, and stamp the plan file with the PR number.
+Drive one plan from the plans dir end-to-end in the current worktree: invoke the chosen execution skill (`superpowers:subagent-driven-development` or `superpowers:executing-plans`) against it, verify with `make test` and `make lint`, commit and push, open a draft PR, and stamp the plan file with the PR number.
 
 This command runs in a dedicated git worktree (created by your worktree manager of choice or plain `git worktree add`). It refuses to run in the main checkout.
 
@@ -49,12 +49,13 @@ Otherwise auto-detect from the current branch:
 
 1. Get the current branch name from Step 1.3.
 2. Strip the branch prefix segment (everything up to and including the first `/`) to produce a slug. Example: `alice/replica-drift` → `replica-drift`.
-3. Resolve the plans dir (env `PLANS_DIR`, default `local/plans/`) through any symlink first. In shared-plans worktree setups `local/` is a **symlink** to the main repo's `local/`, and not every tool follows symlinks (`find` and a bare shell glob may both miss files under it). Compute the real directory once and glob inside the resolved path:
+3. Resolve the plans dir (the plans-dir convention: `PLANS_DIR` env, else `git config plans.dir`, else `local/plans/`) through any symlink first. In shared-plans worktree setups `local/` is a **symlink** to the main repo's `local/`, and not every tool follows symlinks (`find` and a bare shell glob may both miss files under it). Compute the real directory once and glob inside the resolved path:
    ```bash
-   PLANS_DIR="$(realpath "${PLANS_DIR:-local/plans}" 2>/dev/null)"
+   PLANS_DIR="${PLANS_DIR:-$(git config --get plans.dir 2>/dev/null || echo local/plans)}"
+   PLANS_DIR="$(realpath "$PLANS_DIR" 2>/dev/null)"
    ls -1 "$PLANS_DIR"/*"${slug}"*.md 2>/dev/null
    ```
-   Always operate on `$PLANS_DIR` (the realpath), never the raw `local/plans` path, for every glob in this step.
+   Always operate on `$PLANS_DIR` (the realpath), never the raw configured path, for every glob in this step.
 4. Partition the matches: files ending in `-design.md` are **designs**; every other match is an **implementation candidate** (whatever its suffix — `-plan.md`, `-implementation.md`, or none). Then decide:
    - **Exactly one implementation candidate** → use it.
    - **Multiple implementation candidates** → list them via `AskUserQuestion` (header "Plan", multi-select disabled). If the user picks nothing, stop.
@@ -143,7 +144,7 @@ Use plain `git commit` — no `--no-verify`, no AI-attribution footer.
    ## Summary
 
    <2–4 sentences describing what the change does and why, written from the
-   actual diff — public-facing, no local/plans or personal-config references>
+   actual diff — public-facing, no plans-dir or personal-config references>
 
    ## Verification
 
@@ -263,7 +264,7 @@ is already done.
 
    <2–4 sentences describing what THIS slice changes and why it is
    independently shippable (e.g. "dark: no caller yet" / "behind flag") —
-   written from the slice's actual diff; public-facing, no local/plans
+   written from the slice's actual diff; public-facing, no plans-dir
    references>
 
    ## Stack
@@ -342,5 +343,5 @@ retargets the next PR to main.
   branch (slice 1 on `main`). Never open a PR for an unverified slice —
   halt-on-red halts the whole loop. Resume never rewrites already-pushed
   slices: no force-push, including on re-run.
-- **PR bodies are public-facing** in both modes: no `local/plans/…` paths,
+- **PR bodies are public-facing** in both modes: no plans-dir paths,
   no personal-config references.

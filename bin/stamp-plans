@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# stamp-plans — stamp a PR number into every local/plans file of one slug group.
+# stamp-plans — stamp a PR number into every plans-dir file of one slug group.
 #
 # Sets `pr: <N>` (bare YAML integer — no quotes, no '#') in the frontmatter of
-# EVERY *.md under local/plans whose `slug:` matches. A design doc and its
+# EVERY *.md in the plans dir whose `slug:` matches. A design doc and its
 # implementation plan share a slug, so both get stamped in one call — the whole
 # group carries the join key `reap-plans` uses to check merge state.
 #
@@ -12,15 +12,16 @@
 #   -f PLAN_FILE      read from that file's frontmatter (the plans dir then
 #                     defaults to the file's directory)
 #   current branch    prefix segment stripped (alice/on-demand-mode -> on-demand-mode)
-# local/plans is resolved through realpath, so it works from
-# worktrees where local/ is a symlink.
+# The plans dir resolves -f/-d > PLANS_DIR > `git config plans.dir` >
+# local/plans (the plans-dir convention), then through realpath, so it
+# works from worktrees where it is a symlink.
 #
 # Usage:
 #   stamp-plans <pr-number>                 # slug derived from current branch
 #   stamp-plans -f local/plans/x-plan.md <pr-number>
 #   stamp-plans -s SLUG <pr-number>
 #   stamp-plans -n <pr-number>              # dry run
-#   stamp-plans -d DIR <pr-number>          # override plans dir (or set PLANS_DIR)
+#   stamp-plans -d DIR <pr-number>          # override the plans dir
 #
 # Files without frontmatter are ignored (legacy plans use a body "PR: #N" line;
 # stamp those by hand). A member already stamped with a DIFFERENT PR is
@@ -40,7 +41,7 @@ while getopts "ns:f:d:h" opt; do
     f) from_file="$OPTARG" ;;
     d) plans_dir="$OPTARG" ;;
     h)
-      sed -n '3,27p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,28p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) echo "stamp-plans: unknown option" >&2; exit 2 ;;
@@ -109,7 +110,10 @@ if [[ -z "$slug" ]]; then
   slug="${branch#*/}"
 fi
 
-[[ -z "$plans_dir" ]] && plans_dir="${PLANS_DIR:-local/plans}"
+if [[ -z "$plans_dir" ]]; then
+  plans_dir="${PLANS_DIR:-$(git config --get plans.dir 2>/dev/null || true)}"
+  plans_dir="${plans_dir:-local/plans}"
+fi
 
 # Resolve through a possible worktree symlink; not every tool follows it.
 if [[ ! -d "$plans_dir" ]]; then

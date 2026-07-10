@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# reap-plans — move merged implementation plans into local/plans/done/.
+# reap-plans — move merged implementation plans into <plans-dir>/done/.
 #
 # Each plan is grouped by its frontmatter `slug:` (files sharing a slug form one
 # unit — e.g. a design and its implementation plan). A group is reaped when the
 # PR it names is MERGED on GitHub: `status: merged` is stamped into every
-# frontmatter-bearing member, then the whole group moves to local/plans/done/.
+# frontmatter-bearing member, then the whole group moves to <plans-dir>/done/.
 #
 # Files WITHOUT frontmatter fall back to the legacy behavior: grep for a
 # "PR: #N" line and reap that single file if the PR is merged. Files with no PR
@@ -13,28 +13,35 @@
 # `status: abandoned` member is skipped and reported, never reaped.
 #
 # Usage:
-#   reap-plans            # run from a repo root (uses ./local/plans)
+#   reap-plans            # run from a repo root (uses the repo's plans dir)
 #   reap-plans -n         # dry run: show what would move, change nothing
-#   reap-plans -d DIR     # plans dir override (or set PLANS_DIR)
+#   reap-plans -d DIR     # override the plans dir
+#
+# The plans dir resolves -d > PLANS_DIR > `git config plans.dir` > local/plans.
 #
 # Requires: gh (authenticated), git (to resolve the repo for `gh pr view`).
 
 set -euo pipefail
 
 dry_run=0
-plans_dir="${PLANS_DIR:-local/plans}"
+plans_dir=""
 
 while getopts "nd:h" opt; do
   case "$opt" in
     n) dry_run=1 ;;
     d) plans_dir="$OPTARG" ;;
     h)
-      sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,22p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) echo "reap-plans: unknown option" >&2; exit 2 ;;
   esac
 done
+
+if [[ -z "$plans_dir" ]]; then
+  plans_dir="${PLANS_DIR:-$(git config --get plans.dir 2>/dev/null || true)}"
+  plans_dir="${plans_dir:-local/plans}"
+fi
 
 if ! command -v gh >/dev/null 2>&1; then
   echo "reap-plans: 'gh' not found on PATH" >&2
