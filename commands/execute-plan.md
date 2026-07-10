@@ -233,12 +233,15 @@ is already done.
    - If `BRANCH[N]` already exists locally (this is a resume of a slice that
      failed mid-way), just `git checkout "BRANCH[N]"` — partial work from the
      failed run is preserved on it.
-   - Otherwise, N = 1: the worktree's current branch is a placeholder —
-     rename it: `git branch -m "BRANCH[1]"`. Exception: if the current
-     branch already has an upstream (`git rev-parse --abbrev-ref @{u}`
-     succeeds), do NOT rename; stop and ask the user how to proceed.
-   - Otherwise, N > 1: `git checkout -b "BRANCH[N]"` (creates on top of
-     BRANCH[N-1], which is checked out at this point).
+   - Otherwise: `git checkout -b "BRANCH[N]"` — from the worktree's current
+     branch for N = 1 (the placeholder the worktree was created with; any
+     pre-work on it carries over), or on top of BRANCH[N-1] for N > 1
+     (checked out at this point).
+   - After creating `BRANCH[1]`, tidy the placeholder: if it has no upstream
+     (`git rev-parse --abbrev-ref "<placeholder>@{u}"` fails), run
+     `git branch -d "<placeholder>"` — lowercase `-d` refuses unmerged work,
+     so it only removes a placeholder fully contained in BRANCH[1]. If it
+     has an upstream or `-d` refuses, leave it alone silently and continue.
 2. **Execute the slice.** Invoke the Step 3 execution skill with `PLAN_PATH`
    and this scope instruction: "Execute ONLY the tasks under the heading
    `## PR <N>: <SLICE_TITLE>`. Tasks of earlier slices are already
@@ -335,7 +338,7 @@ retargets the next PR to `$DEFAULT_BRANCH`.
 - **No GitHub mutations beyond `gh pr create --draft`, `gh pr view`/`gh pr list` (read-only), and — stacked mode only — the S4 `gh pr edit` on bodies of PRs this stack created.** No auto-merge, no comment posting, no thread resolution.
 - **Plan file is read for execution but never rewritten except to stamp the PR number** (frontmatter `pr:` field). No content edits.
 - **Stop semantics:** print the indicated message and end the turn. Do not advance to subsequent steps.
-- **Stacked mode:** slice branches are created/renamed only by the main
+- **Stacked mode:** slice branches are created only by the main
   session, never by subagents. Slice N's PR always bases on slice N−1's
   branch (slice 1 on `$DEFAULT_BRANCH`). Never open a PR for an unverified slice —
   halt-on-red halts the whole loop. Resume never rewrites already-pushed
