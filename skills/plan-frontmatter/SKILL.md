@@ -1,6 +1,6 @@
 ---
 name: plan-frontmatter
-description: Use when writing any implementation plan or design doc to the repo's plans dir — defines the YAML frontmatter (title/slug/status/pr) every plan must carry and the rule that a design and its implementation plan share one slug.
+description: Use when writing any implementation plan or design doc to the repo's plans dir — defines the YAML frontmatter (title/slug/status/pr/issue) every plan must carry and the rule that a design and its implementation plan share one slug.
 ---
 
 # Plan Frontmatter
@@ -13,6 +13,7 @@ convention: `PLANS_DIR` env, else `git config plans.dir`, else default
 ---
 title: <human-readable name of the effort>
 slug: <kebab-case key, SHARED across all files of one effort>
+issue: <root issue — bare number for same-repo, org/repo#N for cross-repo>
 status: draft
 pr:
 ---
@@ -26,6 +27,19 @@ pr:
   groups files by slug and reaps a whole group together. Pick the slug once
   (kebab-case, e.g. `split-state-enum`) and reuse it verbatim on every related
   file.
+- **issue** — the root issue the effort addresses. Bare number (`issue: 3178`)
+  for an issue in the same repo; `org/repo#N` form for cross-repo. Shared
+  across the slug group like `title`. Leave empty (`issue:`) only when the
+  work genuinely traces to no issue. When set, two things follow:
+  1. The plan body's header block states the root issue with a one-line
+     mechanism summary — a reader must not need to open GitHub to know what
+     problem the plan solves.
+  2. The PR that ships the plan MUST include `Closes #<N>` (or
+     `Closes org/repo#N`) on the first line of its body, so the merge
+     auto-closes the issue. For stacked PRs, ONLY the tip PR carries the
+     `Closes` line — under the squash cascade the tip merges last, so
+     tip-merged ⇔ effort done; an earlier slice must not close the issue
+     prematurely. `/execute-plan` enforces this when it opens PRs.
 - **status** — one of `draft` | `in-progress` | `merged` | `abandoned`. A bare
   plain scalar — no quotes (`status: draft`, not `status: "draft"`).
 - **pr** — the PR number once a PR is opened, as a bare number (`pr: 2297`) — it

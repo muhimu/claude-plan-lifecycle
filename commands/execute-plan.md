@@ -70,6 +70,14 @@ Resolve the chosen path to absolute. Call it `PLAN_PATH`.
 
 Read the plan file's first heading (the `# ` line) to extract a short title — call it `PLAN_TITLE` for use in commit messages and the PR body.
 
+Also read the frontmatter `issue:` field (per the `plan-frontmatter` skill)
+and normalize it to `ISSUE_REF`: a bare number `3178` becomes `#3178`; an
+`org/repo#N` value is used as-is. If the field is absent or empty, fall back
+to the plan body's header block (e.g. a "Root issue:" line); if a root issue
+is found there, use it as `ISSUE_REF` and mention in the final report that
+the frontmatter should have carried it. If none is found anywhere,
+`ISSUE_REF` is empty.
+
 Then scan the plan body for **slice headings** matching the regex
 `^## PR ([0-9]+): (.+)$`. Collect matches in file order as `SLICES` — a list
 of `(N, SLICE_TITLE)` pairs. (The slicing convention — when to slice, heading
@@ -133,10 +141,12 @@ Use plain `git commit` — no `--no-verify`. Follow the repo's commit-message co
    ```
    No `--force`, no `--force-with-lease`. If the push is rejected, stop and ask the user — do not rewrite history.
 
-2. **Open draft PR.** Body is constructed from `PLAN_TITLE`, `TEST_TAIL`, `LINT_TAIL`:
+2. **Open draft PR.** Body is constructed from `ISSUE_REF`, `PLAN_TITLE`, `TEST_TAIL`, `LINT_TAIL`. When `ISSUE_REF` is non-empty, the FIRST line of the body is `Closes <ISSUE_REF>` (followed by a blank line) so the merge auto-closes the root issue. When empty, omit that line entirely — never emit a bare "Closes".
 
    ```bash
    gh pr create --draft --title "<PLAN_TITLE>" --body "$(cat <<'EOF'
+   Closes <ISSUE_REF>
+
    ## Summary
 
    <2–4 sentences describing what the change does and why, written from the
@@ -255,11 +265,17 @@ is already done.
    completed slices."
 4. **Commit leftovers** — identical to Step 5, commit message from
    `SLICE_TITLE`.
-5. **Push and open draft PR:**
+5. **Push and open draft PR.** The `Closes` line goes on the **tip slice
+   only** (N = M) and only when `ISSUE_REF` is non-empty: under the squash
+   cascade the tip merges last, so tip-merged ⇔ effort done — an earlier
+   slice closing the root issue would close it prematurely. Slices N < M
+   never carry a `Closes` line.
 
    ```bash
    git push -u origin "BRANCH[N]"
    gh pr create --draft --title "<SLICE_TITLE>" --base "<DEFAULT_BRANCH or BRANCH[N-1]>" --body "$(cat <<'EOF'
+   Closes <ISSUE_REF>   # ← tip slice (N = M) only, omit otherwise
+
    ## Summary
 
    <2–4 sentences describing what THIS slice changes and why it is
