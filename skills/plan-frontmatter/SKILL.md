@@ -102,16 +102,19 @@ wiring → `feat(routing)` activation behind a flag.
 **Declaration format.** Group the implementation plan's tasks under slice
 headings:
 
-    ## PR 1: feat(api) — proto, migration, entity, DAO (dark)
+    ## PR 1: feat(api): proto, migration, entity, DAO (dark)
     ### Task 1.1 ...
     ### Task 1.2 ...
-    ## PR 2: feat(deployer) — service wiring (API live, runtime-inert)
+    ## PR 2: feat(deployer): service wiring (API live, runtime-inert)
     ### Task 2.1 ...
 
 - Detection regex (used by `/execute-plan`): `^## PR ([0-9]+): (.+)$` —
   numbers consecutive from 1.
-- The text after the colon is the PR title **verbatim**, so write it
-  Conventional-Commits-shaped.
+- The text after the first colon is the PR title **verbatim**, so it must be
+  a strict Conventional-Commits title: `type(scope): description` — colon
+  right after the type/scope, NEVER an em-dash (`feat(api) — …` fails
+  semantic-PR-title CI like amannn/action-semantic-pull-request with "No
+  release type found").
 - Slices execute in heading order; each must leave the repo's test + lint
   verify commands green standalone on top of the previous slices.
 - No task in slice N may depend on code written in slice N+1.

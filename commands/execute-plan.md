@@ -83,6 +83,14 @@ Then scan the plan body for **slice headings** matching the regex
 of `(N, SLICE_TITLE)` pairs. (The slicing convention — when to slice, heading
 format, cascade recipe — is defined in the `plan-frontmatter` skill.)
 
+**Normalize each `SLICE_TITLE` to a strict Conventional-Commits title** —
+it becomes the PR title verbatim, and semantic-PR-title CI (e.g.
+amannn/action-semantic-pull-request) rejects titles without a parseable
+release type. If the title matches `^<type>(<scope>)? — <desc>` (em-dash
+after the type/scope — the legacy heading style), rewrite it to
+`<type>(<scope>): <desc>`. Use the normalized form everywhere downstream
+(PR titles, commit messages, Stack tables).
+
 - **No matches** → single-PR mode. Continue with Steps 3–8 exactly as
   written below.
 - **Matches** → stacked mode. Validate: slice numbers must be consecutive
@@ -143,8 +151,10 @@ Use plain `git commit` — no `--no-verify`. Follow the repo's commit-message co
 
 2. **Open draft PR.** Body is constructed from `ISSUE_REF`, `PLAN_TITLE`, `TEST_TAIL`, `LINT_TAIL`. When `ISSUE_REF` is non-empty, the FIRST line of the body is `Closes <ISSUE_REF>` (followed by a blank line) so the merge auto-closes the root issue. When empty, omit that line entirely — never emit a bare "Closes".
 
+   The PR title must be a strict Conventional-Commits title (`type(scope): description`). `PLAN_TITLE` usually isn't one ("Replica Drift Implementation Plan") — derive the title from the plan's dominant change type and scope (e.g. `feat(deployer): replica drift detection`); never pass a bare prose `PLAN_TITLE` as the title when the repo enforces semantic PR titles.
+
    ```bash
-   gh pr create --draft --title "<PLAN_TITLE>" --body "$(cat <<'EOF'
+   gh pr create --draft --title "<PR_TITLE — the Conventional-Commits title derived above>" --body "$(cat <<'EOF'
    Closes <ISSUE_REF>
 
    ## Summary
