@@ -96,6 +96,9 @@ stamping, reaping into `<plans-dir>/done/` — works identically.
 - **Durable record lives elsewhere.** A plan is scaffolding — intent and decisions
   belong in the PR description or a committed ADR, never the plans dir.
 - **Reap after merge:** invoke the `reap-plans` skill.
+- **Worktrees:** after creating a worktree by hand, run `link-plans <worktree-path>` so the
+  gitignored `local/` is shared into it (unnecessary if your worktree tool runs it as a
+  post-creation hook, e.g. ccmanager). <!-- committed variant: drop this bullet -->
 ```
 
 ## Requirements & assumptions
