@@ -41,6 +41,7 @@ aggressive about writing plans without accumulating a graveyard.
 | `/execute-plan` | command | Drives a plan end-to-end in a worktree: execution skill → test/lint verify → draft PR → stamp. Plans with `## PR N:` slice headings become a stacked-PR chain |
 | `/restack` | command | After a stack's bottom PR squash-merges: cascade-rebase surviving branches, verify the tip, force-with-lease push behind a confirmation gate, retarget the new bottom PR |
 | `/pr-fix` | command | Fetch PR review comments, plan fixes, implement and push; drafts replies for you to post (never posts to GitHub itself) |
+| `/pr-fix-loop` | command | Loop `/pr-fix` autonomously: fix → push → wait for the automated review workflow's next review → repeat, until the review is clean or 5 rounds have run |
 | `/bug-hunt` | command | Autonomous red-green-refactor bug hunter with a reviewer-subagent gate |
 | `bin/stamp-plans` | script | Stamps `pr: <N>` into every plan file sharing a slug |
 | `bin/reap-plans` | script | Archives merged plan groups into `<plans-dir>/done/` |
