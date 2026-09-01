@@ -17,9 +17,10 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   post anything to GitHub. All of pr-fix's hard rules still apply (no GitHub
   mutations, no force push, no auto-merge).
 - After pushing, wait for the repo's automated review workflow (e.g. claude-review)
-  to post a NEW review before starting the next round: poll
-  `gh pr view --json reviews` and only proceed once a review's submittedAt is later
-  than your push. Never re-process reviews you already handled in an earlier round.
+  to post NEW feedback before starting the next round. It may arrive as a plain PR
+  comment, not a review — poll `gh pr view --json comments,reviews` and only proceed
+  once the workflow has posted something with a timestamp later than your push.
+  Never re-process feedback you already handled in an earlier round.
 - Track the round number across iterations. Stop the loop and notify me when:
   - a round produces no actionable items (review is clean), or
   - 5 rounds have completed, or
