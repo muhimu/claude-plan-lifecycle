@@ -21,8 +21,14 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   comment, not a review — poll `gh pr view --json comments,reviews` and only proceed
   once the workflow has posted something with a timestamp later than your push.
   Never re-process feedback you already handled in an earlier round.
+- Automated reviewers almost always find *something* — before classifying, judge
+  whether the new feedback is substantive at all. Raise the bar each round: by
+  round 3+, only clear correctness, security, or data-loss issues count as
+  actionable; taste-level nits, restatements of earlier feedback, and
+  churn-for-churn's-sake get a drafted pushback reply instead of a code change.
 - Track the round number across iterations. Stop the loop and notify me when:
-  - a round produces no actionable items (review is clean), or
+  - a round produces no substantive actionable items (review is effectively
+    clean — nit-only rounds count as clean), or
   - 5 rounds have completed, or
   - no new review has appeared 30+ minutes after a push (workflow likely
     missing or stuck — report what you observed).
