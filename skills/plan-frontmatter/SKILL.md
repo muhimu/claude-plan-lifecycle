@@ -143,8 +143,25 @@ squash-merges to the default branch:
 4. Push the rebased branch with `--force-with-lease`.
 5. Repeat up the stack in order.
 
+## Spec — what the executor reads
+
+`superpowers:writing-plans` puts a `**Spec:**` line in every plan header and
+`superpowers:subagent-driven-development` treats that spec as the binding
+authority for every ruling it makes; a plan with no reachable spec gets all
+its rulings marked provisional. So **`**Spec:**` must point at the design
+doc sharing the slug** (path relative to the repo root or absolute — the
+executor must be able to open it from the worktree). Never leave it as
+placeholder text. No design doc ⇒ write `**Spec:** none — rulings are
+provisional`.
+
+(Do not put the slicing rules above into `## Global Constraints` — SDD hands
+that section to per-task reviewers as spec values to check against a single
+task's diff, and reviewers cannot verify cross-slice properties from one
+diff. `/execute-plan` enforces the slice rules itself.)
+
 ## Relationship to writing-plans
 
 This skill does not replace `superpowers:writing-plans` — it adds the
-frontmatter block above the standard plan header. Apply it whenever a plan or
-design doc is written, after the plan body is drafted.
+frontmatter block above the standard plan header and the `**Spec:**`
+requirement above. Apply it whenever a plan or design doc is written,
+after the plan body is drafted.

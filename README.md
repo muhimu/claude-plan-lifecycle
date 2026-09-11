@@ -99,7 +99,8 @@ stamping, reaping into `<plans-dir>/done/` — works identically.
 - **Reap after merge:** invoke the `reap-plans` skill.
 - **Worktrees:** after creating a worktree by hand, run `link-plans <worktree-path>` so the
   gitignored `local/` is shared into it (unnecessary if your worktree tool runs it as a
-  post-creation hook, e.g. ccmanager). <!-- committed variant: drop this bullet -->
+  post-creation hook, e.g. ccmanager). Never `git clean -fdx` a worktree mid-plan — it
+  deletes the execution skill's progress ledger. <!-- committed variant: drop this bullet -->
 ```
 
 ## Requirements & assumptions
@@ -108,8 +109,9 @@ stamping, reaping into `<plans-dir>/done/` — works identically.
 - **bash ≥ 4** for `bin/reap-plans` (macOS ships 3.2 — `brew install bash`; the script exits with a
   clear message on older versions).
 - **[superpowers](https://github.com/obra/superpowers)** plugin — `/execute-plan` drives plans via
-  `superpowers:executing-plans` or `superpowers:subagent-driven-development` (checked pre-flight);
-  `/pr-fix` uses `superpowers:receiving-code-review` when present and degrades gracefully without it.
+  `superpowers:subagent-driven-development` (default when subagents are available) or
+  `superpowers:executing-plans` (checked pre-flight); `/pr-fix` uses
+  `superpowers:receiving-code-review` when present and degrades gracefully without it.
 - **Test and lint verify commands** — declare them in the repo's CLAUDE.md, or provide `make test`
   / `make lint` targets (the default). `/execute-plan` and `/restack` refuse to open/push anything
   unverified.
