@@ -39,13 +39,13 @@ Run each check in order. On any failure, **stop**: print the message and end the
    ```bash
    git status --porcelain
    ```
-   If non-empty, warn ("Worktree has uncommitted changes — `executing-plans` will likely commit them as part of execution") but continue.
+   If non-empty, warn ("Worktree has uncommitted changes — the execution skill's implementers will likely commit them as part of execution") but continue.
 
 5. **Execution skills available?** This command drives plans via the superpowers plugin. If neither `superpowers:executing-plans` nor `superpowers:subagent-driven-development` appears in the available-skills list, stop: "The superpowers plugin is required (https://github.com/obra/superpowers). Install it and re-run."
 
 ## Step 2 — Resolve the plan
 
-This command executes against an **implementation plan**, not a design spec (suffix `-design.md`). The two are paired: the design captures rationale and decisions; the implementation captures the TDD-shaped steps `superpowers:executing-plans` needs to drive. Implementation plans carry no fixed suffix — in practice they end in `-plan.md`, `-implementation.md`, or have no suffix at all. The only reliable discriminator is: same slug, not `-design.md`.
+This command executes against an **implementation plan**, not a design spec (suffix `-design.md`). The two are paired: the design captures rationale and decisions; the implementation captures the TDD-shaped steps the execution skill needs to drive. Implementation plans carry no fixed suffix — in practice they end in `-plan.md`, `-implementation.md`, or have no suffix at all. The only reliable discriminator is: same slug, not `-design.md`.
 
 If `$ARGUMENTS` is non-empty, treat the first token as the plan path (absolute or relative to cwd). Require it to end in `.md` and exist. Resolve to absolute via `realpath` and skip to Step 3. (No suffix check — the user passed it explicitly, trust them.)
 
@@ -97,22 +97,28 @@ after the type/scope — the legacy heading style), rewrite it to
   starting at 1 (`1..M`, no gaps, no duplicates). If malformed, stop:
   "Malformed slice headings in plan: expected consecutive `## PR 1:` ..
   `## PR M:`." Otherwise continue with Step 3 (the execution-skill choice is
-  shared and asked once), then jump to the **Stacked execution** section —
+  shared and decided once), then jump to the **Stacked execution** section —
   Steps 4–7 do not run in stacked mode.
 
 ## Step 3 — Choose the execution skill, then hand off
 
 Two skills can drive a plan task-by-task:
 
-- **`superpowers:subagent-driven-development`** — dispatches each task to a fresh subagent. Higher quality on platforms with subagent support (parallelism, clean per-task context), but uses more tokens. This is the better default when subagents are available.
-- **`superpowers:executing-plans`** — drives every task inline in this session. Simpler, lower token cost, no subagent fan-out.
+- **`superpowers:subagent-driven-development`** (SDD) — dispatches each task to a fresh subagent (sequentially — it never runs implementers in parallel), reviews each task, then runs a whole-branch review. Higher quality, more tokens.
+- **`superpowers:executing-plans`** — drives every task inline in this session. Simpler, lower token cost.
 
-Do **not** hardcode the choice. Decide as follows:
+Do **not** ask the user. Decide:
 
-1. **Read the plan's recommendation.** Plans often name a preferred skill (e.g. a `REQUIRED SUB-SKILL:` line near the top). Note which skill(s) it mentions.
-2. **Ask the user** via `AskUserQuestion` (header "Exec skill", multi-select disabled) which skill to use. Offer both options. Put the recommended one first and append "(Recommended)" to its label — recommend `subagent-driven-development` if subagents are available in this environment, otherwise `executing-plans`. If the plan explicitly pins one skill, surface that in the option description.
-   - If the user picks nothing / cancels, stop: "No execution skill selected."
-3. **Invoke the chosen skill** via the `Skill` tool, passing `PLAN_PATH` as the plan to execute. **Stacked mode exception:** do NOT invoke here — record the choice and jump to the Stacked execution section; the skill is invoked once per slice in S3 with a slice-scoped instruction.
+1. If the plan pins a skill (a `REQUIRED SUB-SKILL:` line naming exactly one of the two), use that.
+2. Otherwise use SDD when the `Agent` tool is available in this environment, else `executing-plans`. (This is SDD's own decision graph: plan exists, tasks mostly independent, staying in this session.)
+
+Print one line naming the choice. Then **invoke the chosen skill** via the `Skill` tool, passing `PLAN_PATH` as the plan to execute plus this scope instruction — call it `FINISH_INSTRUCTION`:
+
+> Stop after the final whole-branch review (and its single fix wave, if any). Do NOT invoke `superpowers:finishing-a-development-branch` — `/execute-plan` opens the PR. Return your "Rulings I made" list verbatim in your final message; if you made no rulings, say so.
+
+Both skills end by invoking `finishing-a-development-branch`, which presents merge/PR/keep options that collide with Steps 5–7. The instruction above pre-empts that. Capture the returned rulings list as `RULINGS` (empty if none — `executing-plans` keeps no ledger and normally returns none).
+
+**Stacked mode exception:** do NOT invoke here — record the choice and jump to the Stacked execution section; the skill is invoked once per slice in S3 with a slice-scoped instruction.
 
 Whichever skill runs owns TDD discipline, per-task review checkpoints, and intra-plan verification. Do not duplicate its work — let it run.
 
@@ -130,7 +136,7 @@ If a resolved command does not exist (e.g. `make: *** No rule to make target` on
 
 ## Step 5 — Commit anything still staged
 
-If `git status --porcelain` is empty, skip this step — `executing-plans` already committed everything.
+If `git status --porcelain` is empty, skip this step — the execution skill already committed everything.
 
 Otherwise stage and commit pending changes with a message derived from `PLAN_TITLE`:
 
@@ -161,6 +167,13 @@ Use plain `git commit` — no `--no-verify`. Follow the repo's commit-message co
 
    <2–4 sentences describing what the change does and why, written from the
    actual diff — public-facing, no plans-dir or personal-config references>
+
+   ## Rulings
+
+   <one bullet per entry in RULINGS — what was decided, why, and what it
+   costs if wrong. These are decisions the execution skill made on the
+   author's behalf; the PR is where they become reviewable. Omit the whole
+   section when RULINGS is empty.>
 
    ## Verification
 
@@ -267,7 +280,14 @@ is already done.
    `## PR <N>: <SLICE_TITLE>`. Tasks of earlier slices are already
    implemented on this branch. Do not implement anything from later slices.
    The branch may already contain partial work for this slice from an
-   earlier failed run — verify per-task state before redoing steps."
+   earlier failed run — verify per-task state before redoing steps. The
+   whole-branch review range is `<DEFAULT_BRANCH or BRANCH[N-1]>..HEAD` —
+   use that as the review base, not `git merge-base`. Keep the plan's
+   workspace (`.superpowers/sdd/<plan>/`) after the final review unless
+   this is slice <M> of <M>; earlier slices' parked findings live there."
+   followed by `FINISH_INSTRUCTION`. Capture the returned rulings as
+   `RULINGS[N]` — only the rulings made during this invocation; earlier
+   slices' rulings already sit in their own PR bodies.
 3. **Verify** — identical to Step 4 (`$TEST_CMD`, `$LINT_CMD`, halt-on-red),
    capturing `TEST_TAIL[N]` / `LINT_TAIL[N]`. On red, stop: "Slice <N>
    failed <check>. Slices 1..<N-1> are pushed and green; worktree preserved
@@ -292,6 +312,11 @@ is already done.
    independently shippable (e.g. "dark: no caller yet" / "behind flag") —
    written from the slice's actual diff; public-facing, no plans-dir
    references>
+
+   ## Rulings
+
+   <one bullet per entry in RULINGS[N], as in Step 6; omit the section
+   when empty>
 
    ## Stack
 
@@ -319,8 +344,8 @@ is already done.
 
 After the last slice's PR exists, update every stack PR body via
 `gh pr edit <PR_NUM[N]> --body <updated>`: replace each body's `## Stack`
-section with the full table, preserving its Summary and Verification
-sections untouched:
+section with the full table, preserving its Summary, Rulings, and
+Verification sections untouched:
 
 ```markdown
 ## Stack (part <N> of <M>)
