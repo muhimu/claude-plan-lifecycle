@@ -60,6 +60,6 @@ Implement [feature/change] for [project context].
 - Reference file paths, not conversation content — the new session can read files but can't see our chat
 - Include only context that ISN'T already in the plan/spec files — don't duplicate
 - **Do NOT restate rules already in global/project CLAUDE.md, AGENTS.md, or GEMINI.md.** The new session loads these automatically. Examples to omit: branch naming conventions, commit message rules (no Co-Authored-By, no Claude footer), worktree locations, plan file locations, "never commit to main", subagent rules. If you're tempted to write a "Conventions" or "Ground rules" section that just echoes global preferences, delete it.
-- **If an SDD ledger exists for the plan, the prompt must name its path and say to resume from the first task without a `complete` line.** A fresh session that skips the ledger re-dispatches finished tasks — the most expensive failure the skill's authors have observed.
+- **If an SDD ledger exists for the plan, the prompt names its path and says to resume from the first task without a `complete` line.** The ledger is the only record of which tasks already finished.
 - Keep it under 300 words — long prompts waste the new session's context
 - Don't include implementation details — that's what the plan file is for
