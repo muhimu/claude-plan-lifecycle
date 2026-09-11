@@ -111,10 +111,11 @@ Do **not** ask the user. Decide:
 
 1. If the plan pins a skill (a `REQUIRED SUB-SKILL:` line naming exactly one of the two), use that.
 2. Otherwise use SDD when the `Agent` tool is available in this environment, else `executing-plans`. (This is SDD's own decision graph: plan exists, tasks mostly independent, staying in this session.)
+3. If the chosen skill is not in the available-skills list, use the other one and say so in the one-line announcement.
 
 Print one line naming the choice. Then **invoke the chosen skill** via the `Skill` tool, passing `PLAN_PATH` as the plan to execute plus this scope instruction — call it `FINISH_INSTRUCTION`:
 
-> Stop after the final whole-branch review (and its single fix wave, if any). Do NOT invoke `superpowers:finishing-a-development-branch` — `/execute-plan` opens the PR. Return your "Rulings I made" list verbatim in your final message; if you made no rulings, say so.
+> When you reach the point where you would invoke `superpowers:finishing-a-development-branch`, do NOT — return control to `/execute-plan`, which opens the PR. Return your "Rulings I made" list verbatim in your final message; if you made no rulings, say so.
 
 Both skills end by invoking `finishing-a-development-branch`, which presents merge/PR/keep options that collide with Steps 5–7. The instruction above pre-empts that. Capture the returned rulings list as `RULINGS` (empty if none — `executing-plans` keeps no ledger and normally returns none).
 
@@ -280,14 +281,15 @@ is already done.
    `## PR <N>: <SLICE_TITLE>`. Tasks of earlier slices are already
    implemented on this branch. Do not implement anything from later slices.
    The branch may already contain partial work for this slice from an
-   earlier failed run — verify per-task state before redoing steps. The
-   whole-branch review range is `<DEFAULT_BRANCH or BRANCH[N-1]>..HEAD` —
-   use that as the review base, not `git merge-base`. Keep the plan's
-   workspace (`.superpowers/sdd/<plan>/`) after the final review unless
-   this is slice <M> of <M>; earlier slices' parked findings live there."
-   followed by `FINISH_INSTRUCTION`. Capture the returned rulings as
-   `RULINGS[N]` — only the rulings made during this invocation; earlier
-   slices' rulings already sit in their own PR bodies.
+   earlier failed run — verify per-task state before redoing steps. For
+   the final whole-branch review use `<DEFAULT_BRANCH or BRANCH[N-1]>` as
+   MERGE_BASE (the single base rev for `review-package`), not
+   `git merge-base`. Keep the plan's workspace (`.superpowers/sdd/<plan>/`)
+   after the final review unless this is slice <M> of <M>; earlier slices'
+   parked findings live there."
+   followed by `FINISH_INSTRUCTION`. The skill returns every ruling in the
+   shared ledger, including earlier slices'. Set `RULINGS[N]` = returned
+   list minus every entry already in `RULINGS[1..N-1]`.
 3. **Verify** — identical to Step 4 (`$TEST_CMD`, `$LINT_CMD`, halt-on-red),
    capturing `TEST_TAIL[N]` / `LINT_TAIL[N]`. On red, stop: "Slice <N>
    failed <check>. Slices 1..<N-1> are pushed and green; worktree preserved

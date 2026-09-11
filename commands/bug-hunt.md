@@ -24,11 +24,12 @@ $ARGUMENTS
    - the project's linter on the touched files
    Both must pass. If they don't, iterate — do not proceed.
 
-6. **Independent review.** Write the review package to a file so the diff never enters this session's context:
+6. **Independent review.** Write the review package to a file so the diff never enters this session's context. `git diff` skips untracked files, so register new files (the reproducer test, any new module) with intent-to-add first — that stages nothing and commits nothing:
    ```bash
-   { echo "## Files changed"; git diff --stat HEAD; echo; echo "## Diff"; git diff -U10 HEAD; } > <scratch-dir>/bug-hunt-review-<R>.diff
+   git add -N .
+   { echo "## Files changed"; git diff --stat HEAD; echo; echo "## Diff"; git diff -U10 HEAD; } > "$SCRATCH/bug-hunt-review-$ROUND.diff"
    ```
-   (`HEAD`, not a commit range — nothing is committed until step 8.) Spawn a `general-purpose` reviewer via the `Agent` tool using the prompt template at `superpowers:requesting-code-review`'s `code-reviewer.md`, replacing its git-range section with the package path. **Always set `model` explicitly** — a mid-tier model for a small diff, the most capable for anything touching concurrency, security, or multiple subsystems; never let it inherit the session model. Give it:
+   `$SCRATCH` is the session scratchpad directory, `$ROUND` the review round (1 on the first pass). Diff against `HEAD`, not a commit range — nothing is committed until step 8. Spawn a `general-purpose` reviewer via the `Agent` tool using the prompt template at `superpowers:requesting-code-review`'s `code-reviewer.md`, replacing its git-range section with the package path. **Always set `model` explicitly** — a mid-tier model for a small diff, the most capable for anything touching concurrency, security, or multiple subsystems; never let it inherit the session model. Give it:
    - the original symptom (verbatim from `$ARGUMENTS`)
    - the review package path
    - the new test's path
@@ -36,9 +37,9 @@ $ARGUMENTS
 
    The reviewer must answer two questions: *Does this fix the reported symptom?* and *What does this fix break?*
 
-7. **Iterate on review — 5 rounds maximum.** If the reviewer flags any high-confidence issue, go back to step 4 (or step 2 if the root cause was wrong), addressing the whole findings list in one pass. Re-run the full verification. Write a fresh package and re-spawn the reviewer. Rounds 4–5 use a reviewer model at least one tier above the previous round's. When round 5 still leaves findings open, stop looping: adjudicate each residual yourself (wrong reviewer / real-but-deferrable / real-and-blocking) and carry the adjudications into the step 8 *Reviewer notes* — a residual you judge blocking means the hand-off states the fix is incomplete.
+7. **Iterate on review — 5 rounds maximum.** If the reviewer flags any high-confidence issue, go back to step 4 (or step 2 if the root cause was wrong), addressing the whole findings list in one pass. Re-run the full verification. Write a fresh package and re-spawn the reviewer. From round 4 on, dispatch the reviewer on the most capable available model (if it is not already there) — after three rounds the same reviewer tier is not seeing the problem. When round 5 still leaves findings open, stop looping: adjudicate each residual yourself (wrong reviewer / real-but-deferrable / real-and-blocking) and carry the adjudications into the step 8 *Reviewer notes* — a residual you judge blocking means the hand-off states the fix is incomplete.
 
-8. **Hand off.** Only when both you and the reviewer agree the fix is correct and complete:
+8. **Hand off.** Only when both you and the reviewer agree the fix is correct and complete, or the round-5 cap tripped and every residual is adjudicated per step 7:
    - Mark the hypothesis task complete.
    - Present a commit-ready diff (do not commit yet — wait for user approval).
    - Draft a PR description with: *Symptom*, *Root cause*, *Fix*, *Test*, *Reviewer notes*.

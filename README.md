@@ -112,8 +112,6 @@ stamping, reaping into `<plans-dir>/done/` — works identically.
   `superpowers:subagent-driven-development` (default when subagents are available) or
   `superpowers:executing-plans` (checked pre-flight); `/pr-fix` uses
   `superpowers:receiving-code-review` when present and degrades gracefully without it.
-  `subagent-driven-development` keeps its progress ledger in the gitignored
-  `.superpowers/sdd/<plan>/` — `git clean -fdx` in the worktree destroys it (recover from `git log`).
 - **Test and lint verify commands** — declare them in the repo's CLAUDE.md, or provide `make test`
   / `make lint` targets (the default). `/execute-plan` and `/restack` refuse to open/push anything
   unverified.
