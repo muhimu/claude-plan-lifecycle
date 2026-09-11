@@ -1,6 +1,7 @@
 ---
 description: Address PR review feedback on the current branch — fetch comments, plan fixes, implement, push, then summarize for the user to post replies
 argument-hint: [PR number — optional, auto-detects from current branch]
+model: sonnet
 ---
 
 # PR Fix
