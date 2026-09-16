@@ -144,12 +144,15 @@ Step 2.4 marked as not needing a rebase:
      `git rebase --abort` to back out."
 4. Record the new head: `NEW_HEAD[i] = $(git rev-parse "B[i]")`.
 
-**Re-run safety:** a re-run after a resolved conflict finds the
-already-rebased branches via the same Step 2.4 ancestor test (a local `B[i]`
-that already contains its new parent's tip and whose
-`git rev-list --count "$NEW_BASE[i]..B[i]"` matches the expected slice
-commits is skipped, not rebased again). The divergence check in 3.1 is
-suspended for such branches — their local-only commits *are* the rebase.
+**Re-run safety:** Step 2.4 tests `origin/` heads, so after a resolved
+conflict (rebased locally, nothing pushed) every branch still reads as
+needing a rebase. Before 3.1, check the *local* branch: if `B[i]` exists and
+`git merge-base --is-ancestor "$NEW_BASE[i]" "B[i]"` succeeds, it has already
+been rebased onto its new parent — record `NEW_HEAD[i]` and skip to the next
+branch. The divergence check in 3.1 does not apply to such a branch: its
+local-only commits *are* the rebase. (A conflict resolved with
+`git rebase --skip` legitimately drops a commit, so no commit-count check is
+used; Step 5's range-diff is where dropped or added commits get flagged.)
 
 ## Step 4 — Verify the tip (mandatory, halt-on-red)
 

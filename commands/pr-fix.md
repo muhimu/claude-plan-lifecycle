@@ -20,8 +20,9 @@ after it (or all of `$ARGUMENTS` when the first token is not a number) is
 absorb() indexing with a positional map". It is applied in Step 2.
 
 - **The target is a bare number** — try it as a **stack number** first:
-  `gh api repos/OWNER/REPO/stacks/<N>`. A 200 means **stack mode over the whole
-  stack**: `TARGET_PRS` = every PR in `.pull_requests[]` with `state == open`,
+  `gh api repos/OWNER/REPO/stacks/<N>`. Stacks draw from the same number
+  sequence as issues and PRs, so a number is a stack *or* a PR, never both.
+  A 200 means **stack mode over the whole stack**: `TARGET_PRS` = every PR in `.pull_requests[]` with `state == open`,
   in stack order (bottom first). A 404 means it is a PR number; continue below.
 - **PR number** (given, or auto-detected via
   `gh pr view --json number,headRefName,baseRefName,url` for the current
@@ -55,7 +56,7 @@ gh api "repos/OWNER/REPO/pulls/<PR>/comments" --paginate > <scratchpad>/pr-fix-i
 gh pr view <PR> --json reviews,comments,headRefName,baseRefName,headRefOid
 
 # Thread state — resolved and outdated threads are skipped, not re-litigated
-gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{isResolved isOutdated comments(first:1){nodes{databaseId}}}}}}}' -F o=OWNER -F r=REPO -F n=<PR>
+gh api graphql --paginate -F o=OWNER -F r=REPO -F n=<PR> -f query='query($o:String!,$r:String!,$n:Int!,$endCursor:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{isResolved isOutdated comments(first:1){nodes{databaseId}}}}}}}'
 
 # Current diff for context
 gh pr diff <PR>
