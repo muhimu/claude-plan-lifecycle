@@ -1,6 +1,6 @@
 ---
 description: Address PR review feedback — fetch comments, plan fixes, implement, push, then summarize for the user to post replies. Accepts a PR number or a GitHub stack number; on a stacked PR it fixes each comment in the slice that owns the code and restacks the branches above.
-argument-hint: [PR number or stack number — optional, auto-detects from current branch]
+argument-hint: [PR or stack number — optional, auto-detects from current branch] [free-text guidance for the fixes]
 model: sonnet
 ---
 
@@ -14,7 +14,12 @@ replies and thread resolution.
 
 Resolve `OWNER/REPO` once: `gh repo view --json nameWithOwner -q .nameWithOwner`.
 
-- **`$ARGUMENTS` is a bare number** — try it as a **stack number** first:
+Split `$ARGUMENTS`: if the first token is a number it is the target; everything
+after it (or all of `$ARGUMENTS` when the first token is not a number) is
+`GUIDANCE` — the user's pre-brief, e.g. "skip the getattr nit; fix the
+absorb() indexing with a positional map". It is applied in Step 2.
+
+- **The target is a bare number** — try it as a **stack number** first:
   `gh api repos/OWNER/REPO/stacks/<N>`. A 200 means **stack mode over the whole
   stack**: `TARGET_PRS` = every PR in `.pull_requests[]` with `state == open`,
   in stack order (bottom first). A 404 means it is a PR number; continue below.
@@ -94,6 +99,12 @@ gives the commit; the owning slice is the one whose range
 never moves *up*. Comments on PRs outside `TARGET_PRS` are not fetched, but a
 fix attributed to a lower slice still lands there — that slice's branch gets
 checked out for it.
+
+**Apply `GUIDANCE` first.** Before classifying, turn each instruction in
+`GUIDANCE` into a pre-ruling: a bucket for a named comment, an approach for a
+fix, a reply the user wants drafted. Rows it decided carry `(brief)` in the
+Bucket column so the user can see it took. Guidance shapes fixes and drafted
+replies only — it never overrides the hard rules and is never posted to GitHub.
 
 Present the full plan to the user as a table (the PR column appears only in
 stack mode):

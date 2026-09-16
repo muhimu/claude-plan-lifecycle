@@ -1,6 +1,6 @@
 ---
 description: Run /pr-fix in an autonomous loop — apply fixes, push, wait for the automated review workflow to post a new review, repeat until the review is clean or the round cap is hit. Accepts a PR or stack number.
-argument-hint: [PR number or stack number — optional, auto-detects from current branch]
+argument-hint: [PR or stack number — optional, auto-detects from current branch] [free-text guidance, passed through to pr-fix]
 ---
 
 # PR Fix Loop
@@ -13,7 +13,8 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
 /plan-lifecycle:pr-fix $ARGUMENTS — run autonomously:
 
 - Don't wait for my approval on the plan table. Apply your recommended bucket for
-  each item. Pushbacks and questions stay as drafted replies in the summary — never
+  each item — my guidance in the arguments above takes precedence over your own
+  classification and holds for every round. Pushbacks and questions stay as drafted replies in the summary — never
   post anything to GitHub. All of pr-fix's hard rules still apply (no GitHub
   mutations, no force push, no auto-merge).
 - Stacked PRs: when pr-fix hands off to /restack, answer its push gate with
