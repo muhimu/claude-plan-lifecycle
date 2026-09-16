@@ -1,6 +1,6 @@
 ---
-description: Run /pr-fix in an autonomous loop — apply fixes, push, wait for the automated review workflow to post a new review, repeat until the review is clean or the round cap is hit
-argument-hint: [PR number — optional, auto-detects from current branch]
+description: Run /pr-fix in an autonomous loop — apply fixes, push, wait for the automated review workflow to post a new review, repeat until the review is clean or the round cap is hit. Accepts a PR or stack number.
+argument-hint: [PR number or stack number — optional, auto-detects from current branch]
 ---
 
 # PR Fix Loop
@@ -16,11 +16,18 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   each item. Pushbacks and questions stay as drafted replies in the summary — never
   post anything to GitHub. All of pr-fix's hard rules still apply (no GitHub
   mutations, no force push, no auto-merge).
+- Stacked PRs: when pr-fix hands off to /restack, answer its push gate with
+  "Push all" only if the range-diff shows every commit mapping unchanged (no
+  added or dropped commits). Otherwise choose Abort, stop the loop, and report.
+  Any other /restack stop (genuine conflict, red tip, lease failure) also ends
+  the loop.
 - After pushing, wait for the repo's automated review workflow (e.g. claude-review)
   to post NEW feedback before starting the next round. It may arrive as a plain PR
-  comment, not a review — poll `gh pr view --json comments,reviews` and only proceed
-  once the workflow has posted something with a timestamp later than your push.
-  Never re-process feedback you already handled in an earlier round.
+  comment, not a review — poll `gh pr view <PR> --json comments,reviews` and only
+  proceed once the workflow has posted something with a timestamp later than your
+  push. In stack mode, wait on EVERY PR whose branch was pushed or restacked this
+  round — a restack retriggers CI and review on the slices above. Never re-process
+  feedback you already handled in an earlier round.
 - Automated reviewers almost always find *something* — before classifying, judge
   whether the new feedback is substantive at all. Raise the bar each round: by
   round 3+, only clear correctness, security, or data-loss issues count as
