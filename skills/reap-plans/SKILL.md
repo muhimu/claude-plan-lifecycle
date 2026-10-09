@@ -5,7 +5,7 @@ description: Use when asked to reap plans, clean up merged/finished implementati
 
 # Reap Plans
 
-Archive implementation plans whose PRs have merged. The logic lives in the
+Archive implementation plans whose PRs have merged, and plans marked abandoned. The logic lives in the
 `reap-plans` bash script (shipped in this plugin's `bin/`; it must be on PATH) — this skill wraps it with
 the run order and the conventions the script relies on.
 
@@ -14,8 +14,9 @@ the run order and the conventions the script relies on.
 Groups the plans dir's `*.md` by frontmatter `slug:` (a design + its impl plan reap
 as one group), checks each group's `pr:` merge state via `gh`, and for MERGED
 groups stamps `status: merged` into every member and moves them to
-`<plans-dir>/done/`. Groups with no resolvable PR, or any `status: abandoned`
-member, are left untouched.
+`<plans-dir>/done/`. Groups with any `status: abandoned` member also move to
+`done/` (no PR check; status stays `abandoned`). Groups with no resolvable PR
+are left untouched.
 
 ## How to run
 
