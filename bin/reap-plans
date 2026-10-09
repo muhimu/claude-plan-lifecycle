@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# reap-plans — move merged implementation plans into <plans-dir>/done/.
+# reap-plans — move merged and abandoned implementation plans into <plans-dir>/done/.
 #
 # Each plan is grouped by its frontmatter `slug:` (files sharing a slug form one
 # unit — e.g. a design and its implementation plan). A group is reaped when the
@@ -9,7 +9,8 @@
 #
 # Files without frontmatter are left untouched (add frontmatter per the
 # plan-frontmatter skill to make them reapable). Groups with no PR are
-# work-in-progress, never reaped; `status: abandoned` groups are skipped.
+# work-in-progress, never reaped. A group with any `status: abandoned` member
+# moves to <plans-dir>/done/ as-is (no PR check, status left `abandoned`).
 #
 # Usage:
 #   reap-plans            # run from a repo root (uses the repo's plans dir)
@@ -35,7 +36,7 @@ while getopts "nd:h" opt; do
     n) dry_run=1 ;;
     d) plans_dir="$OPTARG" ;;
     h)
-      sed -n '3,21p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,22p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) echo "reap-plans: unknown option" >&2; exit 2 ;;
@@ -151,11 +152,11 @@ done
 moved=0
 skipped_no_pr=0
 skipped_open=0
-skipped_abandoned=0
 
 mapfile -t group_keys < <(printf '%s\n' "${file_group[@]}" | sort -u)
 
 declare -a reap_groups=()
+declare -A group_reason
 
 for gk in "${group_keys[@]}"; do
   members=()
@@ -167,8 +168,8 @@ for gk in "${group_keys[@]}"; do
   label="${label% }"
 
   if [[ -n "${group_abandoned[$gk]:-}" ]]; then
-    echo "skip (abandoned) : $label"
-    ((skipped_abandoned++)) || true
+    reap_groups+=("$gk")
+    group_reason["$gk"]="abandoned"
     continue
   fi
 
@@ -187,6 +188,7 @@ for gk in "${group_keys[@]}"; do
   fi
 
   reap_groups+=("$gk")
+  group_reason["$gk"]="PR #$pr merged"
 done
 
 # stamp_merged FILE — set `status: merged` in FILE's frontmatter in place,
@@ -214,32 +216,32 @@ for gk in "${reap_groups[@]}"; do
   for p in "${plans[@]}"; do
     [[ "${file_group[$p]}" == "$gk" ]] && members+=("$p")
   done
-  pr="${group_pr[$gk]}"
+  reason="${group_reason[$gk]}"
   label=""
   for m in "${members[@]}"; do label+="$(basename "$m") "; done
   label="${label% }"
 
   if (( dry_run )); then
-    echo "would move (PR #$pr merged) : $label -> $done_dir/"
+    echo "would move ($reason) : $label -> $done_dir/"
     moved=$(( moved + ${#members[@]} ))
     continue
   fi
 
   mkdir -p "$done_dir"
   for m in "${members[@]}"; do
-    if ! stamp_merged "$m"; then
+    if [[ "$reason" != "abandoned" ]] && ! stamp_merged "$m"; then
       echo "error: failed to stamp 'status: merged' into $(basename "$m"); not moving it" >&2
       continue
     fi
     mv "$m" "$done_dir/"
     moved=$(( moved + 1 ))
   done
-  echo "moved (PR #$pr merged)      : $label -> $done_dir/"
+  echo "moved ($reason)      : $label -> $done_dir/"
 done
 
 echo "---"
 if (( dry_run )); then
-  echo "dry run: $moved would move, $skipped_open open/unknown, $skipped_abandoned abandoned, $skipped_no_pr without PR"
+  echo "dry run: $moved would move, $skipped_open open/unknown, $skipped_no_pr without PR"
 else
-  echo "done: $moved moved, $skipped_open open/unknown, $skipped_abandoned abandoned, $skipped_no_pr without PR"
+  echo "done: $moved moved, $skipped_open open/unknown, $skipped_no_pr without PR"
 fi
