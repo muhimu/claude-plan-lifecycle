@@ -191,9 +191,12 @@ git -C "${WT:?}" status --porcelain             # must print nothing
   skip or changed expected value the same way, and say so.
 
 **j. Mutation — do the tests pin the changed lines?** Only when the
-profile's Mutation names a command. Run it in `WT` at `H`, limited to the
-PR's changes against `B` as the command says; it installs nothing outside
-`WT`. The tool changes the code one small edit at a time and reports each
+profile's Mutation names a command. A repository with several languages may
+name one per directory: run each one whose directory the PR changes, from
+that directory. Run it in `WT` at `H`, limited to the PR's changes against
+`B` as the command says; it installs nothing outside `WT`. A tool that can
+only be limited to files reports mutants on unchanged lines too: keep only
+the survivors on lines the PR changed. The tool changes the code one small edit at a time and reports each
 mutant the tests still pass. For each survivor, read the mutated line:
 
 - The edit cannot change behaviour (an equivalent mutant): a Checked line
@@ -390,7 +393,8 @@ deployed service. End-to-end scripts are read, never run.
 ### Mutation
 
 None. A repository turns on step 3j by naming the command that installs
-(inside `WT`) and runs its mutation tool on the PR's changes against `B`.
+(inside `WT`) and runs its mutation tool on the PR's changes against `B` —
+one per directory when it has several languages.
 
 ### Accepted here
 
