@@ -190,6 +190,20 @@ git -C "${WT:?}" status --porcelain             # must print nothing
   the test diff instead, judge each removed or loosened assertion, added
   skip or changed expected value the same way, and say so.
 
+**j. Mutation — do the tests pin the changed lines?** Only when the
+profile's Mutation names a command. Run it in `WT` at `H`, limited to the
+PR's changes against `B` as the command says; it installs nothing outside
+`WT`. The tool changes the code one small edit at a time and reports each
+mutant the tests still pass. For each survivor, read the mutated line:
+
+- The edit cannot change behaviour (an equivalent mutant): a Checked line
+  saying why.
+- Otherwise it is a finding: the tests run the line but do not pin it. The
+  mutation and its `file:line` are the evidence.
+
+Afterwards `git -C "${WT:?}" status --porcelain` prints nothing; remove the
+tool's own output files from `WT`.
+
 Results:
 
 - `reproduced`
@@ -208,6 +222,8 @@ At most five, each proven. A finding comes out of proving a claim:
 
 - a claim that failed, reproduced by a probe or a run;
 - a new test that passes with the PR's non-test code reverted (3b);
+- a mutant on a changed line that the tests still pass, and that changes
+  behaviour (3j);
 - a fix whose test still passes with the fix reverted;
 - an existing test the PR changed whose base version fails at `H`, for a
   change the PR does not state (3i);
@@ -370,6 +386,11 @@ for flake claims: 20. No smoke recipes.
 Anything that uses `docker`, `podman`, `kubectl`, `helm` or a cloud CLI; any
 target that builds, pushes or deploys images; anything that talks to a
 deployed service. End-to-end scripts are read, never run.
+
+### Mutation
+
+None. A repository turns on step 3j by naming the command that installs
+(inside `WT`) and runs its mutation tool on the PR's changes against `B`.
 
 ### Accepted here
 
