@@ -124,9 +124,11 @@ profile` section of `references/pr-triage-brief.md`. To tailor it, commit
 `.claude/triage-profile.md` with any of the same names as `##` headings —
 Impact, Risk, CI never runs, Decisions, Test files, Setup, Commands, Do not
 run, Mutation, Accepted here — and each replaces its default. Mutation is off
-by default: name the command that runs your language's mutation tool on the
-PR's changes, and every surviving mutant that changes behaviour becomes a
-finding. The profile is read from
+by default: declare your language's mutation tool as a dependency of the repo
+(a Go `tool` directive, a dev dependency, a build plugin) so Dependabot keeps
+it current and the caches hold it, then name the command that runs it on the
+PR's changes against `$B`. Surviving mutants that change behaviour become
+findings, after any failed claim. The profile is read from
 the default branch, never from the PR under triage. List shared or heavy
 resources (say, an end-to-end suite on a shared VM) under Do not run: triage
 then reads the script to judge what a reported run covers instead of running

@@ -190,22 +190,38 @@ git -C "${WT:?}" status --porcelain             # must print nothing
   the test diff instead, judge each removed or loosened assertion, added
   skip or changed expected value the same way, and say so.
 
-**j. Mutation — do the tests pin the changed lines?** Only when the
-profile's Mutation names a command. A repository with several languages may
-name one per directory: run each one whose directory the PR changes, from
-that directory. Run it in `WT` at `H`, limited to the PR's changes against
-`B` as the command says; it installs nothing outside `WT`. A tool that can
-only be limited to files reports mutants on unchanged lines too: keep only
-the survivors on lines the PR changed. The tool changes the code one small edit at a time and reports each
-mutant the tests still pass. For each survivor, read the mutated line:
+**j. Mutation — do the tests pin the changed lines?** A mutation tool
+changes the code one small edit at a time and reports each mutant the tests
+still pass: a line the tests run but do not pin. Only when the profile's
+Mutation names a command. The tool is a dependency the repository declares
+(a Go `tool` directive, a dev dependency, a build plugin), so it comes from
+the shared caches; this step installs nothing.
 
-- The edit cannot change behaviour (an equivalent mutant): a Checked line
-  saying why.
-- Otherwise it is a finding: the tests run the line but do not pin it. The
-  mutation and its `file:line` are the evidence.
+- **Which commands.** A repository with several languages names one per
+  directory. Run an entry only when the PR changes non-test files (per the
+  profile's Test files) under its directory; when entries nest, the most
+  specific directory wins. Run it from that directory in `WT` at `H`, with
+  `WT`, `B` and `H` set as in every other command here, so the command
+  limits itself to the PR's changes against `B`.
+- **Only on a green suite.** If a test fails at `H` (3a), skip this step
+  with a Not checked item naming the test: a failing suite kills every
+  mutant, and a clean result would mean nothing.
+- **Only changed lines.** Keep only survivors on lines in
+  `git -C "${WT:?}" diff -U0 "${B:?}" "${H:?}"`, whatever the tool's own
+  scoping. For each, read the mutated line. An edit that cannot change
+  behaviour (an equivalent mutant) is a Checked line saying why. Any other
+  survivor is a finding: the mutation and its `file:line` are the evidence;
+  survivors in one function are one finding listing each `file:line`.
+- **Record the run.** A Checked line with the tool and its counts on
+  changed lines: mutants, killed, survived, equivalent. A command that
+  fails or cannot run here is a Not checked item with its error.
 
-Afterwards `git -C "${WT:?}" status --porcelain` prints nothing; remove the
-tool's own output files from `WT`.
+Then restore `WT`:
+
+```bash
+git -C "${WT:?}" checkout -- . && git -C "${WT:?}" clean -fdq
+git -C "${WT:?}" status --porcelain     # must print nothing
+```
 
 Results:
 
@@ -225,14 +241,14 @@ At most five, each proven. A finding comes out of proving a claim:
 
 - a claim that failed, reproduced by a probe or a run;
 - a new test that passes with the PR's non-test code reverted (3b);
-- a mutant on a changed line that the tests still pass, and that changes
-  behaviour (3j);
 - a fix whose test still passes with the fix reverted;
 - an existing test the PR changed whose base version fails at `H`, for a
   change the PR does not state (3i);
 - a stale fact in the description that a reviewer would rely on;
 - a mismatch found while checking a claim, such as a contract that
   documents less than the code returns.
+- surviving mutants on changed lines that change behaviour (3j), listed
+  after every other kind: a failed claim always outranks a test gap.
 
 Do not hunt for bugs beyond that. Grades:
 
@@ -392,9 +408,9 @@ deployed service. End-to-end scripts are read, never run.
 
 ### Mutation
 
-None. A repository turns on step 3j by naming the command that installs
-(inside `WT`) and runs its mutation tool on the PR's changes against `B` —
-one per directory when it has several languages.
+None. A repository turns on step 3j by naming the command that runs its
+mutation tool, declared as one of its own dependencies, on the changes
+against `B` — one per directory when it has several languages.
 
 ### Accepted here
 
