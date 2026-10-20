@@ -193,40 +193,37 @@ git -C "${WT:?}" status --porcelain             # must print nothing
 **j. Mutation — do the tests pin the changed lines?** A mutation tool
 changes the code one small edit at a time and reports each mutant the tests
 still pass: a line the tests run but do not pin. Only when the profile's
-Mutation names an entry. The tool is one of the repository's own
-dependencies (see `### Mutation` in the default profile); this step installs
-nothing.
+Mutation lists an entry (format and tool rules under `### Mutation` in the
+default profile).
 
-- **Which entries.** Each entry is a directory with a test command and a
-  mutation command (format under `### Mutation`). Run an entry only when the
-  PR changes non-test files (per the profile's Test files) under its
-  directory; when entries nest, the most specific directory wins. Run its
-  commands from that directory in `WT` at `H`, with the values on the same
-  command line so scripts and make targets see them too:
+- **Which entries.** Each changed non-test file (per the profile's Test
+  files) belongs to the deepest entry whose directory contains it. Run an
+  entry when at least one file belongs to it, and keep only its survivors
+  in its own files. Run its commands from its directory in `WT` at `H`, with
+  the values on the same command line so scripts and make targets see them:
   `WT="${WT:?}" B="${B:?}" H="${H:?}" <command>`.
-- **Only on a green suite.** Run the entry's test command first. If it
-  fails, run the failing test alone three times: if it passes every time it
-  is a timing flake, so go on and note it. Otherwise skip this entry with a
-  Not checked item naming the test — a failing suite kills every mutant, and
-  a clean result would mean nothing. Other entries are not affected.
+- **Only on a green suite.** Run the entry's test command first. A failure
+  goes through 3a's flake rule; a real failure skips this entry with a Not
+  checked item naming the test — a failing suite kills every mutant, so a
+  clean result would mean nothing. Other entries are not affected.
 - **Only changed lines.** Keep only survivors whose statement overlaps a
   changed line in `git -C "${WT:?}" diff -U0 "${B:?}" "${H:?}"` — the whole
-  statement, not just the line the tool reports, since tools report a
-  multi-line statement at different lines — whatever the tool's own scoping.
-  For each, read the mutated statement. An edit that cannot change behaviour
-  (an equivalent mutant) is a Checked line saying why. Any other survivor is
+  statement, not just the line the tool reports — whatever the tool's own
+  scoping. For each, read the mutated statement. An edit that cannot change
+  behaviour (an equivalent mutant), or one in a category the profile's
+  Accepted here lists, is a Checked line saying why. Any other survivor is
   a finding: the mutation and its `file:line` are the evidence; survivors in
   one function are one finding listing each `file:line`.
 - **Record the run.** A Checked line per entry with the tool and its counts
-  on changed lines: mutants, killed, survived, equivalent. A command that
-  fails or cannot run here is a Not checked item with its error.
+  on changed lines: mutants, killed, survived, equivalent. When every mutant
+  was killed, say so in that line, so a broken setup stands out. A command
+  that fails or cannot run here is a Not checked item with its error.
+- **Restore after each entry**, before the next one runs:
 
-Then restore `WT`:
-
-```bash
-git -C "${WT:?}" checkout -- . && git -C "${WT:?}" clean -fdq
-git -C "${WT:?}" status --porcelain     # must print nothing
-```
+  ```bash
+  git -C "${WT:?}" checkout -- . && git -C "${WT:?}" clean -fdq
+  git -C "${WT:?}" status --porcelain     # must print nothing
+  ```
 
 Results:
 
@@ -423,11 +420,12 @@ listing one entry per directory it wants mutation-tested:
 - <dir>: test `<command>`; mutate `<command>`
 ```
 
-Commands may use `$WT`, `$B` and `$H`; the mutation command limits itself
-to the changes against `$B` where the tool can. A single entry may leave out
-`<dir>:`, meaning the repository root. Without `test`, the test command from
-Commands is used.
+Both commands are required and run from `<dir>` (`.` for the repository
+root). They may use `$WT`, `$B` and `$H`; the mutation command limits itself
+to the changes against `$B` where the tool can. Entries may nest: each
+changed file belongs to the deepest one.
 
 ### Accepted here
 
-Nothing listed.
+Nothing listed. Categories of surviving mutant (step 3j) that are not worth a
+test here — say, log message text — are listed under this heading.

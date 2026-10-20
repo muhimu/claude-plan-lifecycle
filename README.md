@@ -126,7 +126,7 @@ Impact, Risk, CI never runs, Decisions, Test files, Setup, Commands, Do not
 run, Mutation, Accepted here — and each replaces its default. Mutation is off
 by default; its `### Mutation` default describes how to declare the tool and
 list one entry per directory. Surviving mutants that change behaviour on
-changed lines become findings, after any failed claim. The profile is read from
+changed lines become findings, after every other kind of finding. The profile is read from
 the default branch, never from the PR under triage. List shared or heavy
 resources (say, an end-to-end suite on a shared VM) under Do not run: triage
 then reads the script to judge what a reported run covers instead of running
