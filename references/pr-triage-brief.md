@@ -193,27 +193,32 @@ git -C "${WT:?}" status --porcelain             # must print nothing
 **j. Mutation — do the tests pin the changed lines?** A mutation tool
 changes the code one small edit at a time and reports each mutant the tests
 still pass: a line the tests run but do not pin. Only when the profile's
-Mutation names a command. The tool is a dependency the repository declares
-(a Go `tool` directive, a dev dependency, a build plugin), so it comes from
-the shared caches; this step installs nothing.
+Mutation names an entry. The tool is one of the repository's own
+dependencies (see `### Mutation` in the default profile); this step installs
+nothing.
 
-- **Which commands.** A repository with several languages names one per
-  directory. Run an entry only when the PR changes non-test files (per the
-  profile's Test files) under its directory; when entries nest, the most
-  specific directory wins. Run it from that directory in `WT` at `H`, with
-  `WT`, `B` and `H` set as in every other command here, so the command
-  limits itself to the PR's changes against `B`.
-- **Only on a green suite.** If a test fails at `H` (3a), skip this step
-  with a Not checked item naming the test: a failing suite kills every
-  mutant, and a clean result would mean nothing.
-- **Only changed lines.** Keep only survivors on lines in
-  `git -C "${WT:?}" diff -U0 "${B:?}" "${H:?}"`, whatever the tool's own
-  scoping. For each, read the mutated line. An edit that cannot change
-  behaviour (an equivalent mutant) is a Checked line saying why. Any other
-  survivor is a finding: the mutation and its `file:line` are the evidence;
-  survivors in one function are one finding listing each `file:line`.
-- **Record the run.** A Checked line with the tool and its counts on
-  changed lines: mutants, killed, survived, equivalent. A command that
+- **Which entries.** Each entry is a directory with a test command and a
+  mutation command (format under `### Mutation`). Run an entry only when the
+  PR changes non-test files (per the profile's Test files) under its
+  directory; when entries nest, the most specific directory wins. Run its
+  commands from that directory in `WT` at `H`, with the values on the same
+  command line so scripts and make targets see them too:
+  `WT="${WT:?}" B="${B:?}" H="${H:?}" <command>`.
+- **Only on a green suite.** Run the entry's test command first. If it
+  fails, run the failing test alone three times: if it passes every time it
+  is a timing flake, so go on and note it. Otherwise skip this entry with a
+  Not checked item naming the test — a failing suite kills every mutant, and
+  a clean result would mean nothing. Other entries are not affected.
+- **Only changed lines.** Keep only survivors whose statement overlaps a
+  changed line in `git -C "${WT:?}" diff -U0 "${B:?}" "${H:?}"` — the whole
+  statement, not just the line the tool reports, since tools report a
+  multi-line statement at different lines — whatever the tool's own scoping.
+  For each, read the mutated statement. An edit that cannot change behaviour
+  (an equivalent mutant) is a Checked line saying why. Any other survivor is
+  a finding: the mutation and its `file:line` are the evidence; survivors in
+  one function are one finding listing each `file:line`.
+- **Record the run.** A Checked line per entry with the tool and its counts
+  on changed lines: mutants, killed, survived, equivalent. A command that
   fails or cannot run here is a Not checked item with its error.
 
 Then restore `WT`:
@@ -246,9 +251,10 @@ At most five, each proven. A finding comes out of proving a claim:
   change the PR does not state (3i);
 - a stale fact in the description that a reviewer would rely on;
 - a mismatch found while checking a claim, such as a contract that
-  documents less than the code returns.
-- surviving mutants on changed lines that change behaviour (3j), listed
-  after every other kind: a failed claim always outranks a test gap.
+  documents less than the code returns;
+- surviving mutants on changed lines that change behaviour (3j), graded
+  Should-fix and listed after every other kind: a failed claim always
+  outranks a test gap.
 
 Do not hunt for bugs beyond that. Grades:
 
@@ -408,9 +414,19 @@ deployed service. End-to-end scripts are read, never run.
 
 ### Mutation
 
-None. A repository turns on step 3j by naming the command that runs its
-mutation tool, declared as one of its own dependencies, on the changes
-against `B` — one per directory when it has several languages.
+None. A repository turns on step 3j by declaring its mutation tool as one
+of its own dependencies — a Go `tool` directive, a dev dependency, a build
+plugin — so Dependabot keeps it current and the shared caches hold it, and
+listing one entry per directory it wants mutation-tested:
+
+```markdown
+- <dir>: test `<command>`; mutate `<command>`
+```
+
+Commands may use `$WT`, `$B` and `$H`; the mutation command limits itself
+to the changes against `$B` where the tool can. A single entry may leave out
+`<dir>:`, meaning the repository root. Without `test`, the test command from
+Commands is used.
 
 ### Accepted here
 
