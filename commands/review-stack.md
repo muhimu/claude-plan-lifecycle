@@ -93,25 +93,26 @@ commits and review threads or the slices above already settle. Read the
 verifier prompt in the `## Verifier prompt` section of
 `${CLAUDE_PLUGIN_ROOT}/commands/verify-findings.md` — the one
 `/plan-lifecycle:verify-findings` uses for a single review. For each slice
-with findings, launch one `general-purpose` agent through the `Agent` tool as
-soon as its review is done (reviews that finish together go in one message),
-with that prompt filled in from its **Stacked PR** row (the
+with findings, launch its verifiers — one `general-purpose` agent per group
+of findings, split as that file's `## Verify` says — as soon as its review is
+done (reviews that finish together go in one message), with that prompt
+filled in from its **Stacked PR** row (the
 **PR** row when `SIZE = 1`): `<sha>` is the slice's head, `<top sha>` the
 top's, `<base sha>` the head of the open slice below it in `TARGET_PRS` (for
 the first one, `git merge-base <sha> origin/<its base>`), and the findings are
 the review's JSON array. Every sha is in this checkout, so nothing needs
 fetching.
 
-A slice whose verifier fails or returns an array of the wrong length is
-**unverified**: say so in its block, and Step 3 does not post it. Step 4 runs
+Findings of a group that is **unverified** by that file's `## Verify` rule
+are listed in their slice's block, and Step 3 does not post them. Step 4 runs
 once every slice is through Steps 2 and 3.
 
 ## Step 3 — Post the findings (`POST` only)
 
 Posting here, not in the reviews, is what lets every comment carry the marker
 `<!-- plan-lifecycle:review-stack -->` that `/pr-fix` keys on. Post only
-CONFIRMED and PLAUSIBLE findings — REJECTED ones stay in the summary. For each
-verified slice with at least one finding to post, post one review:
+CONFIRMED and PLAUSIBLE findings — REJECTED and unverified ones stay in the
+summary. For each slice with at least one finding to post, post one review:
 
 - **Where each finding goes.** In `gh pr diff <N>`, a hunk header
   `@@ -a,b +c,d @@` covers lines `c` to `c+d-1` of the new file (no `,d`
@@ -167,15 +168,20 @@ Posted: <the review's html_url>        (POST only)
 
 Rejected:
 - `path/to/file.go:88` <one-line summary> — <the verifier's reason, e.g. fixed in #M, or the ADR that records it>
+
+Unverified:
+- `path/to/file.go:61` <one-line summary> — <its verifier failed | its verifier's answer did not match its findings>
 ```
 
-`No findings.` for a clean slice; leave out `Rejected:` when none were. Keep
+`No findings.` for a clean slice; leave out `Rejected:` and `Unverified:`
+when empty. Keep
 each review's own ranking (most severe first) and its one-line summaries; the
 full failure scenarios and evidence stay in the results, so do not repeat them
 unless the user asks.
 
 End with one line: `Stack #<S>: <X> findings across <K> PRs (#<a>: <n>, #<b>: <m>, …), <R> rejected by verification`,
-counting confirmed and plausible findings in `<X>`.
+counting confirmed and plausible findings in `<X>`; when any are
+unverified add `, <U> unverified`.
 
 With `POST`, add: "Each comment carries the review-stack marker, so
 `/plan-lifecycle:pr-fix <S>` verifies each finding like a reviewer's comment
