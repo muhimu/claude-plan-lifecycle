@@ -33,13 +33,17 @@ for a fallback stack.
 - **PR URL** → its number. **Branch name** → `gh pr list --head <branch>
   --state all --json number -q '.[0].number'`. **Empty** →
   `gh pr view --json number -q .number`; no PR for the current branch → the
-  PRs this conversation opened or worked on whose repo is `OWNER/REPO`. One →
-  use it and print "No PR for the current branch — using #<N> from this
-  session." Two or more → ask with `AskUserQuestion` (up to four, most
-  recently touched first and marked Recommended); never pick one silently —
-  the command may push to it. None → stop: "No PR for the current branch",
-  listing this session's PRs in other repos as `<repo>#<N>` so the user can
-  re-run from that repo's checkout.
+  PRs this conversation opened or worked on, in any repo, written
+  `<repo>#<N>`. One → use it and print "No PR for the current branch — using
+  `<repo>#<N>` from this session." Two or more → ask with `AskUserQuestion`:
+  the four most recently touched as options, the first marked Recommended,
+  and any others named in the question so the user can pick them via Other;
+  never pick one silently — the command may push to it. None → stop: "No PR
+  for the current branch."
+  A chosen PR in another repo: `cd` into the checkout this session used for
+  it (the worktree on its head branch) and resolve `OWNER/REPO` again there
+  before going on; the session used none → stop: "`<repo>#<N>` has no
+  checkout in this session — re-run from one."
   Any other anchor with no PR → stop: "No PR for `<anchor>`."
 
 ## 2. Native stack of a PR
