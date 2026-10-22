@@ -26,10 +26,8 @@ and was not checked.
 
 ## Resolving the target
 
-`$ARGUMENTS` is empty or one number. Empty → run
-`${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first. This command may
-move, and `HOME` can be any checkout of the PR's repo — the PR is checked
-out in a worktree of its own.
+`$ARGUMENTS` is empty or one number. Empty → take one from
+`${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first.
 
 Resolve once:
 
@@ -38,7 +36,7 @@ Resolve once:
 - `DEFAULT`: `gh repo view --json defaultBranchRef -q .defaultBranchRef.name`
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-with `ANCHOR` = the number, or empty for the current branch's PR.
+with `ANCHOR` = the number.
 
 - **The number was a stack** → `TARGETS` = every open PR in `SLICES`, bottom
   first. None open → stop.

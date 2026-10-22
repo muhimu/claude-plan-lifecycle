@@ -16,19 +16,19 @@ after it (or all of `$ARGUMENTS` when the first token is not a number) is
 `GUIDANCE` — the user's pre-brief, e.g. "skip the getattr nit; fix the
 absorb() indexing with a positional map". It is applied in Step 2.
 
-No number → run `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first. This
-command may move, and `HOME` must be on the PR's head branch — fixes are
-committed to the checked-out branch.
+No number → take one from `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md`
+first.
 
 Resolve `OWNER/REPO` once: `gh repo view --json nameWithOwner -q .nameWithOwner`.
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-with `ANCHOR` = the number (empty → the current branch's PR; never create
-one):
+with `ANCHOR` = the number (never create a PR):
 
 - **The number was a stack** → **stack mode over the whole stack**:
   `TARGET_PRS` = every open PR in `SLICES`, bottom first.
-- **`STACKED` false** → **single mode**. `TARGET_PRS = [ANCHOR_PR]`.
+- **`STACKED` false** → **single mode**. `TARGET_PRS = [ANCHOR_PR]`. Fixes
+  are committed to the checked-out branch, so it must be the PR's head;
+  otherwise stop: "Check out `<head>` (or run from its worktree) first."
 - **Otherwise** → **stack mode over one PR**. `TARGET_PRS = [ANCHOR_PR]`;
   `SLICES` and `POSITION/SIZE` are needed to attribute comments to the slice
   that introduced the code, and to know whether a restack is due.

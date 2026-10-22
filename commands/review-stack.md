@@ -26,13 +26,13 @@ after it (or all of `$ARGUMENTS` when the first token is not a number) is
 review would apply its findings to the same checkout. Tell the user to post
 with `--comment` and fix with `/plan-lifecycle:pr-fix` instead.
 
-No number → run `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first. This
-command may not move (see above), and `HOME` must be on the PR's head branch.
+No number → take one from `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md`
+first.
 
 Resolve `OWNER/REPO` once: `gh repo view --json nameWithOwner -q .nameWithOwner`.
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-with `ANCHOR` = the number (empty → the current branch's PR).
+with `ANCHOR` = the number.
 
 - **`STACKED` false** → the PR is its own one-slice stack: `TARGET_PRS` is
   that PR alone, `SIZE = 1`. Wherever `slice <P>/<SIZE> of stack #<S>` or
