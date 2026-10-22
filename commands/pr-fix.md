@@ -90,8 +90,9 @@ already decides (see **Apply `GUIDANCE` first** below): a guidance pre-ruling
 always wins over a verdict. Fetch each PR's head and base so the verifier can
 read them without a checkout:
 `git fetch origin <baseRefName> pull/<PR>/head`. Then, in a single message,
-launch one `general-purpose` agent per PR in
-`TARGET_PRS` that has any, with the prompt in the `## Verifier prompt`
+launch the verifiers for every PR in `TARGET_PRS` that has any — one
+`general-purpose` agent per group of its comments, split as that file's
+`## Verify` says — with the prompt in the `## Verifier prompt`
 section of `${CLAUDE_PLUGIN_ROOT}/commands/verify-findings.md`, filled in
 from that PR's **PR** or **Stacked PR** row, with its `(comments)` lines. The
 verdicts seed the buckets:
@@ -104,8 +105,8 @@ verdicts seed the buckets:
 | NOT_A_CLAIM | Classify it as below |
 
 A verdict overrides a reviewer's `**blocking**:` prefix; a `nit:` prefix
-still makes the item a Nit. If an agent fails or returns the wrong number of
-verdicts, classify that PR's comments as below and mark their rows
+still makes the item a Nit. Comments of a group that is unverified by that
+file's `## Verify` rule are classified as below, their rows marked
 `unverified`.
 
 Sort each remaining comment into one bucket:
@@ -165,7 +166,7 @@ Apply code changes for all approved Actionable + Self-note + Nit items. Group co
 
 **Rules during implementation:**
 
-- Run the verify commands (the verify convention: test and lint commands declared in the repo's CLAUDE.md, else `make test` / `make lint`) after each logical group. If something breaks, stop and report — don't paper over.
+- Run the test command (the verify convention: test and lint commands declared in the repo's CLAUDE.md, else `make test` / `make lint`) after each logical group, and the lint command once, after the last group on a branch and before pushing it. If something breaks, stop and report — don't paper over.
 - Do not create branches. Commit to the currently checked-out PR branch.
 - Commit messages should describe the change, not reference the comment ID — comment IDs rot, code messages don't.
 
@@ -249,5 +250,5 @@ The "Suggested reply" lines are drafts for the user to copy, edit, and post manu
 - **No force push from this command.** Plain `git push` on the fixed branch. If rejected, stop. Rewriting branches *above* the fixed one is `/restack`'s job, behind its gate.
 - **Never touch branches below the fixed slice.** A fix moves down only by being committed on the owning slice's branch in the bottom-up loop.
 - **No auto-merge.** Even if the PR is now green, do not merge it.
-- **One-at-a-time verification.** After each logical commit, run relevant tests. Batching everything then running tests once at the end hides which change broke what.
+- **One-at-a-time verification.** After each logical commit, run relevant tests. Batching everything then running tests once at the end hides which change broke what. Lint is the exception: it runs once per branch, before the push (Step 3).
 - **Stop on disagreement.** If the user redirects a row in the plan, apply the redirect — don't argue past one push-back.

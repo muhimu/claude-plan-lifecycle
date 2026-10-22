@@ -1,5 +1,5 @@
 ---
-description: Verify the findings of the latest /code-review in this session, or with a PR number the open review comments on that PR — one agent checks each finding against the reviewed code, the PR body, the ADRs and CLAUDE.md files, the PR's commit messages and review threads and, on a stacked PR, the slices above, by the same rules /review-stack uses — then print each as confirmed, plausible or rejected. Read-only.
+description: Verify the findings of the latest /code-review in this session, or with a PR number the open review comments on that PR — verifier agents run in parallel (at most six per command, or one per target on stacks larger than six) and check each finding against the reviewed code, the PR body, the ADRs and CLAUDE.md files, the PR's commit messages and review threads and, on a stacked PR, the slices above, by the same rules /review-stack uses — then print each as confirmed, plausible or rejected. Read-only.
 argument-hint: [PR number — optional; verifies that PR's open review comments instead of the latest /code-review]
 ---
 
@@ -8,8 +8,8 @@ argument-hint: [PR number — optional; verifies that PR's open review comments 
 Check whether the findings of a `/code-review`, or the review comments on a
 PR, hold up. A reviewer — `/code-review`, a CI bot or a person — cannot know
 everything the PR body, the ADRs, the PR's commits and review threads or the
-slices above already settle. This command hands the findings to one verifier
-agent and prints the verdicts. It never edits, commits, pushes or posts.
+slices above already settle. This command hands the findings to verifier
+agents running in parallel and prints the verdicts. It never edits, commits, pushes or posts.
 
 ## The findings
 
@@ -34,7 +34,7 @@ agent and prints the verdicts. It never edits, commits, pushes or posts.
   the code may have changed since. Top-level PR comments and review bodies are
   not findings. Each finding is
   `{"file": path, "line": line, "start_line": start_line, "side": side, "author": user.login, "body": body}`,
-  in thread order. None → stop and say so.
+  in thread order; `## Verify` adds its `n`. None → stop and say so.
 
 ## The target
 
@@ -56,7 +56,8 @@ Resolve `OWNER/REPO` once: `gh repo view --json nameWithOwner -q .nameWithOwner`
 
 ## Verifier prompt
 
-`/plan-lifecycle:review-stack` launches its verifiers with this prompt too.
+`/plan-lifecycle:review-stack` and `/plan-lifecycle:pr-fix` use this prompt
+too.
 Fill the placeholders from the target's row:
 
 - **Local** — `<TARGET>`: the changes on `<branch>`. `<CODE>`: the working
@@ -122,19 +123,41 @@ before you give CONFIRMED or PLAUSIBLE, then give a verdict:
 and a kind: `bug` (wrong behaviour) or `nit` (cleanup, naming, duplication,
 style, test tidiness, or a cost with no observable effect).
 
-Return only a JSON array, one object per finding, in the given order:
-[{"verdict": "CONFIRMED|PLAUSIBLE|REJECTED", "kind": "bug|nit", "evidence": "<one or two sentences with the quote>"}]
+Return only a JSON array, one object per finding, in the given order, each
+with the finding's `n`:
+[{"n": <n>, "verdict": "CONFIRMED|PLAUSIBLE|REJECTED", "kind": "bug|nit", "evidence": "<one or two sentences with the quote>"}]
 (comments) NOT_A_CLAIM is also a valid verdict.
 
 Findings:
-<the findings as a JSON array: file, line, summary, failure_scenario — for PR comments: file, line, start_line, side, author, body>
+<the findings as a JSON array: n, file, line, summary, failure_scenario — for PR comments: n, file, line, start_line, side, author, body>
 ```
 
 ## Verify
 
-Launch one `general-purpose` agent through the `Agent` tool with the filled-in
-prompt and wait for it. If it fails or returns an array of the wrong length,
-say the findings are unverified and stop.
+Each finding is judged on its own, so the findings are verified in parallel
+groups. Number each finding `n`: its position, from 1, among the findings
+of its target that are sent for verification.
+
+- **How many groups.** A command verifying `K` targets (here 1; in
+  `/review-stack` the open slices in `TARGET_PRS`, known before any review
+  finishes, whether or not a slice has findings; in `/pr-fix` its PRs that
+  still have comments to verify) splits a target with `F` findings into
+  `min(max(1, floor(6 / K)), max(1, floor(F / 2)))` groups: at most six
+  verifiers per run (one per target when `K > 6`), and at least two
+  findings per group unless `F = 1`.
+- **What goes in a group.** Split the target's findings into that many
+  groups of about the same size, keeping a file's findings in one group
+  where the sizes allow.
+
+For a target, launch one `general-purpose` agent per group through the
+`Agent` tool in a single message, each with the prompt filled in with its
+group's findings, and wait for all of them. A group is **unverified** when its agent fails or
+does not return exactly one verdict for each `n` it was given and no other
+`n`: its findings get no verdict, and the other groups' verdicts stand.
+Match the remaining verdicts to their target's findings by `n`.
+
+`/review-stack` and `/pr-fix` split and check each target's verifiers the
+same way; each says when it launches a target's groups.
 
 ## Summary
 
@@ -152,15 +175,20 @@ Rejected:
 
 Not claims:
 - `path/to/file.go:52` @<author> <one-line summary>
+
+Unverified:
+- `path/to/file.go:61` <one-line summary> — <its verifier failed | its verifier's answer did not match its findings>
 ```
 
 For a local target the heading is `## Changes on <branch>`, with no
 `<base> ← <head>` line. For PR comments, each `Finding` starts with
 `@<author>` and its one-line summary is yours, from the comment's body. Leave
-out `Rejected:` and `Not claims:` when empty. Keep the findings' order and
+out `Rejected:`, `Not claims:` and `Unverified:` when empty; unverified
+findings are not table rows. Keep the findings' order and
 their one-line summaries; the full failure scenarios and evidence stay in the
 verifier's result, so do not repeat them unless the user asks.
 
 End with one line: `<X> of <T> findings hold up, <R> rejected by verification`,
 counting confirmed and plausible findings in `<X>` and leaving NOT_A_CLAIM
-out of `<T>`; for PR comments add `, <Q> not claims`.
+out of `<T>`; for PR comments add `, <Q> not claims`; when any are
+unverified add `, <U> unverified`, counted in `<T>`.
