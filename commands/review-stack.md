@@ -18,9 +18,9 @@ pre-flight below checks.
 
 ## Resolving the stack
 
-Split `$ARGUMENTS`: if the first token is a number it is the target; everything
-after it (or all of `$ARGUMENTS` when the first token is not a number) is
-`REVIEW_ARGS`, passed verbatim to every review (an effort level,
+Split `$ARGUMENTS`: if the first token is a number it is the target (a PR URL or `OWNER/REPO#N` counts as its number, and its `OWNER/REPO` is used below);
+everything after it (or all of `$ARGUMENTS` when the first token is not a
+number) is `REVIEW_ARGS`, passed verbatim to every review (an effort level,
 `--max-findings <n>`). `--comment` is taken out of `REVIEW_ARGS` and sets
 `POST`: the reviews do not post, Step 3 does. `--fix` stops the command: each
 review would apply its findings to the same checkout. Tell the user to post
@@ -29,7 +29,7 @@ with `--comment` and fix with `/plan-lifecycle:pr-fix` instead.
 No number → take one from `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md`
 first.
 
-Resolve `OWNER/REPO` once: `gh repo view --json nameWithOwner -q .nameWithOwner`.
+Resolve `OWNER/REPO` once, unless the target named it: `gh repo view --json nameWithOwner -q .nameWithOwner`.
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
 with `ANCHOR` = the number.

@@ -26,12 +26,12 @@ and was not checked.
 
 ## Resolving the target
 
-`$ARGUMENTS` is empty or one number. Empty → take one from
+`$ARGUMENTS` is empty or one number (a PR URL or `OWNER/REPO#N` counts as its number, and its `OWNER/REPO` is used below). Empty → take one from
 `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first.
 
 Resolve once:
 
-- `OWNER/REPO`: `gh repo view --json nameWithOwner -q .nameWithOwner`
+- `OWNER/REPO`, unless the target named it: `gh repo view --json nameWithOwner -q .nameWithOwner`
 - `ROOT`: `git rev-parse --show-toplevel`
 - `DEFAULT`: `gh repo view --json defaultBranchRef -q .defaultBranchRef.name`
 
