@@ -1,5 +1,5 @@
 ---
-description: Rebase a stacked-PR chain after a squash-merge, new commits on a lower PR, or drift from the default branch, then push and retarget after one confirmation.
+description: Rebase a stacked-PR chain after a squash-merge, new commits on a lower PR, or drift from the default branch, then push and retarget — asking first only when the rebase was not clean or rebased the bottom onto a moved trunk.
 argument-hint: [stack number, PR number, or branch — optional anchor when the current branch is not part of the stack] [--no-trunk]
 ---
 
@@ -21,8 +21,9 @@ whose parent moved. Three triggers:
   the fix.
 
 Either way: cascade-rebase every branch whose parent tip is not in its
-history, verify the tip, and — after a single confirmation — force-with-lease
-push the rebased branches and retarget the new bottom PR if needed.
+history, verify the tip, force-with-lease push the rebased branches —
+asking first only when the rebase was not clean or rebased the bottom onto a
+moved trunk (Step 5.2) — and retarget the new bottom PR if needed.
 `/pr-fix` invokes this command after pushing to a non-tip stack PR.
 
 This command runs in the worktree holding the stack. It refuses to run in the
@@ -100,7 +101,8 @@ the turn.
      `NEW_BASE[1] = origin/$DEFAULT_BRANCH`,
      `OLD_BASE[1] = $(git merge-base "origin/$DEFAULT_BRANCH" "$OLD_HEAD[1]")`.
      Trunk merely moving ahead, with the PR still clean and not required to
-     be up to date, is not a reason to rebase.
+     be up to date, is not a reason to rebase. When this rule rebases `B[1]`,
+     set `TRUNK_REBASE`.
    - `i > 1`: needs rebase iff
      `git merge-base --is-ancestor "$OLD_HEAD[i-1]" "$OLD_HEAD[i]"` fails
      **or** `B[i-1]` itself is being rebased (a rewritten parent always
@@ -150,7 +152,7 @@ Step 2.4 marked as not needing a rebase:
      change — incoming side and new base agree in content, only history
      differs), or a stack commit is now fully contained in the new base
      (`git diff` after resolving is empty → `git rebase --skip`). Resolve and
-     `git rebase --continue`.
+     `git rebase --continue`, and add `B[i]` to `RESOLVED`.
    - **Genuine** — the merged code and this slice's code changed the same
      lines differently, or you cannot confidently tell. Do NOT resolve, do
      NOT `git rebase --abort`. Stop: "Rebase of `B[i]` hit a genuine
@@ -164,8 +166,9 @@ Step 2.4 marked as not needing a rebase:
 conflict (rebased locally, nothing pushed) every branch still reads as
 needing a rebase. Before 3.1, check the *local* branch: if `B[i]` exists and
 `git merge-base --is-ancestor "$NEW_BASE[i]" "B[i]"` succeeds, it has already
-been rebased onto its new parent — record `NEW_HEAD[i]` and skip to the next
-branch. The divergence check in 3.1 does not apply to such a branch: its
+been rebased onto its new parent — record `NEW_HEAD[i]`, add `B[i]` to
+`RESOLVED` (an earlier run rebased it, likely through a conflict), and skip to
+the next branch. The divergence check in 3.1 does not apply to such a branch: its
 local-only commits *are* the rebase. (A conflict resolved with
 `git rebase --skip` legitimately drops a commit, so no commit-count check is
 used; Step 5's range-diff is where dropped or added commits get flagged.)
@@ -188,22 +191,28 @@ recipe."
 
 ## Step 5 — Confirm, then push
 
-1. **Summary.** For each `B[i]` print: `OLD_HEAD[i]` → `NEW_HEAD[i]` (short
+1. **Summary.** For each rebased `B[i]` print: `OLD_HEAD[i]` → `NEW_HEAD[i]` (short
    SHAs), commit count `git rev-list --count "<new-base>..B[i]"`, and a
    range-diff sanity check:
    ```bash
    git range-diff "$OLD_BASE[i]..$OLD_HEAD[i]" "$NEW_BASE[i]..B[i]"
    ```
-   Every commit should map ≈unchanged (`=` or `!` with only context drift).
    Flag any commit that appears added/dropped in the summary.
-2. **Gate.** Under `/pr-fix-loop`, don't ask — decide by its rule: push
-   all when the range-diff shows no added or dropped commits, otherwise
-   abort. Otherwise ask via `AskUserQuestion` (header "Push", multi-select
-   disabled): "Force-with-lease push <S> rebased branch(es)?" Options:
-   "Push all (Recommended)" / "Abort (keep local rebase)". Anything but
-   "Push all" → stop: "Aborted — local branches keep the rebase; remote
-   untouched."
-3. **Push bottom-up:**
+2. **Gate.** Push without asking unless one of these holds:
+   - `TRUNK_REBASE` is set — the bottom was rebased onto a moved trunk, not
+     after a merge;
+   - `RESOLVED` is not empty — a conflict was resolved or a commit skipped;
+   - a range-diff shows an added or dropped commit, or could not be run.
+
+   A clean replay leaves each lower branch's patches as they were; Step 4
+   tested only the tip. When one holds, ask via `AskUserQuestion` (header
+   "Push", multi-select disabled): "Force-with-lease push <S> rebased
+   branch(es)? <which of the above, and the branches or commits concerned>"
+   Options: "Push all (Recommended)" / "Abort (keep local rebase)". Anything
+   but "Push all" → stop: "Aborted — local branches keep the rebase; remote
+   untouched." Under `/pr-fix-loop` nobody can answer: abort instead of
+   asking.
+3. **Push the rebased branches, bottom-up:**
    ```bash
    git push --force-with-lease origin "B[i]"
    ```
@@ -242,9 +251,7 @@ recipe."
 - **Worktree only; never on the default branch; clean tree required.**
 - **`--force-with-lease` only** — never bare `--force`; only after the Step 5
   gate; only on the stack's own branches. A lease failure is a full
-  stop, never a retry. The gate is a human confirmation, except under
-  `/pr-fix-loop`, where Step 5 decides by that command's rule (no added or
-  dropped commits in the range-diff).
+  stop, never a retry. Step 5.2 says when the gate asks.
 - **Nothing remote changes before Step 5.** Steps 1–4 are read-only towards
   origin and GitHub.
 - **Halt-on-red / halt-on-divergence / halt-on-genuine-conflict /

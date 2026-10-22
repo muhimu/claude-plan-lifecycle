@@ -199,7 +199,7 @@ their parent's tip. Invoke the `plan-lifecycle:restack` command via the
 native number: the fixed PR's number instead of `<STACK_NUM>`) — `--no-trunk`
 keeps it from rebasing the bottom slice onto trunk, which would rewrite a
 slice below the fix. It owns the cascade rebase, the
-tip verification, the single force-with-lease gate, and the `## Stack` table
+tip verification, the force-with-lease push gate, and the `## Stack` table
 housekeeping — do not reimplement any of it here. If it stops (genuine
 conflict, red tip, lease failure), stop too and relay its message; do not
 continue to the next slice.

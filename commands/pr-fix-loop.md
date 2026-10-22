@@ -19,11 +19,9 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   evidence in the summary so I can revert it. Pushbacks and questions stay as drafted replies in the summary — never
   post anything to GitHub. All of pr-fix's hard rules still apply (no GitHub
   mutations, no force push, no auto-merge).
-- Stacked PRs: when pr-fix hands off to /restack, answer its push gate with
-  "Push all" only if the range-diff shows every commit mapping unchanged (no
-  added or dropped commits). Otherwise choose Abort, stop the loop, and report.
-  Any other /restack stop (genuine conflict, red tip, lease failure) also ends
-  the loop.
+- Stacked PRs: under this loop /restack aborts where its push gate would
+  ask (its Step 5.2). That, or any other /restack stop (genuine conflict,
+  red tip, lease failure), ends the loop; report it.
 - After pushing, wait for the repo's automated review workflow (e.g. claude-review)
   to post NEW feedback before starting the next round. It may arrive as a plain PR
   comment, not a review — poll `gh pr view <PR> --json comments,reviews` and only

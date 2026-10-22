@@ -140,9 +140,9 @@ merged, and `reap-plans` needs no changes.
 
 **Merge cascade — run `/restack`.** After PR K squash-merges to the default branch, run
 `/restack` in the stack's worktree: it discovers the stack from GitHub,
-cascade-rebases the surviving branches, verifies the tip (test + lint), and — after one confirmation — force-with-lease pushes and
+cascade-rebases the surviving branches, verifies the tip (test + lint), force-with-lease pushes — asking first only when the rebase was not clean or rebased the bottom onto a moved trunk — and
 retargets the new bottom PR to the default branch. Force-with-lease is sanctioned only
-inside `/restack` after its confirmation gate, or by hand via the manual
+inside `/restack` after its push gate, or by hand via the manual
 recipe below.
 
 Manual recipe (reference — what `/restack` automates). After PR K
