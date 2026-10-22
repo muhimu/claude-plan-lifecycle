@@ -77,8 +77,10 @@ Each `Skill` call either returns its review's result at once ("completed
 (forked execution). Result: …") or starts the review as a background agent
 ("launched … running in the background") that reports with a task notification
 when it finishes — one run can get both. A review is done when its result is
-in, whichever way it came; wait until all `<K>` are done before Step 2. If one
-fails, report it as failed in its slice's block rather than retrying.
+in, whichever way it came. Do not wait for the others: take each slice
+through Step 2 (and Step 3 under `POST`) as soon as its own review is done,
+so a slow review holds up only its own slice. If one fails, report it as
+failed in its slice's block rather than retrying.
 
 Each result ends with the review's findings as a JSON array — `file`, `line`,
 `summary`, `failure_scenario`, most severe first. Step 2 reads them from there.
@@ -90,18 +92,19 @@ beyond its target, so it cannot know what the PR body, the ADRs, the PR's
 commits and review threads or the slices above already settle. Read the
 verifier prompt in the `## Verifier prompt` section of
 `${CLAUDE_PLUGIN_ROOT}/commands/verify-findings.md` — the one
-`/plan-lifecycle:verify-findings` uses for a single review. In a single
-message, launch one `general-purpose` agent through the `Agent` tool per slice
-with findings, with that prompt filled in from its **Stacked PR** row (the
+`/plan-lifecycle:verify-findings` uses for a single review. For each slice
+with findings, launch one `general-purpose` agent through the `Agent` tool as
+soon as its review is done (reviews that finish together go in one message),
+with that prompt filled in from its **Stacked PR** row (the
 **PR** row when `SIZE = 1`): `<sha>` is the slice's head, `<top sha>` the
 top's, `<base sha>` the head of the open slice below it in `TARGET_PRS` (for
 the first one, `git merge-base <sha> origin/<its base>`), and the findings are
 the review's JSON array. Every sha is in this checkout, so nothing needs
 fetching.
 
-Wait for all of them. A slice whose verifier fails or returns an array of the
-wrong length is **unverified**: say so in its block, and Step 3 does not post
-it.
+A slice whose verifier fails or returns an array of the wrong length is
+**unverified**: say so in its block, and Step 3 does not post it. Step 4 runs
+once every slice is through Steps 2 and 3.
 
 ## Step 3 — Post the findings (`POST` only)
 
