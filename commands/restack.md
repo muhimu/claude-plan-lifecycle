@@ -31,6 +31,10 @@ main checkout.
 
 ## Step 1 — Pre-flight checks
 
+`$ARGUMENTS` without `--no-trunk` empty → run
+`${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first. This command may
+move, and `HOME` must be on the PR's head branch.
+
 Run each check in order. On any failure, **stop**: print the message and end
 the turn.
 

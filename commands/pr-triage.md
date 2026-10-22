@@ -1,6 +1,6 @@
 ---
 description: Re-prove a PR's or a stack's claims by running them, and write a one-page local report per PR. Never posts to GitHub.
-argument-hint: [stack or PR number — optional, defaults to the current branch's PR]
+argument-hint: [stack or PR number — optional, defaults to the current branch's PR or this session's PRs]
 ---
 
 # PR Triage
@@ -26,17 +26,19 @@ and was not checked.
 
 ## Resolving the target
 
+`$ARGUMENTS` is empty or one number. Empty → run
+`${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first. This command may
+move, and `HOME` can be any checkout of the PR's repo — the PR is checked
+out in a worktree of its own.
+
 Resolve once:
 
 - `OWNER/REPO`: `gh repo view --json nameWithOwner -q .nameWithOwner`
 - `ROOT`: `git rev-parse --show-toplevel`
 - `DEFAULT`: `gh repo view --json defaultBranchRef -q .defaultBranchRef.name`
 
-`$ARGUMENTS` is empty or one number.
-
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-with `ANCHOR` = the number, or empty for the current branch's PR, else one
-this session worked on.
+with `ANCHOR` = the number, or empty for the current branch's PR.
 
 - **The number was a stack** → `TARGETS` = every open PR in `SLICES`, bottom
   first. None open → stop.

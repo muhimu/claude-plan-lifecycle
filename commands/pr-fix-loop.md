@@ -7,7 +7,7 @@ argument-hint: [PR or stack number — optional, auto-detects from the current b
 
 Drive `/plan-lifecycle:pr-fix` rounds autonomously until the PR review is clean. This command only sets up the loop — do not run pr-fix directly from here.
 
-If the first token of `$ARGUMENTS` is not a number, resolve the target once now, as `/plan-lifecycle:pr-fix` would with no number (current branch's PR, else one this session worked on — asking if several), and put that number in front of `$ARGUMENTS`, so later rounds never ask again.
+If the first token of `$ARGUMENTS` is not a number, run `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` once now, as `/plan-lifecycle:pr-fix` would, but instead of starting pr-fix over, put the picked number in front of `$ARGUMENTS` — so later rounds never ask again — and, when `HOME` is not the current directory, `cd` into it now and add `- Start every round with cd <HOME>.` as the first bullet of the prompt below.
 
 Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-paced), passing exactly this prompt as its args (with `$ARGUMENTS` substituted):
 
