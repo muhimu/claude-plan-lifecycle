@@ -344,7 +344,7 @@ is already done.
 
 ### S3 — Per-slice loop (N = R..M)
 
-1. **Branch** — created by the main session only, never by a subagent:
+1. **Branch** — created per the Hard rules' stacked-mode branch rule:
    - If `BRANCH[N]` already exists locally (this is a resume of a slice that
      failed mid-way), just `git checkout "BRANCH[N]"` — partial work from the
      failed run is preserved on it.
@@ -520,9 +520,10 @@ retargets the next PR to `$DEFAULT_BRANCH`.
 - **No GitHub mutations beyond `gh pr create --draft`, `gh pr view`/`gh pr list` (read-only), and — stacked mode only — the S4 `gh stack link` and `gh pr edit` on bodies of PRs this stack created.** No auto-merge, no comment posting, no thread resolution.
 - **Plan file is read for execution but never rewritten except to stamp the PR number** (frontmatter `pr:` field). No content edits. The only new plans-dir file is the Step 7a follow-ups stub.
 - **Stop semantics:** print the indicated message and end the turn. Do not advance to subsequent steps.
-- **Stacked mode:** slice branches are created only by the main
-  session, never by subagents. Slice N's PR always bases on slice N−1's
-  branch (slice 1 on `$DEFAULT_BRANCH`). Never open a PR for an unverified slice —
+- **Stacked mode:** slice branches are created only by the session
+  running this command, which owns its dedicated worktree, never by a
+  subagent it dispatches. Slice N's PR always bases on slice N−1's branch
+  (slice 1 on `$DEFAULT_BRANCH`). Never open a PR for an unverified slice —
   halt-on-red halts the whole loop. Resume never rewrites already-pushed
   slices: no force-push, including on re-run.
 - **PR bodies are public-facing** in both modes: no plans-dir paths,
