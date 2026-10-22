@@ -306,12 +306,9 @@ in Step 3 is reused for every slice.
 
 ### S1 — Derive branch names
 
-1. **Stack prefix.** Default: the first letter of each word of the plan slug,
-   capped at 3 letters (`on-demand-mode` → `odm`, `replica-drift` → `rd`).
-   Confirm via `AskUserQuestion` (header "Stack prefix", multi-select
-   disabled): offer the default first with "(Recommended)", plus one shorter
-   variant if the default has 3 letters. The user can type their own via
-   Other. Call the result `PREFIX`.
+1. **Stack prefix.** `PREFIX` is the first letter of each word of the plan
+   slug, capped at 3 letters (`on-demand-mode` → `odm`, `replica-drift` →
+   `rd`). No confirmation: S1.3 prints it in the branch table.
 2. **Slice slugs.** For each slice, take the Conventional-Commits scope from
    `SLICE_TITLE` (`feat(api) — …` or `feat(api): …` → `api`). If the title
    has no scope, kebab-case the first two descriptive words after the colon.
