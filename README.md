@@ -41,6 +41,7 @@ aggressive about writing plans without accumulating a graveyard.
 | `reap-plans` | skill | Wraps `bin/reap-plans` with run order and conventions |
 | `handoff-prompt` | skill | Generates a self-contained prompt to continue work in a fresh session |
 | `/execute-plan` | command | Drives a plan end-to-end in a worktree: execution skill → test/lint verify → draft PR → stamp. Decisions made during the run — the execution skill's and yours, when it asks — land in the PR's Rulings section; a ruling that changes an ADR this plan writes amends it in the same PR, and one touching any other ADR is flagged as `ADR impact`. Discovered-but-deferred work lands in the PR body and a `<date>-<slug>-followups.md` stub. Plans with `## PR N:` slice headings become a stacked-PR chain, linked as a GitHub native stack via `gh stack link` when available |
+| `/execute-epic` | command | Takes an epic issue and groups its child issues into independent chains — issues that build on each other share a chain and become one stacked plan — reserving ADR, migration and proto numbers per chain so parallel chains cannot collide. After you approve the layout it creates a worktree per chain and writes every chain's plan in parallel; each plan comes to you as it lands, and once you approve it, that chain runs `/execute-plan` unattended (executors take the recommended default and record it as a ruling) while the other plans are still being written or read. Ends with one table of chains, PRs and test/lint results |
 | `/restack` | command | After a stack's bottom PR squash-merges, after a lower slice gained commits, or when the bottom PR conflicts with or is behind trunk: cascade-rebase every branch whose parent moved, verify the tip, force-with-lease push (asking first only when the rebase was not clean or rebased the bottom onto a moved trunk), retarget the new bottom PR. Discovers the stack from GitHub's native stack object, falling back to the PRs' `## Stack` table or base-branch chain; accepts a stack number |
 | `/pr-fix` | command | Fetch PR review comments, verify the first comment of every open, current thread (anyone's, your own inline notes and `/review-stack` findings included) with `/verify-findings`' verifier before planning — a rejected claim becomes a drafted pushback with the evidence, a question or request is planned as before — then plan fixes, implement and push; drafts replies for you to post (never posts to GitHub itself). Takes a PR or stack number plus optional free-text guidance for the fixes; on a stacked PR each fix lands in the slice that owns the code, then `/restack` rebases the slices above |
 | `/review-stack` | command | Run the built-in `/code-review` on every open PR of a stack, one review per slice (each scoped to that slice's diff against the slice below), launched together, from a checkout of the stack's top; as each review finishes, that slice's verifiers (one per group of findings) check each finding against the slice's code, the PR body, the ADRs, the slice's commit messages and review threads and the slices above, and rejected findings appear only in the summary, grouped by slice. Takes a stack or PR number; review flags such as the effort level pass through. `--comment` posts each slice's confirmed and plausible findings as one review on its PR, plus a file-level comment for a finding outside every hunk (nits prefixed `nit:`), every comment marked so `/pr-fix <stack>` verifies them as review findings rather than treating them as your own notes |
@@ -145,6 +146,7 @@ it.
   `superpowers:receiving-code-review` when present and degrades gracefully without it.
 - **Built-in skills** — `/review-stack` and `/verify-findings` run on the built-in `/code-review`;
   `/pr-fix-loop` runs on the built-in `/loop`.
+- **`Agent` tool** — `/execute-epic` runs one plan writer and one executor per chain as parallel subagents, and needs `link-plans` and `stamp-plans` on your PATH.
 - **Test and lint verify commands** — declare them in the repo's CLAUDE.md, or provide `make test`
   / `make lint` targets (the default). `/execute-plan` and `/restack` refuse to open/push anything
   unverified.
@@ -162,8 +164,9 @@ Slice a big plan at *writing* time by grouping tasks under `## PR N: <convention
 headings (the `plan-frontmatter` skill says when and where to cut — size, not layer count).
 `/execute-plan` then opens one draft PR per slice, each based on the previous, each independently
 green, and links them as a GitHub native stack (`gh stack link`), falling back to a `## Stack`
-table when that isn't available. Only the tip PR gets stamped into the plan —
-under squash-merge cascade, tip-merged ⇔ stack-merged. GitHub's native stack object (the `stack`
+table when that isn't available. Only the tip PR carries `Closes` and gets stamped into the plan —
+under squash-merge cascade, tip-merged ⇔ stack-merged. The exception is a stack whose slices finish
+separate issues: the plan header declares them (`PR 2 closes: #13`) and each slice's PR closes its own. GitHub's native stack object (the `stack`
 field on each PR, `repos/{owner}/{repo}/stacks/{N}`) is the source of truth for ordering; without
 one, the commands read the table instead. After each bottom PR merges — or after `/pr-fix` pushes to a lower slice —
 `/restack` rebases every branch whose parent moved and retargets the new bottom PR.

@@ -41,7 +41,10 @@ pr:
      auto-closes the issue. For stacked PRs, ONLY the tip PR carries the
      `Closes` line — under the squash cascade the tip merges last, so
      tip-merged ⇔ effort done; an earlier slice must not close the issue
-     prematurely. `/execute-plan` enforces this when it opens PRs.
+     prematurely. `/execute-plan` enforces this when it opens PRs. The
+     exception is a stack whose slices finish separate issues: there each
+     slice declares the issues it closes with a `PR N closes:` line (see PR
+     slicing), and `issue:` is the one the tip closes.
 - **status** — one of `draft` | `in-progress` | `merged` | `abandoned`. A bare
   plain scalar — no quotes (`status: draft`, not `status: "draft"`).
 - **pr** — the PR number once a PR is opened, as a bare number (`pr: 2297`) — it
@@ -97,6 +100,9 @@ exceeds ~6 tasks or the estimated non-generated diff exceeds ~500 lines
 (i.e. a single PR would be too big to review well). Layer count alone is
 NEVER a reason to slice — in a layered backend almost any persisted field
 touches api + db + service; a thin change touching many layers stays one PR.
+The one exception: a plan that implements several issues (an epic's child
+issues stacked in one plan) gives each issue one or more slices of its own,
+so each issue closes on its own PR, then slices further by size.
 
 **Where to cut — layer boundaries.** Once slicing is warranted, cut so each
 slice is independently green and shippable, ordered dark → wire → activate:
@@ -129,6 +135,19 @@ headings:
 - Slices execute in heading order; each must leave the repo's test + lint
   verify commands green standalone on top of the previous slices.
 - No task in slice N may depend on code written in slice N+1.
+- When the slices finish separate issues (an epic's child issues stacked in
+  one plan), declare which slice completes each issue in the plan header,
+  before the first `## PR` heading — never under a slice heading, where it
+  would land in the previous slice's last task brief:
+
+      PR 1 closes: #12
+      PR 2 closes: #13, #14
+
+  `^PR ([0-9]+) closes: (.+)$` takes comma-separated `#N` or `org/repo#N`
+  refs. Once any such line exists, `/execute-plan` closes exactly the
+  declared issues, each on its slice's PR, instead of putting the
+  frontmatter `issue` on the tip; the tip's line names that issue itself.
+  Without these lines the tip-only rule holds.
 - No `## PR N:` headings ⇒ `/execute-plan` runs its normal single-PR flow.
 - Branches are named `<ns>/<prefix>-<N>-<slice-slug>` (`<ns>` = your branch
   namespace, prefix derived from the plan slug, slice slug from the heading's
