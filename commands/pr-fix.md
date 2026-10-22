@@ -11,19 +11,18 @@ replies and thread resolution.
 
 ## Resolving the target
 
-Split `$ARGUMENTS`: if the first token is a number it is the target (a PR URL or `OWNER/REPO#N` counts as its number, and its `OWNER/REPO` is used below);
-everything after it (or all of `$ARGUMENTS` when the first token is not a
-number) is `GUIDANCE` — the user's pre-brief, e.g. "skip the getattr nit; fix the
+Split `$ARGUMENTS`: if the first token is a PR (a number, PR URL or `OWNER/REPO#N` — the anchor forms in `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`) it is the
+target; everything after it (or all of `$ARGUMENTS` when the first token is
+not one) is `GUIDANCE` — the user's pre-brief, e.g. "skip the getattr nit; fix the
 absorb() indexing with a positional map". It is applied in Step 2.
 
-No number → take one from `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md`
-first. A target in another repo → move to it per that file's step 3, which
-also covers the verifiers' prompts.
-
-Resolve `OWNER/REPO` once, unless the target named it: `gh repo view --json nameWithOwner -q .nameWithOwner`.
+No target, or one that names a repo → run
+`${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first: this command pushes,
+needs the PR's head checked out, and may move — its step 3 also covers the
+verifiers' prompts.
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-with `ANCHOR` = the number (never create a PR):
+which also resolves `OWNER/REPO`, with `ANCHOR` = the target (never create a PR):
 
 - **The number was a stack** → **stack mode over the whole stack**:
   `TARGET_PRS` = every open PR in `SLICES`, bottom first.
