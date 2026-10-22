@@ -32,7 +32,15 @@ for a fallback stack.
   status: stop and show the error — do not guess.
 - **PR URL** → its number. **Branch name** → `gh pr list --head <branch>
   --state all --json number -q '.[0].number'`. **Empty** →
-  `gh pr view --json number -q .number`. No PR → stop: "No PR for `<anchor>`."
+  `gh pr view --json number -q .number`; no PR for the current branch → the
+  PRs this conversation opened or worked on whose repo is `OWNER/REPO`. One →
+  use it and print "No PR for the current branch — using #<N> from this
+  session." Two or more → ask with `AskUserQuestion` (up to four, most
+  recently touched first and marked Recommended); never pick one silently —
+  the command may push to it. None → stop: "No PR for the current branch",
+  listing this session's PRs in other repos as `<repo>#<N>` so the user can
+  re-run from that repo's checkout.
+  Any other anchor with no PR → stop: "No PR for `<anchor>`."
 
 ## 2. Native stack of a PR
 

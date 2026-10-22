@@ -1,6 +1,6 @@
 ---
 description: Review every open PR of a stack (or one PR) with /code-review, verify each finding, and print one summary by slice; --comment posts them for /pr-fix.
-argument-hint: [stack or PR number — optional, auto-detects from current branch] [/code-review flags, e.g. high --comment]
+argument-hint: [stack or PR number — optional, auto-detects from the current branch or this session's PRs] [/code-review flags, e.g. high --comment]
 ---
 
 # Review Stack
@@ -29,8 +29,8 @@ review would apply its findings to the same checkout. Tell the user to post
 with `--comment` and fix with `/plan-lifecycle:pr-fix` instead.
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-with `ANCHOR` = the number (empty → the current branch's PR; none → stop and
-tell the user).
+with `ANCHOR` = the number (empty → the current branch's PR, else one this
+session worked on).
 
 - **`STACKED` false** → the PR is its own one-slice stack: `TARGET_PRS` is
   that PR alone, `SIZE = 1`. Wherever `slice <P>/<SIZE> of stack #<S>` or

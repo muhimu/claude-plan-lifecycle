@@ -35,8 +35,8 @@ Resolve once:
 `$ARGUMENTS` is empty or one number.
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-with `ANCHOR` = the number, or empty for the current branch's PR (no PR →
-stop: "Pass a stack or PR number.").
+with `ANCHOR` = the number, or empty for the current branch's PR, else one
+this session worked on.
 
 - **The number was a stack** → `TARGETS` = every open PR in `SLICES`, bottom
   first. None open → stop.

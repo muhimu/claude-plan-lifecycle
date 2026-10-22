@@ -1,11 +1,13 @@
 ---
 description: Run /pr-fix in an autonomous loop — apply fixes, push, wait for the automated review workflow to post a new review, repeat until the review is clean or the round cap is hit. Accepts a PR or stack number.
-argument-hint: [PR or stack number — optional, auto-detects from current branch] [free-text guidance, passed through to pr-fix]
+argument-hint: [PR or stack number — optional, auto-detects from the current branch or this session's PRs] [free-text guidance, passed through to pr-fix]
 ---
 
 # PR Fix Loop
 
 Drive `/plan-lifecycle:pr-fix` rounds autonomously until the PR review is clean. This command only sets up the loop — do not run pr-fix directly from here.
+
+If the first token of `$ARGUMENTS` is not a number, resolve the target once now, as `/plan-lifecycle:pr-fix` would with no number (current branch's PR, else one this session worked on — asking if several), and put that number in front of `$ARGUMENTS`, so later rounds never ask again.
 
 Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-paced), passing exactly this prompt as its args (with `$ARGUMENTS` substituted):
 

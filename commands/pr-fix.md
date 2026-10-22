@@ -1,6 +1,6 @@
 ---
 description: Address PR review feedback — fetch comments, plan fixes, implement, push, then summarize for the user to post replies. Accepts a PR number or a GitHub stack number; on a stacked PR it fixes each comment in the slice that owns the code and restacks the branches above.
-argument-hint: [PR or stack number — optional, auto-detects from current branch] [free-text guidance for the fixes]
+argument-hint: [PR or stack number — optional, auto-detects from the current branch or this session's PRs] [free-text guidance for the fixes]
 ---
 
 # PR Fix
@@ -19,8 +19,8 @@ after it (or all of `$ARGUMENTS` when the first token is not a number) is
 absorb() indexing with a positional map". It is applied in Step 2.
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-with `ANCHOR` = the number (empty → the current branch's PR; if there is
-none, stop and tell the user — do not create one):
+with `ANCHOR` = the number (empty → the current branch's PR, else one this
+session worked on; never create one):
 
 - **The number was a stack** → **stack mode over the whole stack**:
   `TARGET_PRS` = every open PR in `SLICES`, bottom first.
