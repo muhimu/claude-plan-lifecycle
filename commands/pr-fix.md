@@ -38,8 +38,9 @@ or `Stack #<S> (<K> open PRs)`.
 
 **Stack-mode pre-flight** (both variants — the command may check out other
 slice branches): `git status --porcelain` must have no non-`??` lines (the
-`?? local` symlink line is expected), the current branch must not be the
-default branch, and this must be a worktree, not the main checkout
+`?? local` symlink line is expected), the current branch must be one of the
+`head`s in `SLICES` — not another stack's or the default branch — and this
+must be a worktree, not the main checkout
 (`git rev-parse --git-dir` ends in `.git/worktrees/<name>`) — `/restack`,
 which Step 4b hands off to after a push, refuses the main checkout, so
 checking only then would leave the stack half-updated. Otherwise stop:

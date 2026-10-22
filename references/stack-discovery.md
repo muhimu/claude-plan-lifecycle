@@ -33,7 +33,7 @@ for a fallback stack.
 - **PR URL** → its number. **Branch name** → `gh pr list --head <branch>
   --state all --json number -q '.[0].number'`. **Empty** →
   `gh pr view --json number -q .number`. No PR → stop: "No PR for `<anchor>`."
-  (Most callers resolve an empty target with
+  (Every caller but `/restack` resolves an empty target with
   `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` before this.)
 
 ## 2. Native stack of a PR

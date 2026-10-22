@@ -31,9 +31,6 @@ main checkout.
 
 ## Step 1 — Pre-flight checks
 
-`$ARGUMENTS` without `--no-trunk` empty → take the anchor from
-`${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first.
-
 Run each check in order. On any failure, **stop**: print the message and end
 the turn.
 
