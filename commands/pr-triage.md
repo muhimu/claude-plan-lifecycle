@@ -27,7 +27,8 @@ and was not checked.
 ## Resolving the target
 
 `$ARGUMENTS` is empty or one number (a PR URL or `OWNER/REPO#N` counts as its number, and its `OWNER/REPO` is used below). Empty → take one from
-`${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first.
+`${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first. A target in another
+repo → move to any checkout of it per that file's step 3.
 
 Resolve once:
 

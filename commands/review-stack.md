@@ -27,7 +27,8 @@ review would apply its findings to the same checkout. Tell the user to post
 with `--comment` and fix with `/plan-lifecycle:pr-fix` instead.
 
 No number → take one from `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md`
-first.
+first. This command never moves (see above): a target in another repo →
+stop: "Re-run `/<command> OWNER/REPO#N` from a checkout of `OWNER/REPO`."
 
 Resolve `OWNER/REPO` once, unless the target named it: `gh repo view --json nameWithOwner -q .nameWithOwner`.
 

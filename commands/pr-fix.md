@@ -17,7 +17,8 @@ number) is `GUIDANCE` — the user's pre-brief, e.g. "skip the getattr nit; fix 
 absorb() indexing with a positional map". It is applied in Step 2.
 
 No number → take one from `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md`
-first.
+first. A target in another repo → move to it per that file's step 3, which
+also covers the verifiers' prompts.
 
 Resolve `OWNER/REPO` once, unless the target named it: `gh repo view --json nameWithOwner -q .nameWithOwner`.
 

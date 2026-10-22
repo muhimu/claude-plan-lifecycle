@@ -3,9 +3,8 @@
 Shared by `/pr-fix`, `/pr-fix-loop`, `/review-stack` and `/pr-triage` — not
 `/restack`, which anchors on the current branch's merged PR. Run it first,
 and only when the command got no target. It yields the PR number `N` the
-command then runs with, exactly as if the user had typed it — or stops. It
-never changes directory: subagents a command launches start in the session's
-directory, so the command must run there.
+command then runs with, exactly as if the user had typed it — or stops. Step
+3 moves the command to a PR in another repo.
 
 ## 1. Current branch
 
@@ -31,13 +30,24 @@ someone else's, and the command may push to it.
   touched as options, the first marked Recommended, and any others named in
   the question so the user can pick them via Other. Never pick one silently.
 
-## 3. Same repo
+`N` = the picked number; when it was the only candidate, print "No PR for
+the current branch — using `OWNER/REPO#N` from this session." Then step 3.
 
-`gh repo view --json nameWithOwner -q .nameWithOwner` equals the picked
-PR's `OWNER/REPO` → `N` = its number; when it was the only candidate, print
-"No PR for the current branch — using `OWNER/REPO#N` from this session."
-Done.
+## 3. Another repo
 
-Otherwise stop: "`OWNER/REPO#N` is in another repo — re-run `/<command> <N>`
-from a checkout of it", naming the worktree on its head branch when
-`git -C <a checkout of that repo this session used> worktree list` shows one.
+Also run by callers whose explicit target (a PR URL or `OWNER/REPO#N`) names
+a repo. `gh repo view --json nameWithOwner -q .nameWithOwner` equals the
+PR's `OWNER/REPO` → nothing to do.
+
+Otherwise find `DIR`: `git -C <a checkout of that repo this session used>
+worktree list --porcelain` lists each worktree's path and
+`branch refs/heads/<name>`. `DIR` is the one on the PR's `headRefName`; for
+a stacked PR, failing that, one on another branch of its stack (the
+command's pre-flight checks it); for a caller that takes any checkout, the
+first listed. None, or the session used no checkout of that repo → stop:
+"Re-run `/<command> OWNER/REPO#N` from a checkout of `OWNER/REPO`."
+
+Then `cd <DIR>` before the command resolves `OWNER/REPO` or runs any
+pre-flight, and start every subagent prompt the command writes with "Work in
+`<DIR>`: run every shell command as `cd <DIR> && …`." — subagents start in
+the session's directory, not the one the command moved to.
