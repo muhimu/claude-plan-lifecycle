@@ -7,7 +7,7 @@ argument-hint: [PR or stack number — optional, auto-detects from the current b
 
 Drive `/plan-lifecycle:pr-fix` rounds autonomously until the PR review is clean. This command only sets up the loop — do not run pr-fix directly from here.
 
-If the first token of `$ARGUMENTS` is not a PR target (a number, PR URL or `OWNER/REPO#N`), take one from `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` now, as `/plan-lifecycle:pr-fix` would (it pushes, needs the PR's head checked out, and may move), and put it in front of `$ARGUMENTS` as `OWNER/REPO#N` — whether it came from the current branch or the session — so every round targets the same PR: a stack round can leave a different branch checked out, and later rounds never ask again.
+If the first token of `$ARGUMENTS` is not a PR target (a number, PR URL or `OWNER/REPO#N`), take one from `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` now, as `/plan-lifecycle:pr-fix` would (it pushes, needs the **head**, and may move), and put it in front of `$ARGUMENTS` as `OWNER/REPO#N` — whether it came from the current branch or the session — so every round targets the same PR: a stack round can leave a different branch checked out, and later rounds never ask again.
 
 Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-paced), passing exactly this prompt as its args (with `$ARGUMENTS` substituted):
 

@@ -28,8 +28,7 @@ with `--comment` and fix with `/plan-lifecycle:pr-fix` instead.
 
 Run `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first (all of it with
 no target, its step 3 otherwise): this command does
-not push, takes any checkout of the PR's repo (the pre-flight below checks
-the top), and never moves (see above).
+not push, needs the **top**, and never moves (see above).
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
 which also resolves `OWNER/REPO`, with `ANCHOR` = the target (the one `session-pr.md` yielded).

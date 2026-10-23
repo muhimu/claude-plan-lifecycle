@@ -18,7 +18,7 @@ absorb() indexing with a positional map". It is applied in Step 2.
 
 Run `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first (all of it with
 no target, its step 3 otherwise): this command pushes,
-needs the PR's head checked out, and may move — its step 3 also covers the
+needs the **head**, and may move — its step 3 also covers the
 verifiers' prompts.
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,

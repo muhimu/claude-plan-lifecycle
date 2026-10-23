@@ -28,7 +28,7 @@ and was not checked.
 
 `$ARGUMENTS` is empty or one target (a number, PR URL or `OWNER/REPO#N` — the anchor forms in `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`). Run
 `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first (all of it when
-empty, its step 3 otherwise): this command does not push, takes any
+empty, its step 3 otherwise): this command does not push, takes **any**
 checkout of the PR's repo, and may move.
 
 Resolve once:
