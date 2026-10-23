@@ -51,7 +51,7 @@ answers 200 → `N` is a stack, `S = N`. Otherwise (404)
 The **wanted branches**: for an unstacked target, the PR's `headRefName`
 (`gh pr view <N> -R OWNER/REPO --json headRefName`); for a stacked one, the
 stack's `gh api repos/OWNER/REPO/stacks/<S> --jq '.pull_requests[].head.ref'`
-— all of them for **head**, the last (the top) for **top**. `/restack`
+— all of them for **head**, the last open one (the top) for **top**. `/restack`
 leaves the top checked out between `/pr-fix-loop` rounds, so a stack round
 keeps working.
 
