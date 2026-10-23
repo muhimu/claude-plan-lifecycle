@@ -14,7 +14,10 @@ replies and thread resolution.
 Split `$ARGUMENTS`: if the first token is a PR (a number, PR URL or `OWNER/REPO#N` — the anchor forms in `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`) it is the
 target; everything after it (or all of `$ARGUMENTS` when the first token is
 not one) is `GUIDANCE` — the user's pre-brief, e.g. "skip the getattr nit; fix the
-absorb() indexing with a positional map". It is applied in Step 2.
+absorb() indexing with a positional map". It is applied in Step 2. Under
+`/plan-lifecycle:pr-fix-loop`, `GUIDANCE` is only the text before
+` — run autonomously:`; what follows are the loop's rules for the whole run,
+not pre-rulings.
 
 Run `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first (all of it with
 no target, its step 3 otherwise): this command pushes,

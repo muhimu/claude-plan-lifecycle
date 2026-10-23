@@ -51,7 +51,9 @@ gh api repos/OWNER/REPO/stacks/<STACK_NUM> \
   --jq '.pull_requests[] | {number, state, merged_at, title, head: .head.ref, base: .base.ref, sha: .head.sha}'
 ```
 
-The list is already bottom first: that is `SLICES`. Done.
+The list is already bottom first: that is `SLICES`. The API reports a
+merged PR as `closed`; set `state` to `merged` wherever `merged_at` is set.
+Done.
 
 ## 4. Fallback stack (no native stack)
 

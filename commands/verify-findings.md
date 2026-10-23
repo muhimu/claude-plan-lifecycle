@@ -58,11 +58,14 @@ Resolve `OWNER/REPO` once: `gh repo view --json nameWithOwner -q .nameWithOwner`
 
 `/plan-lifecycle:review-stack` and `/plan-lifecycle:pr-fix` use this prompt
 too.
-Fill the placeholders from the target's row:
+Fill the placeholders from the target's row. A placeholder holds the command
+the verifier runs, not its output; resolve `<sha>`, `<base sha>` and `<N>`
+to values first, and leave `<path>` for the verifier.
 
 - **Local** — `<TARGET>`: the changes on `<branch>`. `<CODE>`: the working
-  tree. `<DIFF>`: the command that shows the diff the review covered, e.g.
-  `git diff HEAD`. `<DECISIONS>`: the repo's ADRs (e.g. `docs/adr/`) and
+  tree. `<DIFF>`: the command that shows the diff the review covered —
+  `git diff HEAD` for uncommitted changes, `git diff <base sha>` for the
+  branch's commits as well. `<DECISIONS>`: the repo's ADRs (e.g. `docs/adr/`) and
   CLAUDE.md files in the working tree, and the body of the branch's open PR if
   it has one (`gh pr view --json body`). `<HISTORY>`: `git log <base sha>..HEAD`,
   `<base sha>` being `git merge-base HEAD origin/<default branch>`

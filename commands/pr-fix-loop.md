@@ -30,7 +30,10 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   proceed once the workflow has posted something with a timestamp later than your
   push. In stack mode, wait on EVERY PR whose branch was pushed or restacked this
   round — a restack retriggers CI and review on the slices above. Never re-process
-  feedback you already handled in an earlier round.
+  feedback you already handled in an earlier round. Feedback on a PR other than
+  the pinned one is not this loop's to fix: list it in the round summary as
+  `#<M>: new feedback — run /plan-lifecycle:pr-fix <M>` and leave it out of the
+  clean/stop judgment.
 - Automated reviewers almost always find *something* — before classifying, judge
   whether the new feedback is substantive at all. Raise the bar each round: by
   round 3+, only clear correctness, security, or data-loss issues count as
