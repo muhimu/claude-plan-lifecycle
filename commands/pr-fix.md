@@ -1,6 +1,6 @@
 ---
 description: Address PR review feedback — fetch comments, plan fixes, implement, push, then summarize for the user to post replies. Accepts a PR number or a GitHub stack number; on a stacked PR it fixes each comment in the slice that owns the code and restacks the branches above.
-argument-hint: [PR or stack number — optional, auto-detects from current branch] [free-text guidance for the fixes]
+argument-hint: [PR or stack number — optional, auto-detects from the current branch or this session's PRs] [free-text guidance for the fixes]
 ---
 
 # PR Fix
@@ -11,20 +11,29 @@ replies and thread resolution.
 
 ## Resolving the target
 
-Resolve `OWNER/REPO` once: `gh repo view --json nameWithOwner -q .nameWithOwner`.
+Split `$ARGUMENTS`: if the first token is a PR (a number, PR URL or `OWNER/REPO#N` — the anchor forms in `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`) it is the
+target; everything after it (or all of `$ARGUMENTS` when the first token is
+not one) is `GUIDANCE` — the user's pre-brief, e.g. "skip the getattr nit; fix the
+absorb() indexing with a positional map". It is applied in Step 2. Under
+`/plan-lifecycle:pr-fix-loop`, `GUIDANCE` is only the text before
+` — run autonomously:`; what follows are the loop's rules for the whole run,
+not pre-rulings.
 
-Split `$ARGUMENTS`: if the first token is a number it is the target; everything
-after it (or all of `$ARGUMENTS` when the first token is not a number) is
-`GUIDANCE` — the user's pre-brief, e.g. "skip the getattr nit; fix the
-absorb() indexing with a positional map". It is applied in Step 2.
+Run `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first (all of it with
+no target, its step 3 otherwise): this command pushes,
+needs the **head**, and may move — its step 3 also covers the
+verifiers' prompts.
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-with `ANCHOR` = the number (empty → the current branch's PR; if there is
-none, stop and tell the user — do not create one):
+which also resolves `OWNER/REPO`, with `ANCHOR` = the target (the one `session-pr.md` yielded) (never create a PR):
 
 - **The number was a stack** → **stack mode over the whole stack**:
   `TARGET_PRS` = every open PR in `SLICES`, bottom first.
-- **`STACKED` false** → **single mode**. `TARGET_PRS = [ANCHOR_PR]`.
+- **`STACKED` false** → **single mode**. `TARGET_PRS = [ANCHOR_PR]`. Fixes
+  are committed to the checked-out branch, so it must be the PR's head and
+  `git status --porcelain` must have no non-`??` lines; otherwise stop:
+  "Single mode needs a clean checkout of `<head>`." Then
+  `git pull --ff-only`, so the fixes land on the PR's current head.
 - **Otherwise** → **stack mode over one PR**. `TARGET_PRS = [ANCHOR_PR]`;
   `SLICES` and `POSITION/SIZE` are needed to attribute comments to the slice
   that introduced the code, and to know whether a restack is due.
@@ -34,8 +43,9 @@ or `Stack #<S> (<K> open PRs)`.
 
 **Stack-mode pre-flight** (both variants — the command may check out other
 slice branches): `git status --porcelain` must have no non-`??` lines (the
-`?? local` symlink line is expected), the current branch must not be the
-default branch, and this must be a worktree, not the main checkout
+`?? local` symlink line is expected), the current branch must be one of the
+`head`s in `SLICES` — not another stack's or the default branch — and this
+must be a worktree, not the main checkout
 (`git rev-parse --git-dir` ends in `.git/worktrees/<name>`) — `/restack`,
 which Step 4b hands off to after a push, refuses the main checkout, so
 checking only then would leave the stack half-updated. Otherwise stop:

@@ -6,8 +6,9 @@ stack's slices. Live truth is GitHub's native stack object; a stack opened
 without one (`/execute-plan` falls back to a `## Stack` table when
 `gh stack link` is unavailable) is still found.
 
-**Input:** `ANCHOR` — a bare number, a PR number or URL, a branch name, or
-empty (the current branch). Resolve `OWNER/REPO` once with
+**Input:** `ANCHOR` — a bare number, a PR URL, `OWNER/REPO#N`, a branch
+name, or empty (the current branch). `OWNER/REPO` is the repo a URL or
+`OWNER/REPO#N` anchor names; otherwise resolve it once with
 `gh repo view --json nameWithOwner -q .nameWithOwner`.
 
 **Output:**
@@ -30,9 +31,12 @@ for a fallback stack.
   issues and PRs, so a number is a stack or a PR, never both. 200 → native
   stack, `STACK_NUM = N`, go to step 3. 404 → it is a PR number. Any other
   status: stop and show the error — do not guess.
-- **PR URL** → its number. **Branch name** → `gh pr list --head <branch>
+- **`OWNER/REPO#N`** → `N`, read as a bare number above (it may be a
+  stack). **PR URL** (`…/pull/<N>`) → its number, a PR — never a stack. **Branch name** → `gh pr list --head <branch>
   --state all --json number -q '.[0].number'`. **Empty** →
   `gh pr view --json number -q .number`. No PR → stop: "No PR for `<anchor>`."
+  (`/pr-fix`, `/pr-fix-loop`, `/review-stack` and `/pr-triage` resolve an
+  empty target with `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first.)
 
 ## 2. Native stack of a PR
 
@@ -47,7 +51,9 @@ gh api repos/OWNER/REPO/stacks/<STACK_NUM> \
   --jq '.pull_requests[] | {number, state, merged_at, title, head: .head.ref, base: .base.ref, sha: .head.sha}'
 ```
 
-The list is already bottom first: that is `SLICES`. Done.
+The list is already bottom first: that is `SLICES`. The API reports a
+merged PR as `closed`; set `state` to `merged` wherever `merged_at` is set.
+Done.
 
 ## 4. Fallback stack (no native stack)
 

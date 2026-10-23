@@ -81,6 +81,7 @@ the turn.
    - `i = 1`, merged prefix non-empty but `B[1]` no longer contains `M`: it
      was already restacked after that merge — apply the next rule as if
      nothing had merged.
+   - `i = 1`, nothing merged, with `--no-trunk`: no rebase.
    - `i = 1`, nothing merged, no `--no-trunk`: read its PR's
      `gh pr view <PR> --json mergeable,mergeStateStatus`. It needs a rebase iff
      `mergeable == CONFLICTING`, or it is behind trunk

@@ -1,6 +1,6 @@
 ---
 description: Review every open PR of a stack (or one PR) with /code-review, verify each finding, and print one summary by slice; --comment posts them for /pr-fix.
-argument-hint: [stack or PR number — optional, auto-detects from current branch] [/code-review flags, e.g. high --comment]
+argument-hint: [stack or PR number — optional, auto-detects from the current branch or this session's PRs] [/code-review flags, e.g. high --comment]
 ---
 
 # Review Stack
@@ -18,19 +18,20 @@ pre-flight below checks.
 
 ## Resolving the stack
 
-Resolve `OWNER/REPO` once: `gh repo view --json nameWithOwner -q .nameWithOwner`.
-
-Split `$ARGUMENTS`: if the first token is a number it is the target; everything
-after it (or all of `$ARGUMENTS` when the first token is not a number) is
-`REVIEW_ARGS`, passed verbatim to every review (an effort level,
+Split `$ARGUMENTS`: if the first token is a PR (a number, PR URL or `OWNER/REPO#N` — the anchor forms in `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`) it is the
+target; everything after it (or all of `$ARGUMENTS` when the first token is
+not one) is `REVIEW_ARGS`, passed verbatim to every review (an effort level,
 `--max-findings <n>`). `--comment` is taken out of `REVIEW_ARGS` and sets
 `POST`: the reviews do not post, Step 3 does. `--fix` stops the command: each
 review would apply its findings to the same checkout. Tell the user to post
 with `--comment` and fix with `/plan-lifecycle:pr-fix` instead.
 
+Run `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first (all of it with
+no target, its step 3 otherwise): this command does
+not push, needs the **top**, and never moves (see above).
+
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-with `ANCHOR` = the number (empty → the current branch's PR; none → stop and
-tell the user).
+which also resolves `OWNER/REPO`, with `ANCHOR` = the target (the one `session-pr.md` yielded).
 
 - **`STACKED` false** → the PR is its own one-slice stack: `TARGET_PRS` is
   that PR alone, `SIZE = 1`. Wherever `slice <P>/<SIZE> of stack #<S>` or
