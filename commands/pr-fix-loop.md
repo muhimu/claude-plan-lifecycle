@@ -26,7 +26,7 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   red tip, lease failure), ends the loop; report it.
 - After pushing, wait for the repo's automated review workflow (e.g. claude-review)
   to post NEW feedback before starting the next round. It may arrive as a plain PR
-  comment, not a review — poll `gh pr view <PR> --json comments,reviews` and only
+  comment, not a review — poll `gh pr view <N> -R OWNER/REPO --json comments,reviews` (the pinned PR's repo) and only
   proceed once the workflow has posted something with a timestamp later than your
   push. In stack mode, wait on EVERY PR whose branch was pushed or restacked this
   round — a restack retriggers CI and review on the slices above. Never re-process

@@ -16,8 +16,8 @@ target; everything after it (or all of `$ARGUMENTS` when the first token is
 not one) is `GUIDANCE` — the user's pre-brief, e.g. "skip the getattr nit; fix the
 absorb() indexing with a positional map". It is applied in Step 2.
 
-No target, or one that names a repo → run
-`${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first: this command pushes,
+Run `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first (all of it with
+no target, its step 3 otherwise): this command pushes,
 needs the PR's head checked out, and may move — its step 3 also covers the
 verifiers' prompts.
 
@@ -27,8 +27,10 @@ which also resolves `OWNER/REPO`, with `ANCHOR` = the target (never create a PR)
 - **The number was a stack** → **stack mode over the whole stack**:
   `TARGET_PRS` = every open PR in `SLICES`, bottom first.
 - **`STACKED` false** → **single mode**. `TARGET_PRS = [ANCHOR_PR]`. Fixes
-  are committed to the checked-out branch, so it must be the PR's head;
-  otherwise stop: "Check out `<head>` (or run from its worktree) first."
+  are committed to the checked-out branch, so it must be the PR's head and
+  `git status --porcelain` must have no non-`??` lines; otherwise stop:
+  "Single mode needs a clean checkout of `<head>`." Then
+  `git pull --ff-only`, so the fixes land on the PR's current head.
 - **Otherwise** → **stack mode over one PR**. `TARGET_PRS = [ANCHOR_PR]`;
   `SLICES` and `POSITION/SIZE` are needed to attribute comments to the slice
   that introduced the code, and to know whether a restack is due.

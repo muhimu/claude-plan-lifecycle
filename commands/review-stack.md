@@ -26,8 +26,8 @@ not one) is `REVIEW_ARGS`, passed verbatim to every review (an effort level,
 review would apply its findings to the same checkout. Tell the user to post
 with `--comment` and fix with `/plan-lifecycle:pr-fix` instead.
 
-No target, or one that names a repo → run
-`${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first: this command does
+Run `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first (all of it with
+no target, its step 3 otherwise): this command does
 not push, takes any checkout of the PR's repo (the pre-flight below checks
 the top), and never moves (see above).
 

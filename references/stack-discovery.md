@@ -31,7 +31,8 @@ for a fallback stack.
   issues and PRs, so a number is a stack or a PR, never both. 200 → native
   stack, `STACK_NUM = N`, go to step 3. 404 → it is a PR number. Any other
   status: stop and show the error — do not guess.
-- **PR URL** or **`OWNER/REPO#N`** → its number. **Branch name** → `gh pr list --head <branch>
+- **`OWNER/REPO#N`** → `N`, read as a bare number above (it may be a
+  stack). **PR URL** → its number. **Branch name** → `gh pr list --head <branch>
   --state all --json number -q '.[0].number'`. **Empty** →
   `gh pr view --json number -q .number`. No PR → stop: "No PR for `<anchor>`."
   (`/pr-fix`, `/pr-fix-loop`, `/review-stack` and `/pr-triage` resolve an
