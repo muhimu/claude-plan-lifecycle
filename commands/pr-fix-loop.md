@@ -32,7 +32,7 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   round — a restack retriggers CI and review on the slices above. Never re-process
   feedback you already handled in an earlier round. Feedback on a PR other than
   the pinned one is not this loop's to fix: list it in the round summary as
-  `#<M>: new feedback — run /plan-lifecycle:pr-fix <M>` and leave it out of the
+  `#<M>: <one line on what it reports> — run /plan-lifecycle:pr-fix <M>` and leave it out of the
   clean/stop judgment.
 - Automated reviewers almost always find *something* — before classifying, judge
   whether the new feedback is substantive at all. Raise the bar each round: by

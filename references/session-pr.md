@@ -40,6 +40,8 @@ PR the session only reviewed or triaged is someone else's.
 - **Two or more** → ask with `AskUserQuestion`: the four most recently
   touched as options, the first marked Recommended, and any others named in
   the question so the user can pick them via Other. Never pick one silently.
+  Match an Other answer against the candidates — a short `REPO#N` or `#N`
+  by repo name and number; no match, or more than one → ask again.
 
 ## 3. Checkout
 
@@ -67,8 +69,8 @@ branch, or, for **any**, the first listed.
 
 - **The caller never moves** → stop: "Re-run
   `/plan-lifecycle:<command> OWNER/REPO#N <the rest of its arguments>` from
-  `<DIR>`", or, with no `DIR`, "from a checkout of `OWNER/REPO` on
-  `<wanted branch>`".
+  `<DIR>`", or, with no `DIR`, "from a checkout of `OWNER/REPO`", adding
+  "on `<wanted branch>`" unless the caller takes **any**.
 - **No `DIR`** → stop with that second hint.
 - **Found** → print "Working in `<DIR>` (`OWNER/REPO#N`)."
 

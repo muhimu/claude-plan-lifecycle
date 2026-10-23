@@ -67,7 +67,8 @@ to values first, and leave `<path>` for the verifier.
   `git diff HEAD` for uncommitted changes, `git diff <base sha>` for the
   branch's commits as well. `<DECISIONS>`: the repo's ADRs (e.g. `docs/adr/`) and
   CLAUDE.md files in the working tree, and the body of the branch's open PR if
-  it has one (`gh pr view --json body`). `<HISTORY>`: `git log <base sha>..HEAD`,
+  it has one (`gh pr view --json body` — check yourself whether it has one,
+  and leave the clause out when it does not). `<HISTORY>`: `git log <base sha>..HEAD`,
   `<base sha>` being `git merge-base HEAD origin/<default branch>`
   (`gh repo view --json defaultBranchRef -q .defaultBranchRef.name`), and, if
   the branch has an open PR, its review threads
