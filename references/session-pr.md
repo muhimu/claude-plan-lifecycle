@@ -4,7 +4,8 @@ Shared by `/pr-fix`, `/pr-fix-loop`, `/review-stack` and `/pr-triage` — not
 `/restack`, which anchors on the current branch's merged PR. Run steps 1–3
 first when the command got no target, and step 3 alone for any other target
 (a bare number's `OWNER/REPO` is the current checkout's). It yields the PR
-`OWNER/REPO#N` the command then runs with, and where to run it — or stops.
+`OWNER/REPO#N` the command then runs with — its target from here on, in
+place of anything parsed from `$ARGUMENTS` — and where to run it, or stops.
 
 Each caller says two things: whether it **pushes** (`/pr-fix`,
 `/pr-fix-loop`) and what checkout it **needs** — the PR's head checked out,
@@ -15,7 +16,8 @@ or any checkout of the PR's repo.
 `gh pr view --json number,state,url`:
 
 - **`state` is `OPEN`** → that PR, in the current checkout; `OWNER/REPO`
-  comes from its `url` (on a fork checkout that is the upstream repo). Done.
+  comes from its `url` (on a fork checkout that is the upstream repo). Go
+  to step 3.
 - **Merged or closed, or an error saying no pull request was found for the
   branch, that HEAD is not on a branch, or that this is not a git
   repository** → step 2.
@@ -40,27 +42,33 @@ PR the session only reviewed or triaged is someone else's.
 
 ## 3. Checkout
 
+First, is the target **stacked**? `gh api repos/OWNER/REPO/stacks/<N>`
+answers 200 → `N` is a stack, `S = N`. Otherwise (404)
+`gh api repos/OWNER/REPO/pulls/<N> --jq .stack` → `{number, size}` with
+`size` above 1 → stacked, `S = .stack.number`. Anything else → not stacked.
+
 The current checkout is **usable** when it is a checkout of the PR's
 `OWNER/REPO` (`gh repo view --json nameWithOwner -q .nameWithOwner`) and,
-for a caller that needs the head, `git branch --show-current` is the PR's
-`headRefName` (`gh pr view <N> -R OWNER/REPO --json headRefName`). A stacked
-target — `N` is a stack (`gh api repos/OWNER/REPO/stacks/<N>` answers 200)
-or a PR whose `gh api repos/OWNER/REPO/pulls/<N> --jq .stack.size` is above
-1 — needs only the repo: the caller's stack pre-flight checks the branch,
-and `/restack` leaves the top checked out between `/pr-fix-loop` rounds.
+for a caller that needs the head and an unstacked target,
+`git branch --show-current` is the PR's `headRefName`
+(`gh pr view <N> -R OWNER/REPO --json headRefName`). A stacked target needs
+only the repo: the caller's stack pre-flight checks the branch, and
+`/restack` leaves the top checked out between `/pr-fix-loop` rounds.
 Usable → done.
 
-A caller that never moves stops here: "Re-run `/<command> OWNER/REPO#N`
-from a checkout of `OWNER/REPO` on `<branch>`" — the PR's head, or for a
-stack its top.
+A caller that never moves stops here: "Re-run
+`/plan-lifecycle:<command> OWNER/REPO#N <the rest of its arguments>` from a
+checkout of `OWNER/REPO` on `<branch>`" — the PR's head, or for a stacked
+target the stack's top (the last of
+`gh api repos/OWNER/REPO/stacks/<S> --jq '.pull_requests[].head.ref'`).
 
 Otherwise find `DIR`: `git -C <a checkout of that repo — the current one,
 or one this session used> worktree list --porcelain` lists each worktree's
 path and `branch refs/heads/<name>`. `DIR` is the one on `headRefName` —
-for a stacked target, on any branch of the stack
-(`gh api repos/OWNER/REPO/stacks/<S> --jq '.pull_requests[].head.ref'`) —
-or, for a caller that takes any checkout, the first listed. None → stop with
-the same re-run hint.
+for a stacked target, on any branch of the stack (the same `head.ref`
+list) — or, for a caller that takes any checkout, the first listed. None →
+stop with the same re-run hint. Found → print "Working in `<DIR>`
+(`OWNER/REPO#N`)."
 
 For the rest of the command — including a command it hands off to, such as
 `/restack` — run every shell command as `cd <DIR> && …`, and start every

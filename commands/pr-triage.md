@@ -38,7 +38,7 @@ Resolve once:
 - `DEFAULT`: `gh repo view --json defaultBranchRef -q .defaultBranchRef.name`
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-with `ANCHOR` = the target.
+with `ANCHOR` = the target (the one `session-pr.md` yielded).
 
 - **The number was a stack** → `TARGETS` = every open PR in `SLICES`, bottom
   first. None open → stop.

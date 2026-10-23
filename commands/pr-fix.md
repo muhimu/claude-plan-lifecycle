@@ -22,7 +22,7 @@ needs the PR's head checked out, and may move — its step 3 also covers the
 verifiers' prompts.
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-which also resolves `OWNER/REPO`, with `ANCHOR` = the target (never create a PR):
+which also resolves `OWNER/REPO`, with `ANCHOR` = the target (the one `session-pr.md` yielded) (never create a PR):
 
 - **The number was a stack** → **stack mode over the whole stack**:
   `TARGET_PRS` = every open PR in `SLICES`, bottom first.

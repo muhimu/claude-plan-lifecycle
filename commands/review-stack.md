@@ -32,7 +32,7 @@ not push, takes any checkout of the PR's repo (the pre-flight below checks
 the top), and never moves (see above).
 
 Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-which also resolves `OWNER/REPO`, with `ANCHOR` = the target.
+which also resolves `OWNER/REPO`, with `ANCHOR` = the target (the one `session-pr.md` yielded).
 
 - **`STACKED` false** → the PR is its own one-slice stack: `TARGET_PRS` is
   that PR alone, `SIZE = 1`. Wherever `slice <P>/<SIZE> of stack #<S>` or
