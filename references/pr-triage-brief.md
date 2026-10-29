@@ -57,11 +57,6 @@ as a stack-wide end-to-end run described on the top PR.
 Read the diff (`git -C "${WT:?}" diff "${B:?}" "${H:?}"`) and write the Summary: what the
 change does and how, in two to five sentences or short bullets.
 
-When `H` is not `TOP`, slices above this one change the same code before
-the stack ships. Note which files they touch
-(`git -C "${WT:?}" diff --stat "${H:?}" "${TOP:?}"`); step 4 judges findings
-against them.
-
 Run the profile's Setup in `WT` once.
 
 ### 2. List the claims
@@ -276,27 +271,39 @@ What you cannot prove is not a finding: it goes under Not checked, with what
 would confirm it.
 
 **Judge at the top of the stack.** When `H` is not `TOP`, the stack ships
-as a whole, so check each finding, and each decision, against `TOP` before
-writing it. If the slices above do not touch its file
-(`git -C "${WT:?}" diff --stat "${H:?}" "${TOP:?}" -- <file>`), it stands.
-If they do, re-run its evidence at `TOP` — the probe, revert, test or
-mutant, or for a description finding, the behaviour its Effect names:
+as a whole: a slice above may already fix a finding, in any file. Once every
+finding and decision is drafted, check them all at `TOP` in one pass.
+
+First, `git -C "${WT:?}" merge-base --is-ancestor "${H:?}" "${TOP:?}"`. If it
+fails, the stack needs a restack and `TOP` lacks this slice's code: skip the
+pass, keep every finding, and add a Not checked item saying so. Otherwise:
 
 ```bash
 git -C "${WT:?}" checkout --detach "${TOP:?}"
-# re-run the evidence
+# run the profile's Setup again; re-run every finding's evidence
 git -C "${WT:?}" checkout -- . && git -C "${WT:?}" clean -fdq
 git -C "${WT:?}" checkout --detach "${H:?}"
 git -C "${WT:?}" status --porcelain     # must print nothing
 ```
 
-- Gone at `TOP` (the code is deleted, or the Effect no longer happens): a
-  Checked line "fixed above in #M", where M is the slice whose commit
-  changed it (`git -C "${WT:?}" log --format='%h %s' "${H:?}..${TOP:?}" -- <file>`).
-  A decision about behaviour a slice above replaces belongs to that slice:
-  a Checked line here too.
-- Still there at `TOP`: a finding as usual. Add "still at the stack top" to
-  its Evidence.
+The evidence is the probe, revert or test as written; for a surviving
+mutant, the same edit applied by hand to the same statement at `TOP` and the
+entry's test command (not the mutation tool, which scopes to `B..H`); for a
+description finding, the behaviour its Effect names. A finding is gone only
+when that evidence no longer shows it, never because its file is missing (a
+slice above may have moved it).
+
+- Gone at `TOP`: a Checked line "fixed above in #M". M is the lowest slice
+  whose head contains the commit that changed it: take the shas from
+  `git -C "${WT:?}" log --format=%h "${H:?}..${TOP:?}"` and test each slice's
+  head from the stack table with `merge-base --is-ancestor <sha> <head>`.
+- Still there: a finding as usual, with "still at the stack top" in its
+  Evidence.
+- The evidence cannot run at `TOP` (it does not build, or Setup fails): keep
+  the finding and add a Not checked item.
+- A decision about behaviour a slice above replaces: a Not checked item
+  "decision moves to #M: <what>", so the command checks that #M's report
+  raises it.
 
 ### 5. Triage
 

@@ -119,7 +119,7 @@ Triage PR #<N> "<title>" in <OWNER/REPO> (<slice P/SIZE of stack #S | not stacke
 Read ${CLAUDE_PLUGIN_ROOT}/references/pr-triage-brief.md and follow its "## Slice brief".
 Profile: <PROFILE>
 ROOT=<ROOT>  WT=<RUN>/<N>  H=<headRefOid>  B=<B>  TOP=<TOP>  DEFAULT=<DEFAULT>
-Stack table: <number, state, title per PR, one per line — or "not stacked">
+Stack table: <number, state, head sha, title per PR, one per line — or "not stacked">
 Report: <ROOT>/local/triage/<N>.md
 Date: <today, YYYY-MM-DD>
 ```
