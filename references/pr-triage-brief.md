@@ -270,6 +270,47 @@ Findings.
 What you cannot prove is not a finding: it goes under Not checked, with what
 would confirm it.
 
+**Judge at the top of the stack.** When `H` is not `TOP`, the stack ships
+as a whole: a slice above may already fix a finding, in any file. Draft the
+findings, and the decisions step 5 would set, then check them at `TOP` in
+one pass. Nothing drafted: skip the pass.
+
+First, `git -C "${WT:?}" merge-base --is-ancestor "${H:?}" "${TOP:?}"`. If it
+fails, the stack needs a restack and `TOP` lacks this slice's code: skip the
+pass, keep everything, and add the Not checked item "not judged at the stack
+top: the stack needs a restack" (no PR number, so the command does not read
+it as a hand-up). Otherwise:
+
+```bash
+git -C "${WT:?}" checkout --detach "${TOP:?}"
+# run the profile's Setup again; re-run every finding's evidence
+git -C "${WT:?}" checkout -- . && git -C "${WT:?}" clean -fdq
+git -C "${WT:?}" checkout --detach "${H:?}"
+git -C "${WT:?}" status --porcelain     # must print nothing
+```
+
+The evidence is the probe, revert or test as written; for a surviving
+mutant, the same edit applied by hand to the same statement at `TOP`, then
+the entry's test command with `H="${TOP:?}"` (not the mutation tool, which
+scopes to `B..H`); for a description finding, the behaviour its Effect
+names. A finding is gone only when that evidence no longer shows it, never
+because its file is missing (a slice above may have moved it).
+
+- Gone at `TOP`: a Checked line "fixed above in #M". M is the lowest open
+  slice above this one whose head contains the commit that changed it: take
+  the shas from `git -C "${WT:?}" log --format=%h "${H:?}..${TOP:?}"` and test
+  those slices' heads from the stack table with
+  `merge-base --is-ancestor <sha> <head>`.
+- Still there: a finding as usual, with "still at the stack top" in its
+  Evidence.
+- The evidence cannot run at `TOP` (it does not build, or Setup fails): keep
+  the finding and add the Not checked item "could not run at the stack top:
+  <why>", again with no PR number.
+- A decision about behaviour a slice above replaces: not set here, so it
+  stays out of For a human and the outcome. Add the Not checked item
+  "decision moves to #M: <what>", and the command checks that #M's report
+  raises it.
+
 ### 5. Triage
 
 Impact, Risk and Decisions use the profile's definitions. Take the highest
@@ -321,7 +362,7 @@ Every revert and probe was undone; the worktree was clean at the end.
 ## Checked / Not checked
 
 **Checked:**
-- <what you verified that produced no finding; pre-existing problems; review threads, answered or resolved and not raised again; earlier findings fixed at H>
+- <what you verified that produced no finding; pre-existing problems; review threads, answered or resolved and not raised again; earlier findings fixed at H; problems fixed above in #M>
 
 **Not checked:**
 1. <what>. Next step: <the command, where to run it, and the expected result>

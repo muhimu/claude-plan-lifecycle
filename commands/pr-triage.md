@@ -50,7 +50,7 @@ position `P/SIZE`. `TOP` is the head sha of the stack's last open PR; for an
 unstacked PR it is its own head. A stack with no native number is written
 `stack of #<bottom>` wherever `Stack #<S>` appears below.
 
-For each target read
+For each target, and each open slice above the lowest target, read
 `gh pr view <N> --json number,title,author,isCrossRepository,headRefOid,baseRefName`.
 
 Print the header: `Stack #<S> — triaging <K> open PRs: #<a>, #<b>, …`, or
@@ -62,10 +62,16 @@ Triage runs each PR's code on this machine: its tests, its build targets
 and the probes it writes. `ME` = `gh api user -q .login`. A target is
 **foreign** when its author is not `ME` or `isCrossRepository` is true.
 
-If any target is foreign, list each (number, author, and "from a fork" when
-cross-repository) and ask once with `AskUserQuestion`: **Run them**, **Skip
-them**, **Stop**. Ask before fetching or creating anything. Skip drops them
-from `TARGETS`; if none is left, stop.
+A lower slice's agent also runs the code at `TOP` (the brief's "Judge at
+the top of the stack"), so the gate covers every open slice above the lowest
+target as well as the targets.
+
+If any of those is foreign, list each (number, author, and "from a fork"
+when cross-repository) and ask once with `AskUserQuestion`: **Run them**,
+**Skip them**, **Stop**. Ask before fetching or creating anything. Skip
+drops foreign PRs from `TARGETS` (if none is left, stop) and moves `TOP` down
+to the head of the highest open slice below the lowest foreign one, so no
+foreign code runs.
 
 ## Profile
 
@@ -119,7 +125,7 @@ Triage PR #<N> "<title>" in <OWNER/REPO> (<slice P/SIZE of stack #S | not stacke
 Read ${CLAUDE_PLUGIN_ROOT}/references/pr-triage-brief.md and follow its "## Slice brief".
 Profile: <PROFILE>
 ROOT=<ROOT>  WT=<RUN>/<N>  H=<headRefOid>  B=<B>  TOP=<TOP>  DEFAULT=<DEFAULT>
-Stack table: <number, state, title per PR, one per line — or "not stacked">
+Stack table: <number, state, head sha, title per PR, one per line — or "not stacked">
 Report: <ROOT>/local/triage/<N>.md
 Date: <today, YYYY-MM-DD>
 ```
@@ -135,7 +141,8 @@ Only when more than one target was triaged. A slice often defers a check to
 a slice above it ("the wiring is in #M; triage it there"), and agents running
 in parallel cannot pass it on. In each report, find the Not checked items
 that name another PR of the stack. For each, read that PR's report:
-**covered** if its ledger or Checked list addresses the same behaviour,
+**covered** if its ledger, Checked list or For a human addresses the same
+behaviour,
 **not covered** if not, or "#M not triaged in this run".
 
 ## Clean up
