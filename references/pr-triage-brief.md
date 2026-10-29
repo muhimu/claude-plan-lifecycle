@@ -57,6 +57,11 @@ as a stack-wide end-to-end run described on the top PR.
 Read the diff (`git -C "${WT:?}" diff "${B:?}" "${H:?}"`) and write the Summary: what the
 change does and how, in two to five sentences or short bullets.
 
+When `H` is not `TOP`, slices above this one change the same code before
+the stack ships. Note which files they touch
+(`git -C "${WT:?}" diff --stat "${H:?}" "${TOP:?}"`); step 4 judges findings
+against them.
+
 Run the profile's Setup in `WT` once.
 
 ### 2. List the claims
@@ -270,6 +275,29 @@ Findings.
 What you cannot prove is not a finding: it goes under Not checked, with what
 would confirm it.
 
+**Judge at the top of the stack.** When `H` is not `TOP`, the stack ships
+as a whole, so check each finding, and each decision, against `TOP` before
+writing it. If the slices above do not touch its file
+(`git -C "${WT:?}" diff --stat "${H:?}" "${TOP:?}" -- <file>`), it stands.
+If they do, re-run its evidence at `TOP` — the probe, revert, test or
+mutant, or for a description finding, the behaviour its Effect names:
+
+```bash
+git -C "${WT:?}" checkout --detach "${TOP:?}"
+# re-run the evidence
+git -C "${WT:?}" checkout -- . && git -C "${WT:?}" clean -fdq
+git -C "${WT:?}" checkout --detach "${H:?}"
+git -C "${WT:?}" status --porcelain     # must print nothing
+```
+
+- Gone at `TOP` (the code is deleted, or the Effect no longer happens): a
+  Checked line "fixed above in #M", where M is the slice whose commit
+  changed it (`git -C "${WT:?}" log --format='%h %s' "${H:?}..${TOP:?}" -- <file>`).
+  A decision about behaviour a slice above replaces belongs to that slice:
+  a Checked line here too.
+- Still there at `TOP`: a finding as usual. Add "still at the stack top" to
+  its Evidence.
+
 ### 5. Triage
 
 Impact, Risk and Decisions use the profile's definitions. Take the highest
@@ -321,7 +349,7 @@ Every revert and probe was undone; the worktree was clean at the end.
 ## Checked / Not checked
 
 **Checked:**
-- <what you verified that produced no finding; pre-existing problems; review threads, answered or resolved and not raised again; earlier findings fixed at H>
+- <what you verified that produced no finding; pre-existing problems; review threads, answered or resolved and not raised again; earlier findings fixed at H; problems fixed above in #M>
 
 **Not checked:**
 1. <what>. Next step: <the command, where to run it, and the expected result>
