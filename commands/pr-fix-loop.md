@@ -20,7 +20,8 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   rejected stays a Self-note and is fixed; list it with its `rejected:`
   evidence in the summary so I can revert it. Reply in bot and my own threads
   as pr-fix's Step 4c says; replies to human reviewers stay as drafts in the
-  summary — don't post them. All of pr-fix's hard rules still apply (no other
+  summary — don't post them, and don't ask me about them: end the round on
+  the summary. All of pr-fix's hard rules still apply (no other
   GitHub mutations, no force push, no auto-merge).
 - Stacked PRs: under this loop /restack aborts where its push gate would
   ask (its Step 5.2). That, or any other /restack stop (genuine conflict,
@@ -29,7 +30,9 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   to post NEW feedback before starting the next round. It may arrive as a plain PR
   comment, not a review — poll `gh pr view <N> -R OWNER/REPO --json comments,reviews` (the pinned PR's repo) and only
   proceed once the workflow has posted something with a timestamp later than your
-  push (your own Step 4c replies don't count). In stack mode, wait on EVERY PR whose branch was pushed or restacked this
+  push. Ignore every review and comment whose author is you
+  (`gh api user --jq .login`): your Step 4c replies show up under `reviews`
+  too, as COMMENTED reviews dated after the push. In stack mode, wait on EVERY PR whose branch was pushed or restacked this
   round — a restack retriggers CI and review on the slices above. Never re-process
   feedback you already handled in an earlier round. Feedback on a PR other than
   the pinned one is not this loop's to fix: list it in the round summary as

@@ -166,8 +166,10 @@ and mark the other row `same as #<row>`.
 **Apply `GUIDANCE` first.** Before classifying, turn each instruction in
 `GUIDANCE` into a pre-ruling: a bucket for a named comment, an approach for a
 fix, a reply the user wants drafted. Rows it decided carry `(brief)` in the
-Bucket column so the user can see it took. Guidance shapes fixes and drafted
-replies only — it never overrides the hard rules and is never posted to GitHub.
+Bucket column so the user can see it took. Guidance shapes fixes and replies
+only — it never overrides the hard rules, and its own text is never posted to
+GitHub. A reply it asks for is posted like any other: by Step 4c in a bot or
+own thread, after the user's approval in a human reviewer's.
 
 Present the full plan to the user as a table (the PR column appears only in
 stack mode):
@@ -185,11 +187,22 @@ Apply code changes for all approved Actionable + Self-note + Nit items. Group co
 **Rules during implementation:**
 
 - Run the test command (the verify convention: test and lint commands declared in the repo's CLAUDE.md, else `make test` / `make lint`) after each logical group, and the lint command once, after the last group on a branch and before pushing it. If something breaks, stop and report — don't paper over.
-- A test added or changed for a fix must fail without the fix. Before
-  committing the group, set the non-test change aside
-  (`git stash push -- <non-test files>`), run that test, check it fails for
-  the reason the comment names, then `git stash pop`. A test that passes
-  without the fix does not cover it; rewrite it.
+- A test added or changed alongside a code fix must fail without that fix.
+  Before committing the group, set the fix aside with a patch — not
+  `git stash`, whose stack every worktree of the repo shares — and run the
+  test:
+
+  ```bash
+  git add -N -- <new non-test files>   # so the patch carries them too
+  git diff HEAD -- <non-test files> > <scratchpad>/pr-fix-aside.patch
+  git apply -R <scratchpad>/pr-fix-aside.patch   # fix out, tests stay
+  # run the test: it must fail for the reason the comment names
+  git apply <scratchpad>/pr-fix-aside.patch      # fix back
+  ```
+
+  A test that passes without the fix does not cover it; rewrite it. A
+  test-only item (the reviewer asked for coverage of code that is already
+  right) has no fix to set aside: its test only has to pass.
 - Do not create branches. Commit to the currently checked-out PR branch.
 - Commit messages should describe the change, not reference the comment ID — comment IDs rot, code messages don't.
 
@@ -241,6 +254,9 @@ author is a bot or the user (Step 1), inside its thread:
 - Pushback or Question: the drafted reply.
 - Stale: `No change: <why it's stale>`.
 
+If a post fails (a deleted comment, no write access), keep its row as
+`failed: <error>` and carry on with the rest.
+
 A comment outside a review thread (a plain PR comment, a review body) gets no
 reply. Replies never @-mention anyone: `@claude` in a reply starts the repo's
 Claude workflow, and any mention notifies a person. Replies to human
@@ -248,9 +264,10 @@ reviewers are not posted here.
 
 ## Step 5 — Summarize for the user
 
-This is the final output. Print a structured summary. Each reply line says
-`posted` for a reply Step 4c posted, or `draft` for a reply to a human
-reviewer, which is not posted yet.
+This is the final output. Print a structured summary. Each reply line's
+`<state>` is `posted` for a reply Step 4c posted, `failed: <error>` for one
+whose post failed, or `draft` for a reply to a human reviewer, which is not
+posted yet.
 
 Format (one block per PR in stack mode, bottom-up):
 
@@ -260,16 +277,16 @@ Format (one block per PR in stack mode, bottom-up):
 ### Addressed (code pushed)
 - <file:line> [<reviewer>]: <comment summary>
   → <what you changed, in one line>   (in #<M> when it landed in a lower slice)
-  → Reply (posted|draft): "<short factual reply text>"
+  → Reply (<state>): "<short factual reply text>"
   → Verifier rejected it: <evidence>   (only for your own note fixed despite a REJECTED verdict)
 
 ### Pushed back
 - <file:line> [<reviewer>]: <comment summary>
-  → Reply (posted|draft): "<technical reasoning for not making the change>"
+  → Reply (<state>): "<technical reasoning for not making the change>"
 
 ### Questions for reviewer
 - <file:line> [<reviewer>]: <comment summary>
-  → Reply (posted|draft): "<clarification question>"
+  → Reply (<state>): "<clarification question>"
 
 ### Stale (no action)
 - <file:line> [<reviewer>]: <why it's stale>
