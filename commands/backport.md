@@ -131,12 +131,16 @@ take each file of `git -C "$WT" diff --name-only --diff-filter=U`:
     Map it to its PR by the `(#M)` at the end of its subject, and drop
     every `#M` that Step 1's signals find on `HEAD`. The remaining PRs are
     the **prerequisites** → Step 4a.
-  - **Release side (later backports).** Blame the lines between each
-    `<<<<<<<` and `=======` of the working file:
-    `git -C "$WT" blame -s -L <first>,<last> -- "$F"`. A commit whose
-    `cherry picked from commit <C>` trailer names a `C` with
-    `git -C "$WT" merge-base --is-ancestor "$SHA" "$C"` true is a
-    backport of a main PR that merged **after** the source → Step 4b.
+  - **Release side (later backports).** Take each hunk of
+    `git -C "$WT" diff -U0 "$SHA^" HEAD -- "$F"` whose `-a,b` range
+    overlaps a source hunk's, and blame its `+c,d` lines on the release
+    branch: `git -C "$WT" blame -s -L "c,+d" HEAD -- "$F"` (`d` = 0: skip).
+    Don't blame the conflicted file itself: when the fix moves code, both
+    halves of a conflict share lines and blame credits release's lines to
+    the wrong half. A commit whose `cherry picked from commit <C>` trailer
+    names a `C` with `git -C "$WT" merge-base --is-ancestor "$SHA" "$C"`
+    true is a backport of a main PR that merged **after** the source →
+    Step 4b.
   - **Neither:** resolve the hunk. Keep the release behaviour unless the
     fix is about it. Record one line per hunk: `file:line` — what release
     has, what the fix changes, what was kept.
@@ -182,7 +186,9 @@ of later main PRs.** Name those backports and their main PRs.
 1. `git -C "$WT" cherry-pick --abort`. Picks already made stay.
 2. Revert the chosen backports, newest first: `git -C "$WT" revert --no-edit <backport>`.
    The `Revert "<subject>"` subject passes a semantic title check, and it
-   is what Step 1's revert rule reads.
+   is what Step 1's revert rule reads. A revert that conflicts is resolved
+   like Step 3's "Neither" path, then `git -C "$WT" revert --continue --no-edit`,
+   and listed under Applied by hand.
 3. Pick the remaining `SOURCES`, included prerequisites among them, in
    `mergedAt` order (Step 3).
 4. Replay the reverted backports' main originals in `mergedAt` order:
