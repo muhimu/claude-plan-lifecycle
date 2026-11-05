@@ -138,7 +138,7 @@ it.
 
 - **`gh`** authenticated (PR creation, merge-state checks).
 - **[`gh stack`](https://github.com/github/gh-stack)** extension (optional) — `/execute-plan` links stacked PRs into a GitHub native stack with `gh stack link`; without it (or without native stacks enabled) stacks fall back to hand-kept `## Stack` tables.
-- **git ≥ 2.38** for `/backport`, which probes picks with `git merge-tree --write-tree`.
+- **git ≥ 2.40** for `/backport`, which probes picks with `git merge-tree --write-tree --merge-base`.
 - **bash ≥ 4** for `bin/reap-plans` (macOS ships 3.2 — `brew install bash`; the script exits with a
   clear message on older versions).
 - **[superpowers](https://github.com/obra/superpowers)** plugin — `/execute-plan` drives plans via

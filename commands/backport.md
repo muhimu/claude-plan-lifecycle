@@ -16,11 +16,9 @@ command makes lands on the release branch as it is.
 
 ## Step 0 — Resolve
 
-1. **Repo.** `ROOT="$(git rev-parse --show-toplevel)"`,
-   `OWNER/REPO` from `gh repo view --json nameWithOwner -q .nameWithOwner`,
+1. **Repo.** `ROOT="$(git rev-parse --show-toplevel)"`; `OWNER/REPO` and
    `DEFAULT` from
-   `git -C "$ROOT" symbolic-ref --short refs/remotes/origin/HEAD | sed 's|^origin/||'`
-   (fallback: `gh repo view --json defaultBranchRef -q .defaultBranchRef.name`).
+   `gh repo view --json nameWithOwner,defaultBranchRef -q '.nameWithOwner + " " + .defaultBranchRef.name'`.
    Then `git -C "$ROOT" fetch -q --prune origin`.
 2. **Arguments.** The argument starting `release/` is `TARGET`; the other,
    possibly empty, is `ANCHOR`. With no `TARGET`, take the newest version
@@ -29,7 +27,8 @@ command makes lands on the release branch as it is.
    git -C "$ROOT" for-each-ref --format='%(refname:lstrip=3)' 'refs/remotes/origin/release/*' \
      | grep -E '^release/[0-9]+\.[0-9]+$' | sort -V | tail -1
    ```
-   `git -C "$ROOT" rev-parse -q --verify "refs/remotes/origin/${TARGET}"`
+   No match → stop: "No `release/<n>.<n>` branch on origin. Pass the
+   target." `git -C "$ROOT" rev-parse -q --verify "refs/remotes/origin/${TARGET}"`
    fails → stop: "`<TARGET>` does not exist on origin." `X.Y` is `TARGET`
    without `release/`.
 3. **Sources.** Resolve `ANCHOR` per
@@ -47,8 +46,8 @@ command makes lands on the release branch as it is.
    ```
    `state` not `MERGED` or `base` not `DEFAULT` → stop: "#<n> is not merged
    into `<DEFAULT>`. Backport merged PRs of the default branch only."
-   `SOURCES` is the list sorted by `mergedAt`, oldest first. `ANCHOR_N` is
-   `ANCHOR_PR`, or the top merged slice for a stack number.
+   `SOURCES` is the list sorted by `mergedAt`, oldest first. `A` is the
+   number the user passed: `ANCHOR_PR`, or `STACK_NUM` for a stack number.
 
 ## Step 1 — Already on the release branch?
 
@@ -65,7 +64,8 @@ gh pr list -R OWNER/REPO --base "$TARGET" --state all --search "$N" --json numbe
 
 Grep subjects only for `(#N)`: bodies mention PRs they do not contain. A
 PR from the search counts only when its title or body says it backports
-`#N`; read each one.
+`#N`; read each one. A merged one means present, an open one stops, a
+closed one is ignored.
 
 - **Revert:** when the newest hit is `Revert "…(#N)"`, the source is missing.
 - **An open PR backports it** → stop: "#N is already being backported in
@@ -75,12 +75,14 @@ PR from the search counts only when its title or body says it backports
 - **Some present** → drop them, print "#N is already on `<TARGET>` as
   <sha> — dropped.", and continue.
 
+`ANCHOR_N`, which names the PR, is the newest source left.
+
 ## Step 2 — Worktree
 
-- **Names.** `SLUG`: two to four kebab-case words naming the fix, from
-  the anchor's title. `BRANCH` = `<ns>/backport-<SLUG>-<X.Y>`, `<ns>`
-  being the branch namespace the user's CLAUDE.md prescribes, else
-  `backport-<SLUG>-<X.Y>`. `WT`: where the user's CLAUDE.md puts
+- **Names.** `BRANCH` = `<ns>/backport-<A>-<X.Y>`, `<ns>` being the
+  branch namespace the user's CLAUDE.md prescribes, else
+  `backport-<A>-<X.Y>`. A re-run derives the same name, so the check
+  below catches it. `WT`: where the user's CLAUDE.md puts
   worktrees, else `<parent of the main worktree>/worktrees/<repo name>/<BRANCH with / as ->`.
   The main worktree is the first `worktree` line of
   `git -C "$ROOT" worktree list --porcelain`.
@@ -98,10 +100,12 @@ PR from the search counts only when its title or body says it backports
   git -C "$ROOT" worktree add --no-track -b "$BRANCH" "$WT" "origin/${TARGET}" \
     && WT="$(git -C "$ROOT" worktree list --porcelain \
       | awk -v b="branch refs/heads/$BRANCH" '/^worktree /{p=substr($0,10)} $0==b{print p}')" \
-    && test "$(git -C "$WT" branch --show-current)" = "$BRANCH"
+    && test "$(git -C "$WT" branch --show-current)" = "$BRANCH" \
+    && printf 'WT=%s\n' "$WT"
   command -v link-plans >/dev/null && link-plans "$WT"
   ```
-  The first command fails → stop with its error.
+  The first command fails → stop with its error. Shell variables die with
+  each call: copy the printed `WT` into every later command, never retype it.
 
 From here on, every command follows the directory rules under Rules.
 
@@ -114,8 +118,18 @@ test "$(git -C "$WT" branch --show-current)" = "$BRANCH" && git -C "$WT" cherry-
 ```
 
 Add `-m 1` when `SHA` is a merge commit (`git -C "$WT" rev-list --parents -n1 "$SHA"`
-prints three or more SHAs). A clean pick → next source. On a conflict,
-take each file of `git -C "$WT" diff --name-only --diff-filter=U`:
+prints three or more SHAs). Every pick that commits, clean or after
+`--continue`, may have added generated files the release branch ignores;
+`.gitignore` doesn't stop a pick. Drop them:
+
+```bash
+git -C "$WT" diff --name-only --diff-filter=A HEAD^ HEAD | git -C "$WT" check-ignore --no-index --stdin
+```
+
+For any hits, run `git -C "$WT" rm -q -- <hits>` and
+`git -C "$WT" commit -q --amend --no-edit`, and record them as dropped
+generated paths. On a conflict, take each file of
+`git -C "$WT" diff --name-only --diff-filter=U`:
 
 - **Ignored on the target**
   (`git -C "$WT" check-ignore -q --no-index -- "$F"` succeeds): the default
@@ -173,8 +187,9 @@ fix needs.
   be picked at all, write it as a new commit with the source's title and
   the body ``Backport of #N to `release/X.Y`, applied by hand: <reason>.``
 
-**4b. One question per conflicted file whose release side holds backports
-of later main PRs.** Name those backports and their main PRs.
+**4b. One question per pick whose conflicted files hold backports of later
+main PRs.** A revert undoes a whole commit, so ask per pick, not per file.
+Name the backports across all its files, and their main PRs.
 
 - **Revert and replay.** Recommended when those backports account for
   most of the conflict's release-side lines. Lines of PRs not being
@@ -185,10 +200,9 @@ of later main PRs.** Name those backports and their main PRs.
 
 1. `git -C "$WT" cherry-pick --abort`. Picks already made stay.
 2. Revert the chosen backports, newest first: `git -C "$WT" revert --no-edit <backport>`.
-   The `Revert "<subject>"` subject passes a semantic title check, and it
-   is what Step 1's revert rule reads. A revert that conflicts is resolved
-   like Step 3's "Neither" path, then `git -C "$WT" revert --continue --no-edit`,
-   and listed under Applied by hand.
+   A revert that conflicts is resolved like Step 3's "Neither" path, then
+   `git -C "$WT" revert --continue --no-edit`, and listed under Applied by
+   hand.
 3. Pick the remaining `SOURCES`, included prerequisites among them, in
    `mergedAt` order (Step 3).
 4. Replay the reverted backports' main originals in `mergedAt` order:
@@ -203,8 +217,8 @@ of later main PRs.** Name those backports and their main PRs.
   found. Declare the repo's test and lint commands in CLAUDE.md, or
   provide `make test` / `make lint` targets."
 - **Generate first:** the targets that CLAUDE.md or the Makefile names
-  for generated code (`generate`, `gen`, `mocks`, `generate-proto`,
-  `copy-spec`, …): `cd "$WT/<dir>" && make <target>`.
+  for generated code (`generate`, `gen`, `mocks`, `generate-proto`, …):
+  `cd "$WT/<dir>" && make <target>`.
 - **Tool versions:** a tool from PATH whose version the release branch
   pins (`go.mod`, `tools/go.mod`, Makefile, CI workflow) differently is
   installed at the pinned version into a temp dir that goes first on PATH
@@ -214,7 +228,7 @@ of later main PRs.** Name those backports and their main PRs.
   `chore: regenerate <what> for release/X.Y`.
 - **Skipped tests:** list them for the Test plan.
 - **Red run:** re-run only the failing command on the untouched release
-  tip, in a throwaway worktree:
+  tip, in a throwaway worktree outside `ROOT`: `TMP="$(mktemp -d)/release"`,
   `git -C "$ROOT" worktree add --detach "$TMP" "origin/${TARGET}"`, then
   generate and run with `cd "$TMP/<dir>" && …`, then
   `git -C "$ROOT" worktree remove --force "$TMP"`.
@@ -233,17 +247,12 @@ of later main PRs.** Name those backports and their main PRs.
   tags): keep the release branch's pins.
 - **The fix needs a newer dependency on this line:** stop, naming it. That
   dependency needs its own backport and release first.
-- **Never bump by hand a pin a workflow bumps.** Look for one that
-  targets release branches on both branches:
-  ```bash
-  for REF in "origin/${DEFAULT}" "origin/${TARGET}"; do
-    git -C "$ROOT" grep -l -i -E 'repository_dispatch|target_branch|bump' "${REF}" -- .github/workflows
-  done
-  ```
-  Read the hits. A workflow that bumps the dependency on release branches
-  (a `repository_dispatch` handled by the default branch's copy, a
-  `workflow_dispatch` taking a branch, a PR based on `release/*`) is named
-  under Pins, and the pin is left to it.
+- **Never bump by hand a pin a workflow bumps.** For each pin the fix
+  touches, read the hits of
+  `git -C "$ROOT" grep -l -i -E 'repository_dispatch|workflow_dispatch|bump' "${REF}" -- .github/workflows`
+  for `REF` = `origin/${DEFAULT}` and `origin/${TARGET}`. Name the
+  workflow that bumps it on release branches under Pins, and leave the pin
+  to it.
 
 ## Step 7 — Compare with the source
 
@@ -257,20 +266,26 @@ git -C "$WT" diff "$P^" "$P" -- "$F" | git patch-id --stable
 ```
 
 Each file is **same** (equal ids), **differs**, **dropped** (in `S`
-only) or **added** (in `P` only). Rewrite, revert, replay and regenerate
-commits are listed as by hand. Every file that differs needs a reason.
+only) or **added** (in `P` only). Rewrite, revert and regenerate commits
+are listed as by hand. A replay `R` of main's `C` is compared twice: with
+`C`, as above, and with the release backport `B` it replaced (`B^ B`
+against `R^ R`). Otherwise a hunk the old backport left out on purpose
+could come back unnoticed. Every file that differs needs a reason.
 
 ## Step 8 — Push and open a draft PR
 
 ```bash
 test "$(git -C "$WT" branch --show-current)" = "$BRANCH" && git -C "$WT" push -u origin "$BRANCH"
 cd "$WT" && gh pr create -R OWNER/REPO --draft --base "$TARGET" --head "$BRANCH" \
-  --title "<ANCHOR_N's title> (backport #<ANCHOR_N> to release/X.Y)" --body-file "$BODY"
+  --title "$(gh pr view "$ANCHOR_N" -R OWNER/REPO --json title -q .title) (backport #$ANCHOR_N to release/X.Y)" \
+  --body-file "$BODY"
 ```
 
-The title keeps the source's conventional prefix, so it passes a semantic
-PR-title check; a `[release/X.Y]` prefix fails it. Write `BODY` to a temp
-file, leaving out empty sections:
+The title is fetched, never pasted: a title with backticks or `$` would
+run inside double quotes. It keeps the source's conventional prefix, so
+it passes a semantic PR-title check; a `[release/X.Y]` prefix fails it.
+Write `BODY="$(mktemp)"` with the Write tool or a quoted `<<'EOF'`
+heredoc, leaving out empty sections:
 
 ```markdown
 Backport of #A, #B and #C to `release/X.Y`.
@@ -303,8 +318,9 @@ report: the PR URL, `WT`, the compare table, and anything left out.
 ## Rules
 
 - **Directories.** Every git command is `git -C "$WT" …` (or
-  `git -C "$ROOT" …` for reads). Every other command is `cd "$WT" && …`
-  in the same call: never a bare `cd`, never `;` after one. Every
+  `git -C "$ROOT" …` for reads and worktree adds). Every other command is
+  `cd "$WT" && …` (Step 5's throwaway: `cd "$TMP" && …`) in the same call:
+  never a bare `cd`, never `;` after one. Every
   subagent prompt starts with "Work in `<WT>`: run every shell command as
   `cd <WT> && …`."
 - **Assert the branch** before every pick, commit and push.
@@ -314,5 +330,3 @@ report: the PR URL, `WT`, the compare table, and anything left out.
 - **Brace refs before a colon:** `"${REF}:path"`. zsh reads `$REF:a` as a
   modifier.
 - **No force push. The only GitHub write is `gh pr create --draft`.**
-- **Explain every conflict hunk** you resolve, and keep the release
-  behaviour unless the fix is about it.
