@@ -435,7 +435,9 @@ Unverified:
   a spot), **Rule:** "the PR edits the rules it is read against".
 - No ⚑ stop and no Decision: the summary's clause is "Nothing needs your
   judgement." BLIND matches the body: append "Matches the body."
-- More than 5 SPOTS came back: keep the first 5 (they are ranked).
+- More than 5 spots: keep the first 5. The cap applies after Filter, over
+  the agent's spots and the lens spots together; a lens spot ranks with the
+  agent's spots by the same stakes, and at equal stakes after them.
 - A file of a dropped spot goes back into the READ group it fits.
 - Shorten globs in Skip (`gen/go/**`, `internal/*/fakes_test.go`).
 - `<o>` is the changed files in neither a spot nor the skim list.

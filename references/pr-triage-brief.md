@@ -474,8 +474,8 @@ test here — say, log message text — are listed under this heading.
 ### Review lenses
 
 Nothing listed. Read by `/plan-lifecycle:review-guide`, not by triage: checks
-a reviewer of this repository runs by habit, each a `####` heading with three
-lines:
+a reviewer of this repository runs by habit, each a heading
+one heading level below `Review lenses`, with three lines:
 
 - **Trigger:** what in the diff calls for it — a new migration file, a new
   config key or env var, a changed proto field.
