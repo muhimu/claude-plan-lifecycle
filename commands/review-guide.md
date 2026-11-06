@@ -11,7 +11,8 @@ work may wait, and the few places where the change departs from the system's
 shape — and tell them what they can skip. Correctness is the review stack's
 job (`/code-review`, `/plan-lifecycle:review-stack`); this command does not hunt
 bugs, and the risky-code list it ends with is a pointer for those tools. It writes one page per PR to `local/review-guide/<N>.md`, and
-for a stack one more, `local/review-guide/stack-<S>.md`.
+for a stack one more, `local/review-guide/stack-<S>.md`, each rendered to an
+`.html` page beside it.
 
 ## Rules
 
@@ -203,8 +204,9 @@ the stack page. A spot whose code later slices build on stays a spot.
 ## Write
 
 Write `<ROOT>/local/review-guide/<N>.md`, about 90 lines at most. It is read
-in `glow`, and it is shared with the author, so it reads as the decisions
-to make, in order, then the code to hand to the bug-hunting tools.
+as the HTML page `render-report` makes from it, and it is shared with the
+author, so it reads as the decisions to make, in order, then the code to hand
+to the bug-hunting tools.
 
 ```markdown
 # #<N> <title>
@@ -325,9 +327,13 @@ Then `rm -rf <RUN>` for every target.
 
 ## Finish
 
+Run `"${CLAUDE_PLUGIN_ROOT}/bin/render-report"` on every page written. Open
+the stack page for a stack, else `<N>.html`, with `open` (skip this where
+`open` is not on PATH).
+
 Print one line:
-`<OWNER/REPO>#<N> (<MODE>): <d> decisions, <k> spots, <s> files to skim, <o> to read → <ROOT>/local/review-guide/<N>.md`.
+`<OWNER/REPO>#<N> (<MODE>): <d> decisions, <k> spots, <s> files to skim, <o> to read → <ROOT>/local/review-guide/<N>.html`.
 For a stack, print it per target, then
-`<OWNER/REPO> stack #<S> (<MODE>): <d> decisions, <k> spots, <r> resolved across slices → <ROOT>/local/review-guide/stack-<S>.md`.
+`<OWNER/REPO> stack #<S> (<MODE>): <d> decisions, <k> spots, <r> resolved across slices → <ROOT>/local/review-guide/stack-<S>.html`.
 If `git -C <ROOT> check-ignore -q local/review-guide/<N>.md` fails, add: "local/ is not
 gitignored; add `local` to .gitignore to keep reports out of commits."
