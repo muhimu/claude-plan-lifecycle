@@ -330,7 +330,8 @@ order, with two more after the header:
   Docs stops are added as for one PR.
 - Riskiest-code groups merge across slices when they share files.
 - Before you read, Permanent, Ship or block, and Who must act cover the
-  whole stack, each item tagged with its slice.
+  whole stack, each item tagged with its slice. In Ship or block the tag
+  follows the item, never the call: `**Block:** <item> (#<N>) — …`.
 - Leave out "Resolved across the stack" when nothing is.
 
 Then `rm -rf <RUN>` for every target.

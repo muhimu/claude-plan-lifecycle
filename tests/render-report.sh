@@ -149,6 +149,7 @@ for call in "Block" "Ship unless" "After merge" "Ship"; do
   check "(m) page knows the $call call" grep -qF "'$call': '" "$tmp/review-guide/7.html"
 done
 check "(m) template line offers the four calls" grep -qF -- '- **<Block|Ship unless|After merge|Ship>:** ' "$root/commands/review-guide.md"
+check "(m) stack rule puts the slice tag after the call" grep -qF "**Block:** <item> (#<N>) — …" "$root/commands/review-guide.md"
 check "(m) page has a green pill" grep -qF '.pill.green {' "$tmp/review-guide/7.html"
 
 exit "$fail"
