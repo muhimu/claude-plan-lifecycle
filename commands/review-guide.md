@@ -21,9 +21,10 @@ for a stack one more, `local/review-guide/stack-<S>.md`, each rendered to an
 - **Read-only.** `gh` GET calls, `git fetch`, `git show`, `git diff`,
   `git grep`, `git log`, `git merge-base`, `git ls-tree` and file reads.
   No checkout, switch, worktree, build, test or script from the PR. No
-  GitHub writes. One exception: `--review` creates one detached worktree at
-  the tip, runs the review tools there (read-only without `--comment`, which
-  is never passed), and removes it. The reviewer's own checkout never moves.
+  GitHub writes. One exception: `--review` runs the review tools at the tip
+  (read-only without `--comment`, which is never passed): in your checkout
+  when it is already there, else in a detached worktree it creates and
+  removes. The reviewer's own checkout never moves.
 - **Rules come from the rules base (`R`),** never from the PR — nor, in a
   stack, from any slice. A PR that edits an ADR or doc is something to
   report, not a source of rules.
@@ -153,8 +154,8 @@ ROOT=<ROOT>  B=<B>  R=<R>  H=<H>  RUN=<RUN>  DEFAULT=<DEFAULT>  MODE=<MODE>
 Only with `--review`; run it while the agents work. The review tools read
 the code around each hunk from the session's checkout, and
 `/plan-lifecycle:review-stack` stops unless that checkout is at the top of
-the stack, so they run in a worktree at the tip: the `H` of the last
-target. `WT` is `<ROOT>/.claude/worktrees/review-guide-<N>`.
+the stack, so they run at the tip: the `H` of the last target, in your
+checkout when it is already there, else in a worktree. `WT` is `<ROOT>/.claude/worktrees/review-guide-<N>`.
 
 First read each target's current head, `n` being its PR number:
 
@@ -165,7 +166,11 @@ gh pr view <n> -R <OWNER/REPO> --json headRefOid -q .headRefOid
 A target whose head is not its `H` (it moved since Fetch, or `<head-sha>`
 pins an older commit) gets no findings: its section says "Reviewed at
 `<8>`, guide at `<8>`: findings left out." When that is every target, skip
-the review; Finish says why. Otherwise:
+the review; Finish says why.
+
+A checkout already at the tip needs no worktree: when `git rev-parse HEAD`
+is the last target's `H` and `git status --porcelain` lists only `??`
+lines, run the tools below right here. Otherwise make one:
 
 ```bash
 git worktree remove --force <WT> 2>/dev/null     # left over from an earlier run
@@ -173,7 +178,7 @@ rm -rf <WT>
 git worktree add --detach <WT> <H of the last target>
 ```
 
-Enter it with `EnterWorktree` (`path: <WT>`), then:
+and enter it with `EnterWorktree` (`path: <WT>`). Then:
 
 - **One target** (a PR, or one slice pinned by `<head-sha>`): `Skill`
   `code-review` with `<effort> https://github.com/<OWNER/REPO>/pull/<N>`;
@@ -185,9 +190,9 @@ Enter it with `EnterWorktree` (`path: <WT>`), then:
 
 Never pass `--comment` or `--fix`: the guide posts nothing and edits
 nothing. Keep each finding's place, verdict and one-line summary, each
-rejected finding with its reason, and each unverified one with why. Then,
-also when a tool stopped, `ExitWorktree` (`keep`) and
-`git worktree remove --force <WT>`. A tool that stopped leaves the page as
+rejected finding with its reason, and each unverified one with why. If you
+made a worktree, then, also when a tool stopped, `ExitWorktree` (`keep`)
+and `git worktree remove --force <WT>`. A tool that stopped leaves the page as
 without `--review`; Finish says why.
 
 ## Compare
