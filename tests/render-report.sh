@@ -142,4 +142,13 @@ for pair in "commands/review-guide.md:## Write:review-guide" "references/pr-tria
   done <<<"$want"
 done
 
+# (m) Ship or block calls: the template, the help and the page name the same four
+for call in "Block" "Ship unless" "After merge" "Ship"; do
+  check "(m) template rules define $call" grep -qF -- "- **$call:** " "$root/commands/review-guide.md"
+  check "(m) help explains $call" grep -qF "$call:" "$root/references/review-guide-help.md"
+  check "(m) page knows the $call call" grep -qF "'$call': '" "$tmp/review-guide/7.html"
+done
+check "(m) template line offers the four calls" grep -qF -- '- **<Block|Ship unless|After merge|Ship>:** ' "$root/commands/review-guide.md"
+check "(m) page has a green pill" grep -qF '.pill.green {' "$tmp/review-guide/7.html"
+
 exit "$fail"
