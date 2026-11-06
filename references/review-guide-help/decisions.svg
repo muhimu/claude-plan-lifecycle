@@ -5,5 +5,5 @@
   <path d="M50 40L32 84M50 40l18 44M190 40l-18 44M190 40l18 44" stroke="var(--muted)"/>
   <path d="M24 84h52a26 12 0 0 1-52 0z" fill="var(--green-soft)" stroke="var(--green)"/>
   <path d="M164 84h52a26 12 0 0 1-52 0z" fill="var(--amber-soft)" stroke="var(--amber)"/>
-  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11" font-weight="600" text-anchor="middle"><text x="50" y="114" fill="var(--green)">Agree</text><text x="190" y="114" fill="var(--amber)">Push back</text></g>
+  <g stroke="none" fill="currentColor" font-weight="600" text-anchor="middle"><text x="50" y="114" fill="var(--green)">Agree</text><text x="190" y="114" fill="var(--amber)">Push back</text></g>
 </svg>

@@ -201,11 +201,27 @@ for pair in "pr-triage:$html" "review-guide:$tmp/review-guide/7.html"; do
     check "(p) $kind/$s.svg is an image" grep -qF 'role="img"' "$f"
     check "(p) $kind/$s.svg has a label" grep -qE 'aria-label="[^"]+"' "$f"
     check "(p) $kind/$s.svg is 240x140" grep -qF 'viewBox="0 0 240 140"' "$f"
-    check "(p) $kind/$s.svg uses only the page colours" not grep -qE '(fill|stroke|color)="#' "$f"
+    check "(p) $kind/$s.svg uses only the page colours" not grep -qE '<style|style=' "$f"
+    check "(p) $kind/$s.svg colours are tokens" not grep -qEv '="(none|currentColor|var\(--[a-z-]+\))"' < <(grep -oE '(fill|stroke|stop-color|color)="[^"]*"' "$f")
+    check "(p) $kind/$s.svg fonts are tokens" not grep -qEv '="var\(--mono\)"' < <(grep -oE 'font-family="[^"]*"' "$f")
     check "(p) $kind page carries $s" grep -qF "<template id=\"help-pic-$s\">" "$page"
   done
   check "(p) $kind has pictures" [ "$n" -gt 0 ]
 done
+# In a real browser: every Help heading gets its picture, even when a report
+# heading's id is a picture's template id.
+if [ -x "$chrome" ]; then
+  printf '# #9 x\n\n## Help pic ship or block\n\ntext\n' > "$tmp/review-guide/9.md"
+  "$root/bin/render-report" "$tmp/review-guide/9.md" >/dev/null
+  "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/9.html" > "$tmp/dom" 2>/dev/null
+  want="$(grep -c '^## ' "$root/references/review-guide-help.md")"
+  check "(p) DOM has the Help panel" grep -qF 'id="help-panel"' "$tmp/dom"
+  # Route's flag: once in its template, once in the placed picture.
+  check "(p) DOM leaves the pictures' text alone" [ "$(grep -oF '>⚑ <tspan' "$tmp/dom" | wc -l | tr -d ' ')" = 2 ]
+  check "(p) DOM has a picture after each of $want Help headings" [ "$(grep -o '</h2><svg' "$tmp/dom" | wc -l | tr -d ' ')" = "$want" ]
+else
+  echo "skip: (p) DOM checks need Chrome at \$CHROME"
+fi
 check "(p) a page with no type has no pictures" not grep -qF '<template id="help-pic-' "$tmp/notes.html"
 
 exit "$fail"

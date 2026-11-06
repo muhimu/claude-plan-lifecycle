@@ -3,6 +3,6 @@
   <rect x="30" y="60" width="76" height="62" rx="8" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="3"/>
   <circle cx="68" cy="84" r="7" fill="var(--amber)" stroke="none"/>
   <path d="M68 88v16" stroke="var(--amber)" stroke-width="5"/>
-  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11"><text x="124" y="54">proto field</text><text x="124" y="80">column</text><text x="124" y="106">default</text></g>
+  <g stroke="none" fill="currentColor"><text x="124" y="54">proto field</text><text x="124" y="80">column</text><text x="124" y="106">default</text></g>
   <path d="M120 50h0M120 76h0M120 102h0" stroke="var(--amber)" stroke-width="6"/>
 </svg>

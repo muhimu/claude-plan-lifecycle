@@ -4,5 +4,5 @@
   <path d="M120 120V40" stroke="var(--muted)" stroke-width="3"/>
   <path d="M118 44H66l-10 9 10 9h52z" fill="var(--accent-soft)" stroke="var(--accent)"/>
   <path d="M122 70h72l10 9-10 9h-72z" fill="var(--accent-soft)" stroke="var(--accent)"/>
-  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11" fill="var(--accent)" font-weight="600"><text x="70" y="57">the path</text><text x="128" y="83">terms, docs</text></g>
+  <g stroke="none" fill="currentColor" fill="var(--accent)" font-weight="600"><text x="70" y="57">the path</text><text x="128" y="83">terms, docs</text></g>
 </svg>

@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="A table of claims, each with a result dot: reproduced in green, failed in red, not reproducible as a hollow dot">
   <rect x="10" y="12" width="220" height="116" rx="6" fill="var(--surface)" stroke="var(--line)"/>
   <path d="M10 36h220M10 66h220M10 96h220M136 12v116" stroke="var(--line)"/>
-  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11" font-size="9" letter-spacing="1" fill="var(--muted)"><text x="20" y="28">CLAIM</text><text x="146" y="28">RESULT</text></g>
+  <g stroke="none" fill="currentColor" font-size="9" letter-spacing="1" fill="var(--muted)"><text x="20" y="28">CLAIM</text><text x="146" y="28">RESULT</text></g>
   <path d="M20 51h90M20 81h100M20 111h70" stroke="var(--line)" stroke-width="5"/>
   <circle cx="152" cy="51" r="6" fill="var(--green)" stroke="none"/>
   <circle cx="152" cy="81" r="6" fill="var(--red)" stroke="none"/>
   <circle cx="152" cy="111" r="5" stroke="var(--muted)"/>
-  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11" font-size="10"><text x="164" y="55" fill="var(--green)">reproduced</text><text x="164" y="85" fill="var(--red)">failed</text><text x="164" y="115" fill="var(--muted)">not here</text></g>
+  <g stroke="none" fill="currentColor" font-size="10"><text x="164" y="55" fill="var(--green)">reproduced</text><text x="164" y="85" fill="var(--red)">failed</text><text x="164" y="115" fill="var(--muted)">not here</text></g>
 </svg>

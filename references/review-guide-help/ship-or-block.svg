@@ -4,5 +4,5 @@
   <circle cx="60" cy="70" r="14" fill="var(--amber)" stroke="none"/>
   <circle cx="60" cy="108" r="14" fill="var(--green)" stroke="none"/>
   <path d="M86 32h14M86 70h14M86 108h14" stroke="var(--line)"/>
-  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11" font-weight="700"><text x="108" y="36" fill="var(--red)">Block</text><text x="108" y="66" fill="var(--amber)">Ship unless</text><text x="108" y="80" fill="var(--amber)">After merge</text><text x="108" y="112" fill="var(--green)">Ship</text></g>
+  <g stroke="none" fill="currentColor" font-weight="700"><text x="108" y="36" fill="var(--red)">Block</text><text x="108" y="66" fill="var(--amber)">Ship unless</text><text x="108" y="80" fill="var(--amber)">After merge</text><text x="108" y="112" fill="var(--green)">Ship</text></g>
 </svg>

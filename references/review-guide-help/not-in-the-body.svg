@@ -2,5 +2,5 @@
   <path d="M96 52l16-28 14 10 18 18z" fill="var(--surface)" stroke="var(--accent)"/>
   <path d="M96 52L58 96l20 30h88l24-40-46-34z" fill="var(--accent-soft)" stroke="var(--accent)"/>
   <path d="M8 52h224" stroke="var(--accent)" stroke-dasharray="6 5"/>
-  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11"><text x="152" y="32">the PR body</text><text x="94" y="96" font-weight="600" fill="var(--accent)">what the</text><text x="94" y="110" font-weight="600" fill="var(--accent)">code does</text></g>
+  <g stroke="none" fill="currentColor"><text x="152" y="32">the PR body</text><text x="94" y="96" font-weight="600" fill="var(--accent)">what the</text><text x="94" y="110" font-weight="600" fill="var(--accent)">code does</text></g>
 </svg>
