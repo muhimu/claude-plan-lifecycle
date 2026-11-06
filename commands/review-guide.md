@@ -222,11 +222,13 @@ becomes a ⚑ stop in Write. Do not restate the intent; the reviewer has read th
 
 Then pull out what the reviewer must decide, from the body and commits:
 
-- **Rulings:** each decision the PR records with its stated cost if wrong
-  (a "Rulings" or "Decisions" section, or a choice argued in prose). Rank
-  them: one that sets something in PERMANENT first, then by how many
-  callers or users its cost reaches. A ruling with no stated reason ranks
-  above one with a reason.
+- **Rulings:** each decision the PR records with its stated reason, its
+  stated cost if wrong (a "Rulings" or "Decisions" section, or a choice
+  argued in prose), and the refs the reason cites: paths, ADRs, `org/repo`
+  paths. Rank them: one that sets something in PERMANENT first, then by how
+  many callers or users its cost reaches. A ruling with no stated reason
+  ranks above one with a reason; at the same stakes, a `contradicted` or
+  `qualified` ruling (Check rulings) ranks above a confirmed one.
 - **Deferred:** follow-ups, known test gaps, parked items — anything the PR
   says it leaves for later.
 - **Who must act:** people, repos or environments that must do something
@@ -236,6 +238,23 @@ Then pull out what the reviewer must decide, from the body and commits:
 In a stack, run this per target as each agent returns, and take the linked
 issue from the top slice: only it carries `Closes #X`, so a lower slice
 linking none is expected, not a difference.
+
+## Check rulings
+
+As soon as a target's Compare ends, launch one `general-purpose` agent for
+it, unless it has no ruling with a stated reason. It gets the rulings as
+Compare wrote them, never the body:
+
+```
+Read ${CLAUDE_PLUGIN_ROOT}/references/review-guide-brief.md and follow its "## Rulings brief".
+ROOT=<ROOT>  B=<B>  R=<R>  H=<H>
+RULINGS:
+1. <ruling> — reason: <stated reason> — refs: <refs, or "none">
+```
+
+Its `CHECKED` lines give each Decision its `Checked` line in Write. A ruling
+its reply leaves out, or an agent that fails, is "not checkable here": never
+fill in a result yourself.
 
 ## Filter
 
@@ -285,6 +304,7 @@ to the bug-hunting tools.
 
 ## Decisions
 1. 🔒 **<ruling, a few words>** — <its stated cost if wrong>. Agree, or push back on: <the assumption it rests on>.
+   - **Checked:** <confirmed|qualified|contradicted|not checkable here> — <evidence, `file:line`>
 
 ## Route
 ### 1. ⚑ `<file:line>`
@@ -332,7 +352,8 @@ Unverified:
   only when the agent found one.
 - **Decisions** are the top 3 rulings by rank; mark 🔒 a ruling that sets
   something in PERMANENT. More rulings: one line, "<n> more rulings in the
-  body, lower stakes." No rulings: leave the section out.
+  body, lower stakes." No rulings: leave the section out. A ruling with no
+  stated reason has no `Checked` line: there is nothing to check.
 - **Permanent after merge** lists PERMANENT items no Decision covers.
 - **Ship or block** lists what the body defers or leaves unverified, and
   any dependency in another repo that the body or a ruling names. Each item
