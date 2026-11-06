@@ -107,6 +107,31 @@ git diff <B> <H> > <RUN>/diff.patch
 git diff --name-status <B> <H> > <RUN>/files.txt
 ```
 
+## Previous guide
+
+Per target, if `<ROOT>/local/review-guide/<N>.md` exists from an earlier
+run, this run is a re-run. Its header line gives the old head and old base (its
+`head` and `base` fields, 8 characters each); expand each with
+`git rev-parse --verify -q <8>^{commit}`. Keep the old page's Decisions and
+Route headings to compare in Write; for a stack, also read
+`stack-<S>.md`. No old page → skip; the guide is written as on a first run.
+
+The code delta, per target:
+
+```bash
+git merge-base --is-ancestor <old H> <H>      # true and <old B> = <B>: plain new commits
+git log --format='%h %s' <old H>..<H>
+git diff --stat <old H> <H>
+```
+
+Otherwise the PR was force-pushed or rebased: compare
+`git range-diff <old B>..<old H> <B>..<H>`, so changes from a moved base are
+not listed as the author's. When the old head does not resolve, say
+"previous head no longer exists" and compare the pages only.
+
+This is for the orchestrator only, never to the spot agent: it reviews
+`B..H` fresh.
+
 ## Profile
 
 A repository may list its own review lenses under `## Review lenses` in
@@ -333,9 +358,15 @@ to the bug-hunting tools.
 ```markdown
 # #<N> <title>
 
-`<author>` · head `<H, 8 chars>` · base `<baseRefName>@<B, 8 chars>` · <date> · <MODE>: <why>
+`<author>` · head `<H, 8 chars>` · base `<baseRefName>@<B, 8 chars>` · <date> · <MODE>: <why> · updated from `<old head, 8 chars>`
 
 > **<d> decisions · <k> judgement calls · <s> to skip · <f> review findings (<c> confirmed).** <the biggest decision, one clause>
+
+## Since the last guide — `<old head, 8 chars>`
+- <n> commits: <subjects, one clause each> (or: rebased onto <base>@<8>; <what moved>)
+- Resolved: <old stop or Decision> — <what changed, `file:line`>
+- Still open: <old stop or Decision> (now Route <k> / Decision <k>)
+- New: <stop or Decision> — <from which commit>
 
 ## Before you read
 - **Path:** <MAP>
@@ -389,6 +420,11 @@ Unverified:
 - `<short path or glob>` — <reason, a few words>
 ```
 
+- **Since the last guide** and `updated from` only on a re-run (Previous
+  guide). Match the old page's stops and Decisions to the new ones by file
+  and ruling: an old one with no match is Resolved, with the change that
+  resolved it; one that matches is Still open; a new one with no old match
+  is New. Leave out empty bullets. The new page overwrites the old one.
 - **Before you read** only when `MODE` is `new`; **Hot files** only when it
   is `expert` and some file qualifies. `Precedent` only in `new` mode, and
   only when the agent found one.
@@ -457,6 +493,9 @@ order, with two more after the header:
 
 > **<d> decisions · <k> judgement calls.** <the biggest decision, one clause>
 
+## Since the last guide — `<old head, 8 chars>`
+- Resolved: <old stop or Decision> (#<N>) — …
+
 ## How the stack splits
 - **#<N>** <what this slice adds, one line>
 
@@ -490,6 +529,8 @@ order, with two more after the header:
   whole stack, each item tagged with its slice. In Ship or block the tag
   follows the item, never the call: `**Block:** <item> (#<N>) — …`.
 - Leave out "Resolved across the stack" when nothing is.
+- Since the last guide on the stack page uses the stack's top slice's old
+  head, and tags each item with its slice.
 - Review findings has one sub-heading per slice, bottom first; `<h>` counts
   its confirmed and plausible findings. A slice page carries only its own.
 
@@ -510,5 +551,7 @@ effort level, add: "/code-review keeps that effort level for later runs;
 type another level to change it."
 For a stack, print it per target, then
 `<OWNER/REPO> stack #<S> (<MODE>): <d> decisions, <k> spots, <r> resolved across slices → <ROOT>/local/review-guide/stack-<S>.html`.
+On a re-run, add a line per page:
+`<r> resolved, <o> still open, <n> new since the last guide (<old head, 8 chars>)`.
 If `git -C <ROOT> check-ignore -q local/review-guide/<N>.md` fails, add: "local/ is not
 gitignored; add `local` to .gitignore to keep reports out of commits."
