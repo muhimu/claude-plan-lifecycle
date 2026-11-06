@@ -23,6 +23,7 @@ for step in 'git worktree add --detach' 'EnterWorktree' 'ExitWorktree' 'git work
   '`code-review`' '`plan-lifecycle:verify-findings`' '`plan-lifecycle:review-stack <top PR> <effort>`' 'Never pass `--comment`'; do
   check "(b) Review names $step" grep -qF -- "$step" <<<"$review"
 done
+check "(b) a checkout already at the tip needs no worktree" grep -qF 'already at the tip' <<<"$review"
 check "(b) no review call passes --comment" not grep -qE '(code-review|review-stack)[^`]*--comment' "$cmd"
 
 # (b) the stack call names a PR (a fallback stack's S is "of-<N>", which
