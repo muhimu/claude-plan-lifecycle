@@ -266,17 +266,18 @@ reviewers are not posted here.
 
 A PR body's `## Follow-ups` section lists known gaps the PR left; once this
 run fixes one, the entry is stale and misleads the next review. After the
-last push and restack, for each PR this run pushed a fix to (in stack mode,
-also a lower slice a fix moved down to):
+last push and restack, for each PR in `TARGET_PRS` and each slice this run
+pushed a fix to:
 
 1. Read the body as it is now: `gh pr view <PR> --json body -q .body >
    <scratchpad>/pr-fix-body-<PR>.md` (after `/restack`, which may have
    edited its `## Stack` section).
-2. Remove each `## Follow-ups` entry that describes a defect this run fixed
-   on that PR. If none is left, remove the heading too. Change nothing else.
+2. Remove each `## Follow-ups` entry that describes a defect this run
+   fixed, wherever the fix landed. If none is left, remove the heading too. Change nothing else.
    Write the result to `<scratchpad>/pr-fix-body-<PR>.new.md`.
 3. If anything was removed, `diff` the old and new files: only lines of the
-   `## Follow-ups` section may differ. Then
+   `## Follow-ups` section may differ; if others do, skip the edit and note
+   `failed: diff outside Follow-ups`. Then
    `gh pr edit <PR> --body-file <scratchpad>/pr-fix-body-<PR>.new.md`.
 
 If the edit fails, note `failed: <error>` and carry on.

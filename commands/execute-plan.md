@@ -151,7 +151,7 @@ Both skills end by invoking `finishing-a-development-branch`, which presents mer
 
 Whichever skill runs owns TDD discipline, per-task review checkpoints, and intra-plan verification. Do not duplicate its work — let it run.
 
-When it returns control, proceed to Step 3a. If the skill aborts (user cancels, blocking question, etc.), stop with whatever message the skill produced.
+Set `FIXED_FOLLOWUPS` = 0. When it returns control, proceed to Step 3a. If the skill aborts (user cancels, blocking question, etc.), stop with whatever message the skill produced.
 
 ## Step 3a — Fix pass on the follow-ups
 
@@ -160,23 +160,30 @@ the plans dir is private, so reviewers and verifiers see only the body. A
 gap that could have been fixed here should not wait there. Skip this step
 when `FOLLOWUPS` is empty.
 
-Run ONE fix pass over `FOLLOWUPS`, in this session, on this branch:
+First resolve `TEST_CMD` / `LINT_CMD` as Step 4 says; if a resolved command
+does not exist, stop with Step 4's "No verify commands found" message. Then
+run ONE fix pass over `FOLLOWUPS`, in this session, on this branch:
 
-1. **Drop** an item the branch no longer shows (read the code it names).
-2. **Keep** an item that cannot be done now, with its reason: the work is
-   in another repo; it needs a decision only the user can make; it is
+1. **Drop** an item the branch no longer shows (read the code it names), or
+   one a later slice of this plan does (stacked mode).
+2. **Keep** an item that cannot be done in this PR, with its reason: the
+   work is in another repo; it needs a decision only the user can make
+   (this includes editing an ADR this plan's diff does not write); it is
    outside the plan's scope; or it can only be exercised with the changed
    plugin or tool loaded.
 3. **Fix** every other item, test-first: write a test that reproduces it
    and watch it fail, fix, watch it pass, then run `$TEST_CMD` and
-   `$LINT_CMD` (resolved as in Step 4). An item with no behaviour to test
-   (wording, docs) needs no test. Commit each fix with a Conventional-Commits
-   subject. If a fix cannot get to green, revert its changes and keep the
-   item, with what blocked it as the reason.
+   `$LINT_CMD`. An item with no behaviour to test (wording, docs) needs no
+   test. Commit each fix with a Conventional-Commits subject, staging only
+   its files, never `local`. If a fix cannot get to green, undo it with
+   `git restore` (not `git stash`, whose stack all worktrees share) and keep
+   the item as `attempted, blocked by: <blocker>`: it can still be fixed in
+   this PR.
 
-`FOLLOWUPS` is now only the kept items, each with its reason; call the
-number fixed `FIXED_FOLLOWUPS`. A red test inside this pass is the
-red-green loop, not a halt; Step 4 then verifies the result. In stacked mode S3 runs this step once per slice instead.
+`FOLLOWUPS` is now only the kept items, each with its reason; add the
+number fixed to `FIXED_FOLLOWUPS`. A red test inside this pass is the
+red-green loop, not a halt; Step 4 then verifies the result. In stacked mode
+S3 runs this step once per slice instead.
 
 ## Step 4 — Verification (mandatory, halt-on-red)
 
@@ -324,7 +331,7 @@ PR: <PR URL> (#<PR_NUM>, draft)
 $TEST_CMD: passed
 $LINT_CMD: passed
 Plan stamped with PR number.
-Follow-ups: <FIXED_FOLLOWUPS> fixed; <stub path> (<n> left)   # or "Follow-ups: none"
+Follow-ups: <FIXED_FOLLOWUPS> fixed; <stub path> (<n> left)   # "<F> fixed; none left" without a stub; "Follow-ups: none" when there were none
 ADR impact: ADR-<NNNN> <how>          # one line per ADR_IMPACTS entry; omit when none
 ```
 
@@ -368,7 +375,7 @@ de-duplication and S5's stub see every slice, not only this run's. The body
 lists only what that slice's fix pass kept (and what `/pr-fix` has not since
 removed); the items it fixed are gone, and S3's fix pass drops them when
 they come back from the ledger. Start `SEEN_FOLLOWUPS` as the union of
-these.
+these, and `FIXED_FOLLOWUPS` as 0.
 
 Let `R` be the first slice that is not already done (R = M+1 if all are done;
 skip straight to S5). If R > 1, run `git checkout "BRANCH[R-1]"` so slice R
@@ -409,12 +416,11 @@ is already done.
    `RULINGS[N]` = returned rulings minus every entry already in
    `RULINGS[1..N-1]`, and `FOLLOWUPS[N]` = returned follow-ups minus every
    item in `SEEN_FOLLOWUPS` (all that earlier slices returned, fixed or
-   kept); then add `FOLLOWUPS[N]` to `SEEN_FOLLOWUPS`. `ADR_IMPACTS` for the
+   kept; match by the one-liner, ignoring a `not fixed here:` suffix); then add `FOLLOWUPS[N]` to `SEEN_FOLLOWUPS`. `ADR_IMPACTS` for the
    S5 report and stub is the `ADR impact` entries of `RULINGS[1..M]`.
 2a. **Fix pass** — Step 3a over `FOLLOWUPS[N]`, on `BRANCH[N]`, before its
    PR opens, so each fix lands in this slice and nothing needs a restack.
-   `FOLLOWUPS[N]` becomes the kept items; add the count fixed to
-   `FIXED_FOLLOWUPS`.
+   `FOLLOWUPS[N]` becomes the kept items.
 3. **Verify** — identical to Step 4 (`$TEST_CMD`, `$LINT_CMD`, halt-on-red),
    capturing `TEST_TAIL[N]` / `LINT_TAIL[N]`. On red, stop: "Slice <N>
    failed <check>. Slices 1..<N-1> are pushed and green; worktree preserved
@@ -547,7 +553,7 @@ Stack opened (<M> draft PRs, native stack #<STACK_NUM>):   # or "no native stack
 #<PR_NUM[2]>  <slice 2 title>   base: <BRANCH[1]>   test/lint: passed
 ...
 Plan stamped with tip PR #<PR_NUM[M]>.
-Follow-ups: <FIXED_FOLLOWUPS> fixed; <stub path> (<n> left)   # or "Follow-ups: none"
+Follow-ups: <FIXED_FOLLOWUPS> fixed; <stub path> (<n> left)   # "<F> fixed; none left" without a stub; "Follow-ups: none" when there were none
 ADR impact: ADR-<NNNN> <how>          # one line per ADR_IMPACTS entry; omit when none
 Merging is a cascade: after each squash-merge, run /restack in this
 worktree — it rebases the surviving branches, verifies the tip, and
