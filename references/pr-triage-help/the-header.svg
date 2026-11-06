@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Four verdict tiles: outcome needs-changes, impact medium, risk high, decisions none">
+  <rect x="12" y="16" width="104" height="50" rx="6" fill="var(--red-soft)" stroke="var(--red)"/>
+  <rect x="124" y="16" width="104" height="50" rx="6" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <rect x="12" y="76" width="104" height="50" rx="6" fill="var(--red-soft)" stroke="var(--red)"/>
+  <rect x="124" y="76" width="104" height="50" rx="6" fill="var(--green-soft)" stroke="var(--green)"/>
+  <g stroke="none" fill="currentColor" font-size="9" letter-spacing="1" fill="var(--muted)"><text x="22" y="34">OUTCOME</text><text x="134" y="34">IMPACT</text><text x="22" y="94">RISK</text><text x="134" y="94">DECISIONS</text></g>
+  <g stroke="none" fill="currentColor" font-size="13" font-weight="700"><text x="22" y="54" fill="var(--red)">needs-changes</text><text x="134" y="54" fill="var(--amber)">medium</text><text x="22" y="114" fill="var(--red)">high</text><text x="134" y="114" fill="var(--green)">none</text></g>
+</svg>
