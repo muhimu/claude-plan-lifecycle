@@ -133,6 +133,12 @@ for step in 'git merge-base --is-ancestor <old H> <H>' "git log --format='%h %s'
 done
 check "(h) the section follows the summary line" grep -qx '## Since the last guide — `<old head, 8 chars>`' <<<"$(grep -A2 -F '> **<d> decisions · <k> judgement calls · <s> to skip' "$cmd")"
 check "(h) the stack page has it too" grep -qx '## Since the last guide — `<old head, 8 chars>`' <<<"$(grep -A2 -F '> **<d> decisions · <k> judgement calls.**' "$cmd")"
+check "(h) Resolved only when the delta touches it" grep -qF 'Resolved only when the delta touches its file or ruling' "$cmd"
+check "(h) an item pushed out of the top is no longer ranked" grep -qF -- '- No longer ranked: ' "$cmd"
+check "(h) an item of a merged slice is merged" grep -qF 'Merged: <old stop or Decision> (#<N>)' "$cmd"
+check "(h) stack page merges the slice deltas" grep -qF "merges the slices' own sections" "$cmd"
+check "(h) Rules allow rev-parse and range-diff" grep -qF '`git rev-parse`, `git range-diff`' <<<"$(section Rules)"
+check "(h) Reading order names Since the last guide" grep -qF 'Since the last guide' <<<"$(awk '/^## Reading order$/{on=1;next} on&&/^## /{exit} on' "$root/references/review-guide-help.md")"
 check "(h) header says updated from" grep -qF 'updated from `<old head, 8 chars>`' "$cmd"
 check "(h) Finish counts resolved, still open and new" grep -qF '<r> resolved, <o> still open, <n> new since the last guide' <<<"$(section Finish)"
 
