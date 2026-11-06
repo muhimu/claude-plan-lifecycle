@@ -213,12 +213,14 @@ works for an issue in another repository), and its review threads, every
 page of them:
 
 ```bash
-gh api graphql --paginate -F o=<OWNER> -F r=<REPO> -F n=<N> -f query='query($o:String!,$r:String!,$n:Int!,$endCursor:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{path body}}}}}}}'
+gh api graphql --paginate -F o=<OWNER> -F r=<REPO> -F n=<N> -f query='query($o:String!,$r:String!,$n:Int!,$endCursor:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{path body}}}}}}}' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[] | [.isResolved, .comments.nodes[0].path, (.comments.nodes[0].body[0:200])] | @tsv'
 ```
 
 `<OWNER>` and `<REPO>` are the two halves of `<OWNER/REPO>`. They give the
-Earlier threads line in Write: how many, how many
-unresolved, and what they asked. The spot agent never sees them. List where BLIND and the body,
+Earlier threads line in Write: one line per thread, so `<n>` is the line
+count and `<u>` the lines that start with `false`; the first comment's first
+200 characters say what it asked. The spot agent never sees them. List where BLIND and the body,
 commits or issue disagree: behaviour the PR does not mention, claims it does
 not carry out, scope beyond what it states. Note the docs BLIND names: each
 becomes a ⚑ stop in Write. Do not restate the intent; the reviewer has read the body.
@@ -256,8 +258,9 @@ RULINGS:
 ```
 
 Its `CHECKED` lines give each Decision its `Checked` line in Write. A ruling
-its reply leaves out, or an agent that fails, is "not checkable here": never
-fill in a result yourself.
+its reply leaves out, or an agent that fails, is
+"not checkable here — check did not run": never fill in a result or evidence
+yourself.
 
 ## Filter
 
@@ -354,7 +357,7 @@ Unverified:
 - **Before you read** only when `MODE` is `new`; **Hot files** only when it
   is `expert` and some file qualifies. `Precedent` only in `new` mode, and
   only when the agent found one.
-- **Decisions** are the top 3 rulings by rank; mark 🔒 a ruling that sets
+- **Decisions** are the top 3 rulings once you rank again with their Checked status; mark 🔒 a ruling that sets
   something in PERMANENT. More rulings: one line, "<n> more rulings in the
   body, lower stakes." No rulings: leave the section out. A ruling with no
   stated reason has no `Checked` line: there is nothing to check.
