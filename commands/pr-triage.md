@@ -7,7 +7,7 @@ argument-hint: [stack or PR number — optional, defaults to the current branch'
 
 Prove what a PR says by running it, so its owner can trust a PR they cannot
 test themselves. For each PR this command writes one page to
-`local/triage/<N>.md`: what the change does, how costly it is if wrong and how
+`local/triage/<N>.md`, and renders it to `local/triage/<N>.html` beside it: what the change does, how costly it is if wrong and how
 likely it is to break, every claim with how it was re-proved and the result,
 at most five proven findings, the decisions a human has to make, and what was
 and was not checked.
@@ -157,12 +157,19 @@ rm -rf "$RUN"
 
 ## Summary
 
+Run `"${CLAUDE_PLUGIN_ROOT}/bin/render-report"` on every report that exists,
+after Handed-up deferrals (that step reads the `.md`). Open one page with
+`open` (skip this where `open` is not on PATH). For one PR, open that PR's
+page. For a stack, open the first report with a failed claim or a finding,
+else the bottom slice's. The Report column shows the `.html` path; everything
+else keeps reading the `.md`.
+
 ```
 Stack #<S> — triaged <K> open PRs
 
 | PR | Triage | Ledger | Findings | Report |
 |----|--------|--------|----------|--------|
-| #<a> | needs-changes · impact medium · risk medium · decisions none | 11 reproduced, 1 failed, 1 not reproducible here | 1 | local/triage/<a>.md |
+| #<a> | needs-changes · impact medium · risk medium · decisions none | 11 reproduced, 1 failed, 1 not reproducible here | 1 | local/triage/<a>.html |
 | #<b> | failed: <reason> | | | |
 
 Handed up:
