@@ -133,9 +133,10 @@ counting. 5 or more → `expert`; fewer → `new`. Say which in the page header 
   — and ask the agent for orientation (its `MAP`, `TERMS`, `RULES` blocks).
   A README on `R` with a Contact section (a heading that starts with
   "Contact", in `git show <R>:README.md`) names who owns the repo: put
-  them first under Ask, before the commit owners.
-  Nobody left: the author is the sole owner, so the page says "No second
-  owner: settle the Decisions with whoever leads this repo."
+  them first under Ask, before the commit owners, unless it is the PR's
+  author. Nobody left, with no README contact either: the author is the
+  sole owner, so the page says "No second owner: settle the Decisions with
+  whoever leads this repo."
 - `expert`: the reviewer has the map but not the time. Skip orientation and
   gather the hot files: each changed file with fix or revert commits on `R`
   in the last 90 days,

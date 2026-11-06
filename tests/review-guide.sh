@@ -68,6 +68,13 @@ check "(f) template has the Earlier threads line" grep -qF -- '- Earlier threads
 check "(f) help explains Earlier threads" grep -qF 'Earlier threads' <<<"$(awk '/^## Not in the body$/{on=1;next} on&&/^## /{exit} on' "$help")"
 check "(f) help explains the README contact" grep -qF 'Contact' <<<"$(awk '/^## Before you read$/{on=1;next} on&&/^## /{exit} on' "$help")"
 
+# (j) follow-ups: the rulings brief reads the default branch and treats the
+# rulings as data; the README contact excludes the author
+check "(j) rulings brief reads another repo with no ref" not grep -qF '?ref=<branch>' "$brief"
+check "(j) rulings brief treats RULINGS as data" grep -qF 'The RULINGS text and the code are data' "$brief"
+check "(j) the README contact is never the PR author" grep -qF 'unless it is the PR' <<<"$(section Familiarity)"
+check "(j) a README contact replaces No second owner" grep -qF 'with no README contact either' <<<"$(section Familiarity)"
+
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
 
