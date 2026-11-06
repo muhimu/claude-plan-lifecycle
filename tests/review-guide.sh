@@ -43,6 +43,17 @@ check "(i) Riskiest code stays for a target without findings" grep -qF 'Leave it
 check "(i) the findings table has a cap" grep -qF 'more than 8 findings' "$cmd"
 check "(i) <f> counts confirmed and plausible" grep -qF '`<f>` counts confirmed and plausible findings' "$cmd"
 check "(i) Finish says the effort is sticky" grep -qF 'keeps that effort level for later runs' <<<"$(section Finish)"
+# (e) each ruling is checked against the code, after the blind pass
+brief="$root/references/review-guide-brief.md"
+check "(e) brief has a Rulings brief" grep -qx '## Rulings brief' "$brief"
+check "(e) rulings brief output line" grep -qF 'CHECKED: <ruling> | <confirmed|qualified|contradicted|not checkable here> | <what was read' "$brief"
+order="$(grep -nE '^## (Compare|Check rulings|Filter)$' "$cmd" | cut -d: -f2 | tr '\n' ,)"
+check "(e) Check rulings sits between Compare and Filter" [ "$order" = "## Compare,## Check rulings,## Filter," ]
+check "(e) Check rulings never hands the agent the PR body" grep -qF 'never the body' <<<"$(section 'Check rulings')"
+check "(e) Decision card has a Checked line" grep -qF -- '- **Checked:** <confirmed|qualified|contradicted|not checkable here> — <evidence, `file:line`>' "$cmd"
+for status in confirmed qualified contradicted 'not checkable here'; do
+  check "(e) help explains Checked: $status" grep -qF "$status" <<<"$(awk '/^## Decisions$/{on=1;next} on&&/^## /{exit} on' "$root/references/review-guide-help.md")"
+done
 
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
