@@ -23,7 +23,7 @@ Sections with nothing in them are left out. Before you read appears only when yo
 
 ## Before you read
 - **You see:** the path a request or job takes through the changed code, the terms the diff relies on, the docs and ADRs that govern it, and whom to ask.
-- **How to read it:** all of it comes from the base, before this PR. Ask is the people with the most commits on these paths, not the author.
+- **How to read it:** all of it comes from the base, before this PR. Ask is the people with the most commits on these paths, not the author, led by whoever the README's Contact section names.
 - **Why:** the map you would otherwise build by reading the code.
 
 ## Decisions
@@ -100,7 +100,7 @@ Rejected:
 
 ## Not in the body
 - **You see:** what the code does that the PR's description does not say: behaviour it leaves out, claims the code does not carry out, scope beyond what it states.
-- **How to read it:** a difference tied to a stop sits in that stop's Why instead.
+- **How to read it:** a difference tied to a stop sits in that stop's Why instead. Earlier threads counts the PR's review threads, how many are unresolved, and what they asked: check that the code answers them before you raise the same point.
 - **Why:** the description is what reviewers and later readers trust.
 
 ## Skip

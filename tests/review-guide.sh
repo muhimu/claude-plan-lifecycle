@@ -55,6 +55,15 @@ for status in confirmed qualified contradicted 'not checkable here'; do
   check "(e) help explains Checked: $status" grep -qF "$status" <<<"$(awk '/^## Decisions$/{on=1;next} on&&/^## /{exit} on' "$root/references/review-guide-help.md")"
 done
 
+# (f) earlier review threads and the README contact
+help="$root/references/review-guide-help.md"
+check "(f) Compare reads every review thread" grep -qF 'reviewThreads(first:100,after:$endCursor)' <<<"$(section Compare)"
+check "(f) Compare paginates the threads" grep -qF 'gh api graphql --paginate' <<<"$(section Compare)"
+check "(f) Familiarity puts the README contact first under Ask" grep -qF 'Contact' <<<"$(section Familiarity)"
+check "(f) template has the Earlier threads line" grep -qF -- '- Earlier threads — <n> threads, <u> unresolved: <what they asked, one clause>' "$cmd"
+check "(f) help explains Earlier threads" grep -qF 'Earlier threads' <<<"$(awk '/^## Not in the body$/{on=1;next} on&&/^## /{exit} on' "$help")"
+check "(f) help explains the README contact" grep -qF 'Contact' <<<"$(awk '/^## Before you read$/{on=1;next} on&&/^## /{exit} on' "$help")"
+
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
 

@@ -131,6 +131,9 @@ counting. 5 or more → `expert`; fewer → `new`. Say which in the page header 
   paths, leaving out the PR's author and bots —
   `tr '\n' '\0' < <RUN>/paths.txt | xargs -0 -r git log <R> --since=1.year --format=%an -- | sort | uniq -c | sort -rn`
   — and ask the agent for orientation (its `MAP`, `TERMS`, `RULES` blocks).
+  A README on `R` with a Contact section (a heading that starts with
+  "Contact", in `git show <R>:README.md`) names who owns the repo: put
+  them first under Ask, before the commit owners.
   Nobody left: the author is the sole owner, so the page says "No second
   owner: settle the Decisions with whoever leads this repo."
 - `expert`: the reviewer has the map but not the time. Skip orientation and
@@ -206,7 +209,16 @@ git log --format='=== %h%n%B' <B>..<H>
 
 and each linked issue's title and body
 (`gh issue view <closingIssuesReferences[].url> --json title,body`; the URL
-works for an issue in another repository). List where BLIND and the body,
+works for an issue in another repository), and its review threads, every
+page of them:
+
+```bash
+gh api graphql --paginate -F o=<OWNER> -F r=<REPO> -F n=<N> -f query='query($o:String!,$r:String!,$n:Int!,$endCursor:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{path body}}}}}}}'
+```
+
+`<OWNER>` and `<REPO>` are the two halves of `<OWNER/REPO>`. They give the
+Earlier threads line in Write: how many, how many
+unresolved, and what they asked. The spot agent never sees them. List where BLIND and the body,
 commits or issue disagree: behaviour the PR does not mention, claims it does
 not carry out, scope beyond what it states. Note the docs BLIND names: each
 becomes a ⚑ stop in Write. Do not restate the intent; the reviewer has read the body.
@@ -291,7 +303,7 @@ to the bug-hunting tools.
 - **Path:** <MAP>
 - **Terms:** <term> — <meaning>; …
 - **Rules here:** `<path>` — <what it decides>
-- **Ask:** `<owner>`, `<owner>` (most commits on these paths)
+- **Ask:** <README contact, when there is one>, `<owner>`, `<owner>` (most commits on these paths)
 
 ## Decisions
 1. 🔒 **<ruling, a few words>** — <its stated cost if wrong>. Agree, or push back on: <the assumption it rests on>.
@@ -333,6 +345,7 @@ Unverified:
 
 ## Not in the body
 - <code-vs-body difference that belongs to no stop, with `file:line`>
+- Earlier threads — <n> threads, <u> unresolved: <what they asked, one clause>
 
 ## Skip
 - `<short path or glob>` — <reason, a few words>
@@ -378,6 +391,8 @@ Unverified:
   see Rejected)".
 - A code-vs-body difference tied to a stop goes in that stop's `Why`, never
   repeated under "Not in the body". Leave any empty section out.
+- **Earlier threads** only when the PR has review threads. In a stack, one
+  line per slice that has them, tagged with its slice.
 - The PR adds or edits an ADR or doc: that doc is a ⚑ stop (unless already
   a spot), **Rule:** "the PR edits the rules it is read against".
 - No ⚑ stop and no Decision: the summary's clause is "Nothing needs your
