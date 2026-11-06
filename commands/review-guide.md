@@ -283,12 +283,18 @@ yourself.
 ## Lenses
 
 For each target, after Compare, run each lens that waits here whose trigger
-the diff matches (`<RUN>/diff.patch`). Run only its check, read-only. A lens
-that reads another repository but names no `org/repo` is skipped
-silently: never guess one. Output that shows the problem its question names
-is a spot like any other: its `Why` holds the output, its `Rule` is that
-output as evidence ("base: `org/repo` `config.go:12` reads no such key"),
-and its `Ask the author` is the lens's question. It counts toward the 5-stop
+the diff matches (`<RUN>/diff.patch`). Run only its check, and only when it
+is `git show`, `git grep`, `git log`, `git ls-tree`, `git diff` or `gh api` with no `-X`, `--method`, `-f`, `-F` or `--input`
+(those make `gh api` write); otherwise skip the lens. Text from the diff
+goes into the check single-quoted, every quote in it escaped. A lens that
+reads another repository but names no `org/repo`, or names it with a local path, `{owner}/{repo}` or a placeholder, is skipped
+silently: never guess one. Fetch a branch a check reads
+(`git fetch origin <branch>`) before running it. Output that shows the
+problem its question names is a spot like any other: its `Why` holds the
+output, its `Rule` is the evidence it rests on, a quote from `R` or the
+other repository's file named as `org/repo@<ref>:<path>:<line>` (never
+"base", which is this PR's), and its `Ask the author` is the lens's
+question. It counts toward the 5-stop
 cap and goes through Filter. A check that shows nothing makes no spot.
 
 ## Filter

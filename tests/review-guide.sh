@@ -84,6 +84,11 @@ check "(g) Profile reads the default branch" grep -qF 'origin/<DEFAULT>:.claude/
 order="$(grep -nE '^## (Fetch|Profile|Familiarity|Check rulings|Lenses|Filter)$' "$cmd" | cut -d: -f2 | tr '\n' ,)"
 check "(g) Profile after Fetch; Lenses between Check rulings and Filter" [ "$order" = "## Fetch,## Profile,## Familiarity,## Check rulings,## Lenses,## Filter," ]
 check "(g) a cross-repo lens with no org/repo is skipped" grep -qF 'names no `org/repo`' <<<"$(section Lenses)"
+check "(g) lens checks are allow-listed" grep -qF 'git show`, `git grep`, `git log`, `git ls-tree`, `git diff` or `gh api` with no `-X`, `--method`, `-f`, `-F` or `--input`' <<<"$(section Lenses)"
+check "(g) diff text is quoted into a check" grep -qF 'single-quoted, every quote in it escaped' "$brief"
+check "(g) a local path or placeholder repo is skipped" grep -qF 'a local path, `{owner}/{repo}` or a placeholder' <<<"$(section Lenses)"
+check "(g) the rule test admits history and lens rules" grep -qF 'the commit that added the removed code, or a lens check' "$brief"
+check "(g) a lens spot's Rule is not its output (Ruling 4)" not grep -qF 'its `Rule` is that' <<<"$(section Lenses)"
 check "(g) README documents Review lenses" grep -qF 'Review lenses' "$root/README.md"
 
 # (c) the page has a Review findings section in the template
