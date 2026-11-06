@@ -1,7 +1,7 @@
 This page points you at the parts of a colleague's PR that need a human's judgement, and tells you what you can skip. It does not hunt bugs: `/code-review` and `/plan-lifecycle:review-stack` do that. It is shared with the PR's author, so everything on it is phrased as a question they can answer.
 
 ## Reading order
-- **First:** the summary line under the title, then Decisions, then Route, then Review findings when the guide ran the review.
+- **First:** the summary line under the title, then Since the last guide when the page was written again, then Decisions, then Route, then Review findings when the guide ran the review.
 - **Then:** Permanent after merge, Ship or block, Who must act after merge.
 - **Last, or never:** Riskiest code (hand it to a bug-hunting tool) and Skip. A page with Review findings has no Riskiest code: the tool already looked.
 
@@ -15,6 +15,17 @@ Sections with nothing in them are left out. Before you read appears only when yo
 **Example**
 
 > **2 decisions · 1 judgement call · 3 to skip.** Whether the new cache lives in the request path.
+
+## Since the last guide
+- **You see:** on a page written again for the same PR, what changed since the last guide: the new commits, or a line saying the PR was rebased, then the earlier stops and Decisions sorted into Resolved, Still open and New.
+- **How to read it:** Resolved names the change that settled it; No longer ranked is still in the code but outranked by newer items; Merged (on a stack page) belongs to a slice that has merged since; Still open points at its new place on this page; New says which commit brought it. "Rebased onto" means the author moved the PR onto a newer base: what came from the base is not listed as theirs. "Previous head no longer exists" means the old commits are gone, so only the pages were compared.
+- **Why:** the author's answers show up as code changes, so you read only what moved since your last pass.
+
+**Example**
+
+- 2 commits: move the cache call into the service; add an eviction test
+- Resolved: `internal/cache/store.go:42` — the storage import is gone (`internal/service/orders.go:88` now calls it)
+- Still open: Retries stay in the client (now Decision 1)
 
 ## How the stack splits
 - **You see:** one line per slice of the stack, bottom first: what that slice adds.

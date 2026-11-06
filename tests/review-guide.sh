@@ -96,6 +96,33 @@ check "(g) README documents Review lenses" grep -qF 'Review lenses' "$root/READM
 check "(k) the 5-stop cap applies after Filter, lens spots ranked in" grep -qF 'The cap applies after Filter' "$cmd"
 check "(k) history follows renames" grep -qF "git log -S'<removed line, trimmed>' --follow" "$brief"
 check "(k) lens heading is one level below Review lenses" grep -qF 'one heading level below `Review lenses`' "$root/references/pr-triage-brief.md"
+# (h) a re-run opens with what changed since the last guide
+prev="$(section 'Previous guide')"
+order="$(grep -nE '^## (Fetch|Previous guide|Profile)$' "$cmd" | cut -d: -f2 | tr '\n' ,)"
+check "(h) Previous guide sits right after Fetch" [ "$order" = "## Fetch,## Previous guide,## Profile," ]
+for step in 'git merge-base --is-ancestor <old H> <H>' "git log --format='%h %s' <old H>..<H>" 'git range-diff <old B>..<old H> <B>..<H>' 'previous head no longer exists' 'never to the spot agent'; do
+  check "(h) Previous guide names $step" grep -qF -- "$step" <<<"$prev"
+done
+check "(h) the section follows the summary line" grep -qx '## Since the last guide — `<old head, 8 chars>`' <<<"$(grep -A2 -F '> **<d> decisions · <k> judgement calls · <s> to skip' "$cmd")"
+check "(h) the stack page has it too" grep -qx '## Since the last guide — `<old head, 8 chars>`' <<<"$(grep -A2 -F '> **<d> decisions · <k> judgement calls.**' "$cmd")"
+check "(h) Resolved only when the delta touches it" grep -qF 'Resolved only when the delta touches its file or ruling' "$cmd"
+check "(h) an item pushed out of the top is no longer ranked" grep -qF -- '- No longer ranked: ' "$cmd"
+check "(h) an item of a merged slice is merged" grep -qF 'Merged: <old stop or Decision> (#<N>)' "$cmd"
+check "(h) stack page merges the slice deltas" grep -qF "merges the slices' own sections" "$cmd"
+check "(h) Rules allow rev-parse and range-diff" grep -qF '`git rev-parse`, `git range-diff`' <<<"$(section Rules)"
+check "(h) Reading order names Since the last guide" grep -qF 'Since the last guide' <<<"$(awk '/^## Reading order$/{on=1;next} on&&/^## /{exit} on' "$root/references/review-guide-help.md")"
+check "(h) header says updated from" grep -qF 'updated from `<old head, 8 chars>`' "$cmd"
+check "(h) Finish counts resolved, still open and new" grep -qF '<r> resolved, <o> still open, <n> new since the last guide' <<<"$(section Finish)"
+
+# (l) follow-ups: the old head is fetched from GitHub when it is gone locally;
+# a missing base and a guide older than the last are handled; the section has
+# a cap; the stack header says updated from
+check "(l) old head expanded and fetched from GitHub" grep -qF 'gh api repos/<OWNER/REPO>/commits/<8> -q .sha' <<<"$prev"
+check "(l) an old page without a base field" grep -qF 'no `base` field' <<<"$prev"
+check "(l) a guide older than the last one" grep -qF 'git merge-base --is-ancestor <H> <old H>' <<<"$prev"
+check "(l) plain new commits only after the ancestor test" grep -qF '**Plain new commits:**' <<<"$prev"
+check "(l) Since the last guide has a cap" grep -qF 'at most 8 items' "$cmd"
+check "(l) stack header says updated from" grep -qF '<date> · <MODE>: <why> · updated from `<old head, 8 chars>`' <<<"$(grep -F '#<N> head `<8>` on' "$cmd")"
 
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
