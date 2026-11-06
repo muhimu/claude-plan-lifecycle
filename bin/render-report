@@ -191,6 +191,7 @@ img { max-width: 100%; }
 }
 .pill.red { background: var(--red-soft); color: var(--red); }
 .pill.amber { background: var(--amber-soft); color: var(--amber); }
+.pill.green { background: var(--green-soft); color: var(--green); }
 .tag { display: inline-block; padding: 0 .3em; border-radius: 4px; line-height: 1.45; }
 .tag.flag { background: var(--amber-soft); color: var(--amber); }
 /* 🔒 marks a ruling that sets something permanent: shown as a pill, kept as text. */
@@ -514,6 +515,26 @@ HTML
       }
     });
 
+    // Ship or block: an item that opens with a bold call gets a pill instead.
+    // A loose item's <p> is unwrapped, so it still lays out as a row.
+    var calls = { 'Block': 'red', 'Ship unless': 'amber', 'After merge': 'amber', 'Ship': 'green' };
+    all(root, 'h2').forEach(function (h2) {
+      if (h2.textContent.split(' — ')[0].trim() !== 'Ship or block') return;
+      for (var n = h2.nextElementSibling; n && n.tagName !== 'H2'; n = n.nextElementSibling) {
+        if (n.tagName === 'UL') Array.prototype.forEach.call(n.children, function (li) {
+          var s = first(li), m = s && s.nodeName === 'STRONG' && /^(Block|Ship unless|After merge|Ship):\s*$/.exec(s.textContent);
+          if (!m) return;
+          var t = s.nextSibling, p = s.parentNode;
+          if (t && t.nodeType === 3) t.nodeValue = t.nodeValue.replace(/^\s+/, '');
+          s.replaceWith(el('span', 'pill ' + calls[m[1]], m[1]));
+          if (p.nodeName === 'P' && li.children.length === 1) {
+            while (p.firstChild) li.insertBefore(p.firstChild, p);
+            p.remove();
+          }
+        });
+      }
+    });
+
     // A list of "**Label:** value" items becomes a label/value grid; so does
     // a list of plain "Label: value" items nested in an item (a finding's
     // Trigger/Effect/Evidence/Fix), never a top-level prose list.
@@ -619,6 +640,8 @@ HTML
   marks(top);
   dress(page);
 
+HTML
+  cat <<'HTML'
   // Section headings: an id and a contents link; "x — y" is a title and a
   // hint; the asks under "For a human" become callouts.
   var toc = el('nav', 'toc');

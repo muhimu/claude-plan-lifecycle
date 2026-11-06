@@ -59,9 +59,14 @@ Sections with nothing in them are left out. Before you read appears only when yo
 - **Why:** ordinary code can change in the next PR; these cannot.
 
 ## Ship or block
-- **You see:** the work the PR leaves for later, each with ship or block and what decides it.
-- **How to read it:** "ship" means the PR is safe without it; "block" means it is not.
+- **You see:** what the PR defers or leaves unverified, and dependencies in other repos, each with a call and what decides it.
+- **How to read it:** Block: the PR fails at launch without it. Ship unless: it breaks something after merge, but there is time to fix it. After merge: only a live run can check it. Ship: a check confirmed it, so you need not.
 - **Why:** deferred work is a decision too; this makes it explicit.
+
+**Example**
+
+- **Block:** the job's role lacks the new grant (`deploy/role.yaml:12`) — the job fails at start without it.
+- **Ship:** "tests cover the timeout path" — `make test` ran it.
 
 ## Who must act after merge
 - **You see:** people, repos or environments that must do something once this merges.

@@ -236,7 +236,7 @@ to the bug-hunting tools.
 - `<file:line>` — <what> (no ruling covers it)
 
 ## Ship or block
-- <deferred item> — ship / block: <what decides it>
+- **<Block|Ship unless|After merge|Ship>:** <item> (`file:line` when there is one) — <what decides it>
 
 ## Who must act after merge
 - <who> — <what>
@@ -261,6 +261,16 @@ to the bug-hunting tools.
   something in PERMANENT. More rulings: one line, "<n> more rulings in the
   body, lower stakes." No rulings: leave the section out.
 - **Permanent after merge** lists PERMANENT items no Decision covers.
+- **Ship or block** lists what the body defers or leaves unverified, and
+  any dependency in another repo that the body or a ruling names. Each item
+  opens with one call, in this order:
+  - **Block:** the PR fails at launch without it: a missing grant, a merge
+    order, a change in another repo.
+  - **Ship unless:** it breaks something after merge, but there is still
+    time to fix it.
+  - **After merge:** only a live run can check it.
+  - **Ship:** a body claim a check confirmed, listed so the reviewer does
+    not check it again.
 - **Route** holds the ⚑ stops only: the spots, ranked, then docs stops. A
   stop's heading is only the path, in backticks. Each label is its own bullet
   of one or two lines. `Ask the author` turns the stop into a question the
@@ -320,7 +330,8 @@ order, with two more after the header:
   Docs stops are added as for one PR.
 - Riskiest-code groups merge across slices when they share files.
 - Before you read, Permanent, Ship or block, and Who must act cover the
-  whole stack, each item tagged with its slice.
+  whole stack, each item tagged with its slice. In Ship or block the tag
+  follows the item, never the call: `**Block:** <item> (#<N>) — …`.
 - Leave out "Resolved across the stack" when nothing is.
 
 Then `rm -rf <RUN>` for every target.
