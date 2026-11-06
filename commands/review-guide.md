@@ -19,7 +19,7 @@ for a stack one more, `local/review-guide/stack-<S>.md`, each rendered to an
 ## Rules
 
 - **Read-only.** `gh` GET calls, `git fetch`, `git show`, `git diff`,
-  `git grep`, `git log`, `git merge-base`, `git ls-tree` and file reads.
+  `git grep`, `git log`, `git merge-base`, `git ls-tree`, `git rev-parse`, `git range-diff` and file reads.
   No checkout, switch, worktree, build, test or script from the PR. No
   GitHub writes. One exception: `--review` runs the review tools at the tip
   (read-only without `--comment`, which is never passed): in your checkout
@@ -367,6 +367,7 @@ to the bug-hunting tools.
 - Resolved: <old stop or Decision> — <what changed, `file:line`>
 - Still open: <old stop or Decision> (now Route <k> / Decision <k>)
 - New: <stop or Decision> — <from which commit>
+- No longer ranked: <old Decision or stop> — still in the code, outranked
 
 ## Before you read
 - **Path:** <MAP>
@@ -422,9 +423,11 @@ Unverified:
 
 - **Since the last guide** and `updated from` only on a re-run (Previous
   guide). Match the old page's stops and Decisions to the new ones by file
-  and ruling: an old one with no match is Resolved, with the change that
-  resolved it; one that matches is Still open; a new one with no old match
-  is New. Leave out empty bullets. The new page overwrites the old one.
+  and ruling: one that matches is Still open; a new one with no old match
+  is New. An old one with no match is Resolved only when the delta touches its file or ruling,
+  naming that change; otherwise it is No longer ranked (the caps pushed it
+  out). Never invent a change. Leave out empty bullets. The new page
+  overwrites the old one.
 - **Before you read** only when `MODE` is `new`; **Hot files** only when it
   is `expert` and some file qualifies. `Precedent` only in `new` mode, and
   only when the agent found one.
@@ -495,6 +498,7 @@ order, with two more after the header:
 
 ## Since the last guide — `<old head, 8 chars>`
 - Resolved: <old stop or Decision> (#<N>) — …
+- Merged: <old stop or Decision> (#<N>) — the slice merged since
 
 ## How the stack splits
 - **#<N>** <what this slice adds, one line>
@@ -529,8 +533,10 @@ order, with two more after the header:
   whole stack, each item tagged with its slice. In Ship or block the tag
   follows the item, never the call: `**Block:** <item> (#<N>) — …`.
 - Leave out "Resolved across the stack" when nothing is.
-- Since the last guide on the stack page uses the stack's top slice's old
-  head, and tags each item with its slice.
+- Since the last guide on the stack page merges the slices' own sections,
+  each item tagged with its slice; its heading carries the top slice's old
+  head. An old stack page's item from a slice that merged since is Merged,
+  never Resolved.
 - Review findings has one sub-heading per slice, bottom first; `<h>` counts
   its confirmed and plausible findings. A slice page carries only its own.
 
