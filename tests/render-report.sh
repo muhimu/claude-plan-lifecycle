@@ -145,11 +145,43 @@ done
 # (m) Ship or block calls: the template, the help and the page name the same four
 for call in "Block" "Ship unless" "After merge" "Ship"; do
   check "(m) template rules define $call" grep -qF -- "- **$call:** " "$root/commands/review-guide.md"
-  check "(m) help explains $call" grep -qF "$call:" "$root/references/review-guide-help.md"
+  check "(m) help explains $call" grep -qE "How to read it:.* $call: " "$root/references/review-guide-help.md"
   check "(m) page knows the $call call" grep -qF "'$call': '" "$tmp/review-guide/7.html"
 done
 check "(m) template line offers the four calls" grep -qF -- '- **<Block|Ship unless|After merge|Ship>:** ' "$root/commands/review-guide.md"
 check "(m) stack rule puts the slice tag after the call" grep -qF "**Block:** <item> (#<N>) — …" "$root/commands/review-guide.md"
 check "(m) page has a green pill" grep -qF '.pill.green {' "$tmp/review-guide/7.html"
+
+# (n) bash writes a here-document into a pipe; macOS pipes may hold only 16 KB,
+# and a larger document can hang render-report. Keep each one under 16 KB.
+while read -r start size; do
+  check "(n) heredoc at line $start is under 16 KB ($size bytes)" [ "$size" -lt 16384 ]
+done < <(LC_ALL=C awk "/<<'HTML'\$/ { on = 1; n = 0; start = NR; next } on && /^HTML\$/ { print start, n; on = 0 } on { n += length(\$0) + 1 }" "$root/bin/render-report")
+
+# (o) Ship or block pills in a real browser, when Chrome is there to run the page
+chrome="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+if [ -x "$chrome" ]; then
+  cat > "$tmp/review-guide/8.md" <<'MD'
+# #8 x
+
+## Ship or block — 4 items
+- **Block:** a — b
+
+- **Ship unless:** c — d
+- **After merge:** e — f
+- **Ship:** g — h
+
+## Who must act after merge
+- **Block:** not a call here
+MD
+  "$root/bin/render-report" "$tmp/review-guide/8.md" >/dev/null
+  "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/8.html" > "$tmp/dom" 2>/dev/null
+  for pill in 'red">Block</span>a' 'amber">Ship unless</span>c' 'amber">After merge</span>e' 'green">Ship</span>g'; do
+    check "(o) DOM has pill $pill" grep -qF "<span class=\"pill $pill" "$tmp/dom"
+  done
+  check "(o) Who must act keeps its label" grep -qF '<dt>Block</dt>' "$tmp/dom"
+else
+  echo "skip: (o) needs Chrome at \$CHROME"
+fi
 
 exit "$fail"
