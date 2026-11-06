@@ -1,0 +1,634 @@
+#!/usr/bin/env bash
+#
+# render-report — write a styled, self-contained HTML view beside a report.
+#
+# For each <dir>/<name>.md it writes <dir>/<name>.html (overwriting it) and
+# prints the path. The Markdown stays the source of truth: the page embeds it
+# as base64 and renders it in the browser with a pinned marked.js, laying out
+# a header band, verdict tiles, cards for decisions, findings and route stops,
+# and collapsing reference sections. Raw HTML in the report shows as text.
+# Without network the page shows the Markdown as plain text. Opens nothing.
+#
+# Usage:
+#   render-report <file.md>...
+#
+# Exits 2 with no arguments, and 1 if any input is not an existing .md
+# file; the valid ones are still rendered.
+
+set -euo pipefail
+
+# usage — the header comment above, from its name line to its last line.
+usage() {
+  awk 'NR > 2 && /^#/ { sub(/^# ?/, ""); print; next } NR > 2 { exit }' "$0"
+}
+
+if [[ "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
+if (( $# == 0 )); then
+  usage >&2
+  exit 2
+fi
+
+# page_title FILE — two to four words from the report's directory and name.
+page_title() {
+  local dir name
+  dir="$(basename "$(dirname "$1")")"
+  name="$(basename "$1" .md)"
+  if [[ "$dir" == "review-guide" ]]; then
+    if [[ "$name" == stack-* ]]; then
+      echo "Review guide stack ${name#stack-}"
+    else
+      echo "Review guide #$name"
+    fi
+  elif [[ "$name" =~ ^[0-9]+$ ]]; then
+    echo "Triage #$name"
+  else
+    echo "$name"
+  fi
+}
+
+html_escape() {
+  sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+
+write_page() {
+  local md="$1" title="$2"
+  cat <<'HTML'
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+HTML
+  printf '<title>%s</title>\n' "$title"
+  cat <<'HTML'
+<style>
+/* One reading column under a white header band. Headings use the system
+   face condensed; code, chips and the eyebrow use the mono. */
+:root {
+  --bg: #f4f6f7; --surface: #ffffff; --fg: #1a2026; --muted: #5a6670;
+  --line: #d9dfe3; --code-bg: #eceff1; --accent: #0e6873; --accent-soft: #e0eff1;
+  --red: #b3261e; --red-soft: #fbe7e5;
+  --amber: #8f5200; --amber-soft: #f8ecd9;
+  --green: #1d6b3f; --green-soft: #e2f1e6;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", "JetBrainsMono Nerd Font", ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161a; --surface: #182026; --fg: #e2e8ec; --muted: #98a5af;
+    --line: #2a343c; --code-bg: #212a31; --accent: #5fc2cc; --accent-soft: #143238;
+    --red: #f2877c; --red-soft: #3a1b18;
+    --amber: #e6a650; --amber-soft: #36290f;
+    --green: #6cc98a; --green-soft: #15301f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161a; --surface: #182026; --fg: #e2e8ec; --muted: #98a5af;
+  --line: #2a343c; --code-bg: #212a31; --accent: #5fc2cc; --accent-soft: #143238;
+  --red: #f2877c; --red-soft: #3a1b18;
+  --amber: #e6a650; --amber-soft: #36290f;
+  --green: #6cc98a; --green-soft: #15301f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 15px/1.6 var(--sans);
+  overflow-wrap: anywhere;
+}
+main, .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+main { padding-top: 32px; padding-bottom: 72px; }
+main > :first-child { margin-top: 0; }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:not([href]) { color: inherit; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+h1, h2, h3, summary, .badge b, ol.cards > li::before {
+  font-stretch: condensed; font-weight: 600; line-height: 1.2;
+}
+h1 { margin: 0 0 16px; font-size: clamp(26px, 4.2vw, 34px); text-wrap: pretty; }
+h2, h3 { text-wrap: balance; }
+h2 {
+  margin: 44px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+  font-size: 22px; scroll-margin-top: 16px;
+}
+h3 { margin: 28px 0 10px; font-size: 17px; }
+h4, h5, h6 { margin: 20px 0 8px; font-size: 15px; }
+.hint { margin-left: 10px; color: var(--muted); font-size: 13px; font-weight: 400; font-stretch: normal; }
+p { margin: 0 0 12px; }
+ul, ol { margin: 0 0 16px; padding-left: 1.4em; }
+li + li { margin-top: 4px; }
+li > ul, li > ol { margin: 6px 0 0; }
+li > :last-child, dd > :last-child, blockquote > :last-child, details > :last-child,
+.stop > :last-child { margin-bottom: 0; }
+code, pre, .chip, .eyebrow { font-family: var(--mono); font-variant-ligatures: none; }
+code { padding: .1em .35em; border-radius: 4px; background: var(--code-bg); font-size: .86em; }
+pre {
+  margin: 0 0 16px; padding: 12px 14px; border-radius: 6px; background: var(--code-bg);
+  font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-x: auto;
+}
+pre code { padding: 0; background: none; font-size: inherit; }
+blockquote { margin: 0 0 16px; padding: 2px 0 2px 14px; border-left: 3px solid var(--line); color: var(--muted); }
+blockquote.card { padding: 12px 16px; border: 0; border-radius: 6px; background: var(--accent-soft); color: var(--fg); }
+blockquote.card strong:first-child { margin-right: 4px; color: var(--accent); font-size: 17px; font-stretch: condensed; }
+hr { margin: 32px 0; border: 0; border-top: 1px solid var(--line); }
+img { max-width: 100%; }
+
+/* Header band */
+.top { background: var(--surface); border-bottom: 1px solid var(--line); }
+.top .wrap { display: grid; gap: 12px; padding-top: 28px; padding-bottom: 24px; }
+.top h1, .top p, .top blockquote { margin: 0; }
+.eyebrow { color: var(--muted); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.num, .sub { color: var(--muted); font-weight: 500; }
+.sub { display: block; margin-top: 4px; font-size: .55em; }
+.meta { color: var(--muted); font-size: 13.5px; }
+.meta code { padding: 0; background: none; color: var(--fg); font-size: 12.5px; }
+.toc { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13.5px; }
+.toc a { text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+/* Verdict tiles */
+.badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge { display: grid; flex: 1 1 8.5em; gap: 2px; min-width: 0; padding: 8px 12px; border-radius: 6px; background: var(--code-bg); }
+.badge .k { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
+.badge b { font-size: 19px; }
+.badge.red { background: var(--red-soft); color: var(--red); }
+.badge.amber { background: var(--amber-soft); color: var(--amber); }
+.badge.green { background: var(--green-soft); color: var(--green); }
+
+/* Pills, tags and chips */
+.pill {
+  display: inline-block; margin-right: 8px; padding: 0 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; line-height: 1.7; letter-spacing: .05em;
+  text-transform: uppercase; white-space: nowrap; vertical-align: 1px;
+}
+.pill.red { background: var(--red-soft); color: var(--red); }
+.pill.amber { background: var(--amber-soft); color: var(--amber); }
+.tag { display: inline-block; padding: 0 .3em; border-radius: 4px; line-height: 1.45; }
+.tag.flag { background: var(--amber-soft); color: var(--amber); }
+/* 🔒 marks a ruling that sets something permanent: shown as a pill, kept as text. */
+.tag.lock { padding: 0; font-size: 0; }
+.tag.lock::after {
+  content: "Permanent"; display: inline-block; padding: 0 8px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 600;
+  line-height: 1.7; letter-spacing: .05em; text-transform: uppercase; vertical-align: 1px;
+}
+.chip {
+  display: inline-block; padding: 0 6px; border: 1px solid var(--line); border-radius: 4px;
+  color: var(--muted); font-size: 12px; font-weight: 500; line-height: 1.6;
+  white-space: nowrap; vertical-align: 1px;
+}
+
+/* Cards: decisions and findings */
+ol.cards { padding: 0; list-style: none; }
+ol.cards > li {
+  position: relative; margin: 0 0 12px; padding: 14px 16px 14px 50px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
+}
+ol.cards > li::before {
+  content: counter(list-item); position: absolute; top: 12px; left: 16px;
+  color: var(--accent); font-size: 22px;
+}
+li.must, li.should { padding-left: 12px; border-left: 4px solid; }
+li.must { border-left-color: var(--red); }
+li.should { border-left-color: var(--amber); }
+ol.cards > li.must { padding-left: 47px; border-left: 4px solid var(--red); }
+ol.cards > li.should { padding-left: 47px; border-left: 4px solid var(--amber); }
+
+/* Label/value grids; "Ask the author" and "For a human" are callouts */
+dl.fields {
+  --gap: 8px; display: grid; grid-template-columns: 7.5em minmax(0, 1fr);
+  gap: var(--gap) 16px; align-items: baseline; margin: 12px 0 16px;
+}
+dl.fields dt { color: var(--muted); font-size: 13px; font-weight: 600; }
+dl.fields dd { min-width: 0; margin: 0; }
+dl.fields .ask { grid-column: 1 / -1; padding: 0 12px; background: var(--accent-soft); }
+dl.fields dt.ask {
+  margin-top: 4px; padding-top: 10px; border-radius: 6px 6px 0 0; color: var(--accent);
+  font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+}
+dl.fields dd.ask { margin-top: calc(-1 * var(--gap)); padding-bottom: 10px; border-radius: 0 0 6px 6px; }
+.pushback::before { content: "\A"; white-space: pre; }
+p.ask { padding: 10px 14px; border-radius: 6px; background: var(--accent-soft); }
+p.ask > strong:first-child { color: var(--accent); }
+
+/* Route stops */
+.stop {
+  margin: 0 0 14px; padding: 16px 18px; border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: 6px; background: var(--surface);
+}
+.stop h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; }
+.stop h3 .n { color: var(--accent); font-size: 21px; }
+.stop h3 code { padding: 0; background: none; font-size: 14.5px; font-weight: 500; }
+
+/* Rows: a card, each key in a column of its own, hairlines between */
+ul.rows {
+  display: grid; grid-template-columns: fit-content(40%) minmax(0, 1fr); column-gap: 20px;
+  padding: 0 16px; list-style: none; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface);
+}
+ul.rows > li {
+  display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; row-gap: 2px;
+  margin: 0; padding: 10px 0;
+}
+ul.rows > li + li { border-top: 1px solid var(--line); }
+ul.rows .k, ul.rows .v { min-width: 0; }
+ul.rows .k { font-weight: 600; }
+ul.rows .k code { font-weight: 400; }
+
+/* Tables */
+.scroll { margin: 0 0 16px; overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.5; overflow-wrap: break-word; }
+th, td { padding: 9px 12px; text-align: left; vertical-align: top; }
+th {
+  border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11.5px; font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+}
+tr + tr td { border-top: 1px solid var(--line); }
+td.ok, td.bad, td.na { position: relative; padding-left: 28px; }
+td.ok { background: var(--green-soft); }
+td.bad { background: var(--red-soft); }
+td.na { color: var(--muted); }
+td.ok::before, td.bad::before, td.na::before {
+  content: ""; position: absolute; top: 15px; left: 12px; width: 8px; height: 8px;
+  border-radius: 50%; box-sizing: border-box;
+}
+td.ok::before { background: var(--green); }
+td.bad::before { background: var(--red); }
+td.na::before { border: 1.5px solid var(--muted); }
+
+/* Collapsed reference sections */
+details {
+  margin: 24px 0; padding: 0 16px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); scroll-margin-top: 16px;
+}
+details[open] { padding-bottom: 14px; }
+summary {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 -16px;
+  padding: 12px 16px; font-size: 18px; cursor: pointer; list-style: none;
+}
+summary::-webkit-details-marker { display: none; }
+summary::before {
+  content: ""; align-self: center; width: 7px; height: 7px; margin-right: 2px;
+  border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(-45deg);
+}
+details[open] > summary { margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+details[open] > summary::before { transform: rotate(45deg); }
+summary .hint { margin-left: 0; }
+details > ul.rows { padding: 0; border: 0; background: none; }
+details > ul.rows > li:last-child { padding-bottom: 0; }
+
+@media (max-width: 640px) {
+  main { padding-top: 24px; }
+  .top .wrap { padding-top: 20px; padding-bottom: 18px; }
+  h2 { margin-top: 36px; font-size: 20px; }
+  dl.fields { --gap: 2px; grid-template-columns: minmax(0, 1fr); }
+  dl.fields dd { margin-bottom: 8px; }
+  dl.fields dd:last-child { margin-bottom: 0; }
+  ul.rows { grid-template-columns: minmax(0, 1fr); }
+  ol.cards > li { padding-left: 42px; }
+  ol.cards > li.must, ol.cards > li.should { padding-left: 39px; }
+  ol.cards > li::before { left: 13px; }
+  .stop { padding: 14px; }
+}
+</style>
+</head>
+<body>
+<main id="page"></main>
+HTML
+  printf '<script type="text/plain" id="md">'
+  base64 < "$md" | tr -d '\n'
+  printf '</script>\n'
+  cat <<'HTML'
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script>
+(function () {
+  var b64 = document.getElementById('md').textContent.trim();
+  var md = new TextDecoder('utf-8').decode(Uint8Array.from(atob(b64), function (c) { return c.charCodeAt(0); }));
+  var page = document.getElementById('page');
+
+  if (!window.marked) {
+    var pre = document.createElement('pre');
+    pre.textContent = md;
+    page.appendChild(pre);
+    return;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  // Reports quote PR content: raw HTML in them is data, shown as text, and
+  // an image shows as its alt text, so opening the page fetches nothing.
+  marked.use({ renderer: {
+    html: function (h) { return escapeHtml(h); },
+    image: function (href, title, text) { return '[image: ' + (text || escapeHtml(href)) + ']'; }
+  } });
+  page.innerHTML = marked.parse(md);
+
+  // Links only to the web, never javascript: or data: URLs.
+  page.querySelectorAll('a[href]').forEach(function (a) {
+    if (!/^(https?:|mailto:|#)/i.test(a.getAttribute('href'))) a.removeAttribute('href');
+  });
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text) e.textContent = text;
+    return e;
+  }
+  function all(sel) {
+    return Array.prototype.slice.call(page.querySelectorAll(sel));
+  }
+  // The node an element opens with: not blank text, a tag or a pill, and
+  // looking inside the <p> of a loose list item.
+  function first(node) {
+    var n = node.firstChild;
+    while (n && (n.nodeType === 3 ? !n.nodeValue.trim() : /\b(tag|pill)\b/.test(n.className))) n = n.nextSibling;
+    return n && n.nodeName === 'P' ? first(n) : n;
+  }
+  // "#12 title" as a muted number and the title.
+  function numbered(h1, num, text) {
+    h1.textContent = ' ' + text;
+    h1.insertBefore(el('span', 'num', num), h1.firstChild);
+  }
+
+  // Header band: the kind of report, the title, the line under it, then the
+  // verdict (triage) or the summary (review guide). Other shapes stay put.
+  var top = el('div', 'wrap');
+  var lead = page.firstElementChild;
+  var quote = page.querySelector('blockquote');
+  if (quote) quote.classList.add('card');
+  if (lead && lead.tagName === 'P' && /^Triage:/.test(lead.textContent)) {
+    // Verdict line: "Triage: x · impact y · ..." becomes tiles.
+    var badges = el('div', 'badges');
+    lead.textContent.split(' · ').forEach(function (part) {
+      var colour = /\b(high|needs-changes|failed)\b/.test(part) ? 'red'
+        : /\b(medium|needs-human)\b/.test(part) ? 'amber'
+        : /\b(low|none|ready)/.test(part) ? 'green' : '';
+      var kv = /^(\w+):?\s+(.+)$/.exec(part.trim()) || ['', '', part.trim()];
+      var b = el('span', 'badge ' + colour);
+      if (kv[1]) b.appendChild(el('span', 'k', kv[1]));
+      b.appendChild(el('b', '', kv[2]));
+      badges.appendChild(b);
+    });
+    var meta = lead.nextElementSibling;
+    lead.remove();
+    top.appendChild(el('div', 'eyebrow', 'PR triage'));
+    if (meta && meta.tagName === 'P' && /^PR #\d+/.test(meta.textContent)) {
+      var pr = !meta.children.length && /^PR (#\d+) "(.+)" \(([^)]*)\), (.+)$/.exec(meta.textContent);
+      if (pr) {
+        var h1 = el('h1');
+        numbered(h1, pr[1], pr[2]);
+        top.appendChild(h1);
+        meta.textContent = pr[3] + ', ' + pr[4];
+      }
+      meta.className = 'meta';
+      top.appendChild(meta);
+    }
+    top.appendChild(badges);
+  } else if (lead && lead.tagName === 'H1') {
+    if (/^Review guide/.test(document.title)) top.appendChild(el('div', 'eyebrow', 'Review guide'));
+    var text = lead.textContent, num = /^(#\d+) (.+)$/.exec(text), cut = text.indexOf(' · ');
+    if (!lead.children.length && num) {
+      numbered(lead, num[1], num[2]);
+    } else if (!lead.children.length && cut > 0) {
+      lead.textContent = text.slice(0, cut);
+      lead.appendChild(el('span', 'sub', text.slice(cut + 3)));
+    }
+    top.appendChild(lead);
+    var line = page.firstElementChild;
+    if (line && line.tagName === 'P' && / · /.test(line.textContent) && quote && line.nextElementSibling === quote) {
+      line.className = 'meta';
+      top.appendChild(line);
+      top.appendChild(quote);
+    }
+  }
+
+  // ⚑ and 🔒 become tags, a slice reference, "(#12)" or "(#12, used by
+  // #13)", a chip, and a decision's "Agree, or push back on:" starts a line.
+  var mark = /(⚑|🔒|\(#\d+(?:, used by #\d+)?\)|Agree, or push back on:)/;
+  [top, page].forEach(function (root) {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    var texts = [];
+    while (walker.nextNode()) {
+      var node = walker.currentNode;
+      if (mark.test(node.nodeValue) && !node.parentNode.closest('code, pre')) texts.push(node);
+    }
+    texts.forEach(function (node) {
+      var frag = document.createDocumentFragment();
+      node.nodeValue.split(mark).forEach(function (piece, i) {
+        if (i % 2 === 0) {
+          if (piece) frag.appendChild(document.createTextNode(piece));
+        } else if (piece.charAt(0) === '(') {
+          frag.appendChild(el('span', 'chip', piece.slice(1, -1)));
+        } else if (piece.charAt(0) === 'A') {
+          frag.appendChild(el('b', 'pushback', piece));
+        } else {
+          var t = el('span', piece === '⚑' ? 'tag flag' : 'tag lock', piece);
+          t.title = piece === '⚑' ? 'Needs judgement' : 'Permanent after merge';
+          frag.appendChild(t);
+        }
+      });
+      node.replaceWith(frag);
+    });
+  });
+
+  // Findings: a Must-fix or Should-fix item gets a stripe and a pill.
+  all('li').forEach(function (li) {
+    var s = first(li);
+    var m = s && s.nodeName === 'STRONG' && /^(Must|Should)-fix:\s*/.exec(s.textContent);
+    if (!m) return;
+    li.classList.add(m[1] === 'Must' ? 'must' : 'should');
+    var t = s.firstChild;
+    if (t.nodeType === 3 && t.nodeValue.indexOf(m[0]) === 0) {
+      t.nodeValue = t.nodeValue.slice(m[0].length);
+      s.parentNode.insertBefore(el('span', 'pill ' + (m[1] === 'Must' ? 'red' : 'amber'), m[1] + '-fix'), s);
+    }
+  });
+
+  // A list of "**Label:** value" items becomes a label/value grid; so does
+  // a list of plain "Label: value" items nested in an item (a finding's
+  // Trigger/Effect/Evidence/Fix), never a top-level prose list.
+  all('ul').forEach(function (ul) {
+    var nested = ul.parentNode.nodeName === 'LI';
+    var items = Array.prototype.slice.call(ul.children);
+    var labels = items.map(function (li) {
+      var n = first(li);
+      if (n && n.nodeName === 'STRONG') return /\S:$/.test(n.textContent.trim()) ? n : null;
+      return nested && n && n.nodeType === 3 && /^\s*[A-Z][\w-]*( [\w-]+){0,2}: /.test(n.nodeValue) ? n : null;
+    });
+    if (!items.length || labels.indexOf(null) >= 0) return;
+    var dl = el('dl', 'fields');
+    items.forEach(function (li, i) {
+      var n = labels[i], dt, dd = el('dd');
+      if (n.nodeType === 3) {
+        var m = /^\s*([^:]+):\s*/.exec(n.nodeValue);
+        dt = el('dt', '', m[1]);
+        n.nodeValue = n.nodeValue.slice(m[0].length);
+      } else {
+        dt = el('dt', '', n.textContent.trim().slice(0, -1));
+        n.remove();
+      }
+      while (li.firstChild) dd.appendChild(li.firstChild);
+      if (/^Ask the author$/i.test(dt.textContent)) dt.className = dd.className = 'ask';
+      dl.appendChild(dt);
+      dl.appendChild(dd);
+    });
+    ul.replaceWith(dl);
+  });
+
+  // A heading over a label/value grid is a card: a route stop.
+  all('h3').forEach(function (h3) {
+    var dl = h3.nextElementSibling;
+    if (!dl || dl.tagName !== 'DL') return;
+    var card = el('section', 'stop'), t = h3.firstChild;
+    var n = t && t.nodeType === 3 && /^\s*(\d+)\.\s*/.exec(t.nodeValue);
+    if (n) {
+      t.nodeValue = t.nodeValue.slice(n[0].length);
+      h3.insertBefore(el('span', 'n', n[1]), t);
+    }
+    h3.replaceWith(card);
+    card.appendChild(h3);
+    card.appendChild(dl);
+  });
+
+  // A numbered list whose items open in bold is a list of cards.
+  all('ol').forEach(function (ol) {
+    var items = Array.prototype.slice.call(ol.children);
+    if (items.length && items.every(function (li) { var n = first(li); return n && n.nodeName === 'STRONG'; })) {
+      ol.classList.add('cards');
+    }
+  });
+
+  // A top-level list of "**key** value" or "key — value" items becomes rows.
+  all(':scope > ul').forEach(function (ul) {
+    var items = Array.prototype.slice.call(ul.children);
+    var cuts = items.map(function (li) {
+      var nodes = Array.prototype.slice.call(li.childNodes), s = first(li);
+      if (nodes.some(function (n) { return n.nodeType === 1 && !/^(CODE|STRONG|EM|A|SPAN|DEL|BR)$/.test(n.tagName); })) return null;
+      if (s && s.nodeName === 'STRONG' && s.parentNode === li) return s;
+      return nodes.filter(function (n) { return n.nodeType === 3 && n.nodeValue.indexOf(' — ') >= 0; })[0] || null;
+    });
+    if (!items.length || cuts.indexOf(null) >= 0) return;
+    ul.classList.add('rows');
+    items.forEach(function (li, i) {
+      var k = el('div', 'k'), v = el('div', 'v'), cut = cuts[i];
+      while (li.firstChild !== cut) k.appendChild(li.firstChild);
+      if (cut.nodeType === 3) {
+        var at = cut.nodeValue.indexOf(' — ');
+        k.appendChild(document.createTextNode(cut.nodeValue.slice(0, at)));
+        cut.nodeValue = cut.nodeValue.slice(at + 3);
+      } else {
+        k.appendChild(cut);
+      }
+      while (li.firstChild) v.appendChild(li.firstChild);
+      if (v.firstChild && v.firstChild.nodeType === 3) v.firstChild.nodeValue = v.firstChild.nodeValue.replace(/^\s*— /, '');
+      li.appendChild(k);
+      li.appendChild(v);
+    });
+  });
+
+  // Claim-ledger results; tables scroll inside their own box.
+  page.querySelectorAll('table').forEach(function (table) {
+    var heads = Array.prototype.map.call(table.querySelectorAll('thead th'), function (th) { return th.textContent.trim(); });
+    var col = heads.indexOf('Result');
+    if (col < 0) col = heads.length - 1;
+    table.querySelectorAll('tbody tr').forEach(function (tr) {
+      var td = tr.children[col];
+      var t = td ? td.textContent.trim() : '';
+      if (/^reproduced/.test(t)) td.classList.add('ok');
+      else if (/^failed/.test(t)) td.classList.add('bad');
+      else if (/^not reproducible/.test(t)) td.classList.add('na');
+    });
+  });
+  page.querySelectorAll('table').forEach(function (table) {
+    var wrap = document.createElement('div');
+    wrap.className = 'scroll';
+    table.replaceWith(wrap);
+    wrap.appendChild(table);
+  });
+
+  // Section headings: an id and a contents link; "x — y" is a title and a
+  // hint; the asks under "For a human" become callouts.
+  var toc = el('nav', 'toc');
+  all('h2').forEach(function (h2) {
+    var label = h2.textContent.split(' — ')[0].trim();
+    h2.id = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    var a = el('a', '', label);
+    a.href = '#' + h2.id;
+    toc.appendChild(a);
+    var t = h2.firstChild, at = t && t.nodeType === 3 ? t.nodeValue.indexOf(' — ') : -1;
+    if (at > 0 && !t.nextSibling) {
+      h2.appendChild(el('span', 'hint', t.nodeValue.slice(at + 3)));
+      t.nodeValue = t.nodeValue.slice(0, at);
+    }
+    if (/^For a human/.test(label)) {
+      for (var n = h2.nextElementSibling; n && n.tagName !== 'H2'; n = n.nextElementSibling) {
+        if (n.tagName === 'P') n.classList.add('ask');
+      }
+    }
+  });
+
+  // Reference sections start collapsed; a contents link opens one.
+  var collapse = /^(Skip|Hot files|Riskiest code|Checked \/ Not checked)/;
+  all('h2').forEach(function (h2) {
+    if (!collapse.test(h2.textContent.trim())) return;
+    var details = document.createElement('details');
+    var summary = document.createElement('summary');
+    details.id = h2.id;
+    while (h2.firstChild) summary.appendChild(h2.firstChild);
+    details.appendChild(summary);
+    while (h2.nextSibling && !/^H[12]$/.test(h2.nextSibling.nodeName)) {
+      details.appendChild(h2.nextSibling);
+    }
+    h2.replaceWith(details);
+  });
+  toc.addEventListener('click', function (e) {
+    var target = e.target.hash && document.getElementById(e.target.hash.slice(1));
+    if (target && target.tagName === 'DETAILS') target.open = true;
+  });
+  // A page opened at, or moved to, a #section inside a collapsed box opens it.
+  function openHash() {
+    var target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    var box = target && target.closest('details');
+    if (box) { box.open = true; target.scrollIntoView(); }
+  }
+  window.addEventListener('hashchange', openHash);
+
+  if (top.children.length) {
+    if (toc.children.length > 2) top.appendChild(toc);
+    var header = el('header', 'top');
+    header.appendChild(top);
+    document.body.insertBefore(header, page);
+  }
+  openHash();
+})();
+</script>
+</body>
+</html>
+HTML
+}
+
+rc=0
+for f in "$@"; do
+  if [[ "$f" != *.md ]]; then
+    echo "render-report: $f: not a .md file" >&2
+    rc=1
+    continue
+  fi
+  if [[ ! -f "$f" ]]; then
+    echo "render-report: $f: no such file" >&2
+    rc=1
+    continue
+  fi
+  out="${f%.md}.html"
+  write_page "$f" "$(page_title "$f" | html_escape)" > "$out"
+  echo "$out"
+done
+exit "$rc"
