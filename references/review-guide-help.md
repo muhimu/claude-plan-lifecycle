@@ -23,17 +23,18 @@ Sections with nothing in them are left out. Before you read appears only when yo
 
 ## Before you read
 - **You see:** the path a request or job takes through the changed code, the terms the diff relies on, the docs and ADRs that govern it, and whom to ask.
-- **How to read it:** all of it comes from the base, before this PR. Ask is the people with the most commits on these paths, not the author.
+- **How to read it:** all of it comes from the base, before this PR. Ask is the people with the most commits on these paths, not the author, led by whoever the README's Contact section names.
 - **Why:** the map you would otherwise build by reading the code.
 
 ## Decisions
 - **You see:** up to three rulings the PR itself records, ranked by stakes, each with its stated cost if wrong.
-- **How to read it:** 🔒 marks a ruling that sets something hard to undo after merge. The line under each ruling names the assumption it rests on: that is what to check.
+- **How to read it:** 🔒 marks a ruling that sets something hard to undo after merge. The line under each ruling names the assumption it rests on: that is what to check. Checked says what the code shows about the ruling's stated reason: confirmed (the code does what the reason says), qualified (only in part, or only under a condition the PR does not state), contradicted (the code does otherwise), or not checkable here (only a live system or another team could answer; "check did not run" means the check itself failed, not that the ruling needs one). A contradicted or qualified ruling ranks first among rulings of the same stakes.
 - **Why:** these are the calls only a human can make. Agree in a thread, or push back on the assumption.
 
 **Example**
 
 1. 🔒 **Retries stay in the client** — if wrong, every caller has to add its own. Agree, or push back on: callers never need a different retry budget.
+   - **Checked:** qualified — `client/retry.go:31` caps every call at 3 tries, but `jobs/export.go:58` already wraps the client in its own retry loop.
 
 ## Route
 - **You see:** at most five numbered stops, ⚑ each, where the change departs from how the rest of the system works.
@@ -99,7 +100,7 @@ Rejected:
 
 ## Not in the body
 - **You see:** what the code does that the PR's description does not say: behaviour it leaves out, claims the code does not carry out, scope beyond what it states.
-- **How to read it:** a difference tied to a stop sits in that stop's Why instead.
+- **How to read it:** a difference tied to a stop sits in that stop's Why instead. Earlier threads counts the PR's review threads, how many are unresolved, and what they asked: check that the code answers them before you raise the same point.
 - **Why:** the description is what reviewers and later readers trust.
 
 ## Skip
