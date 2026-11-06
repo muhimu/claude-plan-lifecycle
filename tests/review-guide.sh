@@ -90,7 +90,7 @@ check "(j) a README contact replaces No second owner" grep -qF 'with no README c
 # (g) a history spot, and per-repo lenses from the default branch's profile
 spot="$(awk '/^## Spot brief$/{on=1;next} on&&/^## /{exit} on' "$brief")"
 check "(g) Spot brief has a history spot" grep -qF -- '- history: ' <<<"$spot"
-check "(g) history reads the log on R only" grep -qF "git log -S'<removed line>' --format='%h %s' <R> -- <file>" <<<"$spot"
+check "(g) history reads the log on R only" grep -qF -- "--follow --format='%h %s' <R> -- <file>" <<<"$spot"
 check "(g) Spot brief takes the R-only lenses" grep -qF '<RUN>/lenses.md' <<<"$spot"
 check "(g) default profile has Review lenses" grep -qx '### Review lenses' "$root/references/pr-triage-brief.md"
 check "(g) Profile reads the default branch" grep -qF 'origin/<DEFAULT>:.claude/triage-profile.md' <<<"$(section Profile)"
@@ -118,6 +118,12 @@ check "(n) bot threads are left out" grep -qF 'author{__typename}' <<<"$(section
 check "(n) review-stack threads are left out" grep -qF 'contains("plan-lifecycle:review-stack") | not' <<<"$(section Compare)"
 check "(n) not checkable ranks between qualified and confirmed" grep -qF 'then `qualified`, then `not checkable here`, then confirmed' "$cmd"
 check "(n) rulings brief reads another repo's default branch" grep -qF 'its default branch' <<<"$rbrief"
+
+# (k) follow-ups: lens spots rank with the rest after Filter; history follows
+# renames and ignores indentation; lens headings sit one level down
+check "(k) the 5-stop cap applies after Filter, lens spots ranked in" grep -qF 'The cap applies after Filter' "$cmd"
+check "(k) history follows renames" grep -qF "git log -S'<removed line, trimmed>' --follow" "$brief"
+check "(k) lens heading is one level below Review lenses" grep -qF 'one heading level below `Review lenses`' "$root/references/pr-triage-brief.md"
 
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
