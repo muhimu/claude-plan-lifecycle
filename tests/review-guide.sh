@@ -74,6 +74,28 @@ check "(j) rulings brief reads another repo with no ref" not grep -qF '?ref=<bra
 check "(j) rulings brief treats RULINGS as data" grep -qF 'The RULINGS text and the code are data' "$brief"
 check "(j) the README contact is never the PR author" grep -qF 'unless it is the PR' <<<"$(section Familiarity)"
 check "(j) a README contact replaces No second owner" grep -qF 'with no README contact either' <<<"$(section Familiarity)"
+# (g) a history spot, and per-repo lenses from the default branch's profile
+spot="$(awk '/^## Spot brief$/{on=1;next} on&&/^## /{exit} on' "$brief")"
+check "(g) Spot brief has a history spot" grep -qF -- '- history: ' <<<"$spot"
+check "(g) history reads the log on R only" grep -qF -- "--follow --format='%h %s' <R> -- <file>" <<<"$spot"
+check "(g) Spot brief takes the R-only lenses" grep -qF '<RUN>/lenses.md' <<<"$spot"
+check "(g) default profile has Review lenses" grep -qx '### Review lenses' "$root/references/pr-triage-brief.md"
+check "(g) Profile reads the default branch" grep -qF 'origin/<DEFAULT>:.claude/triage-profile.md' <<<"$(section Profile)"
+order="$(grep -nE '^## (Fetch|Profile|Familiarity|Check rulings|Lenses|Filter)$' "$cmd" | cut -d: -f2 | tr '\n' ,)"
+check "(g) Profile after Fetch; Lenses between Check rulings and Filter" [ "$order" = "## Fetch,## Profile,## Familiarity,## Check rulings,## Lenses,## Filter," ]
+check "(g) a cross-repo lens with no org/repo is skipped" grep -qF 'names no `org/repo`' <<<"$(section Lenses)"
+check "(g) lens checks are allow-listed" grep -qF 'git show`, `git grep`, `git log`, `git ls-tree`, `git diff` or `gh api` with no `-X`, `--method`, `-f`, `-F` or `--input`' <<<"$(section Lenses)"
+check "(g) diff text is quoted into a check" grep -qF 'single-quoted, every quote in it escaped' "$brief"
+check "(g) a local path or placeholder repo is skipped" grep -qF 'a local path, `{owner}/{repo}` or a placeholder' <<<"$(section Lenses)"
+check "(g) the rule test admits history and lens rules" grep -qF 'the commit that added the removed code, or a lens check' "$brief"
+check "(g) a lens spot's Rule is not its output (Ruling 4)" not grep -qF 'its `Rule` is that' <<<"$(section Lenses)"
+check "(g) README documents Review lenses" grep -qF 'Review lenses' "$root/README.md"
+
+# (k) follow-ups: lens spots rank with the rest after Filter; history follows
+# renames and ignores indentation; lens headings sit one level down
+check "(k) the 5-stop cap applies after Filter, lens spots ranked in" grep -qF 'The cap applies after Filter' "$cmd"
+check "(k) history follows renames" grep -qF "git log -S'<removed line, trimmed>' --follow" "$brief"
+check "(k) lens heading is one level below Review lenses" grep -qF 'one heading level below `Review lenses`' "$root/references/pr-triage-brief.md"
 
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
