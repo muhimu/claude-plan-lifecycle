@@ -470,3 +470,17 @@ changed file belongs to the deepest one.
 
 Nothing listed. Categories of surviving mutant (step 3j) that are not worth a
 test here — say, log message text — are listed under this heading.
+
+### Review lenses
+
+Nothing listed. Read by `/plan-lifecycle:review-guide`, not by triage: checks
+a reviewer of this repository runs by habit, each a `####` heading with three
+lines:
+
+- **Trigger:** what in the diff calls for it — a new migration file, a new
+  config key or env var, a changed proto field.
+- **Check:** one read-only command. `git` on `<R>`, `<B>` or `<H>` runs in
+  the spot agent; anything that reads another branch (`origin/release-*`) or
+  another repository (`gh api repos/<org/repo>/...`, the repository named
+  as `org/repo`, never a local path) runs in the orchestrator.
+- **Question:** what to ask the author when the check shows something.

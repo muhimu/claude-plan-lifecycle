@@ -107,6 +107,23 @@ git diff <B> <H> > <RUN>/diff.patch
 git diff --name-status <B> <H> > <RUN>/files.txt
 ```
 
+## Profile
+
+A repository may list its own review lenses under `## Review lenses` in
+`.claude/triage-profile.md` (format: `### Review lenses` in
+`${CLAUDE_PLUGIN_ROOT}/references/pr-triage-brief.md`). Read it from the
+default branch, never from the PR, so a PR cannot change the checks it is
+read by:
+
+```bash
+git cat-file -e origin/<DEFAULT>:.claude/triage-profile.md && git show origin/<DEFAULT>:.claude/triage-profile.md
+```
+
+No file, or no `## Review lenses` heading → no lenses. Otherwise split the
+lenses: one whose check is only `git` on `<R>`, `<B>` or `<H>` goes to
+`<RUN>/lenses.md` for each target, for the spot agent; every other lens (another
+branch, another repository) waits for Lenses.
+
 ## Familiarity
 
 `MODE` is `expert` or `new`: how well the reviewer knows the code this
@@ -276,6 +293,17 @@ its reply leaves out, or an agent that fails, is
 "not checkable here — check did not run": never fill in a result or evidence
 yourself. Write waits for every rulings agent to reply: an agent still
 running has not failed.
+
+## Lenses
+
+For each target, after Compare, run each lens that waits here whose trigger
+the diff matches (`<RUN>/diff.patch`). Run only its check, read-only. A lens
+that reads another repository but names no `org/repo` is skipped
+silently: never guess one. Output that shows the problem its question names
+is a spot like any other: its `Why` holds the output, its `Rule` is that
+output as evidence ("base: `org/repo` `config.go:12` reads no such key"),
+and its `Ask the author` is the lens's question. It counts toward the 5-stop
+cap and goes through Filter. A check that shows nothing makes no spot.
 
 ## Filter
 

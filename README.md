@@ -136,6 +136,13 @@ resources (say, an end-to-end suite on a shared VM) under Do not run: triage
 then reads the script to judge what a reported run covers instead of running
 it.
 
+`/review-guide` reads one more heading from the same file, Review lenses: a
+repository's own review habits, each a trigger, one read-only check and a
+question to ask the author (format: `### Review lenses` in the same default
+profile). A check that reads another repository names it as `org/repo` and
+uses `gh api`, never a local path. A lens whose check finds something
+becomes a Route stop, under the same five-stop cap.
+
 ## Requirements & assumptions
 
 - **`gh`** authenticated (PR creation, merge-state checks).
