@@ -53,6 +53,7 @@ aggressive about writing plans without accumulating a graveyard.
 | `bin/stamp-plans` | script | Stamps `pr: <N>` into every plan file sharing a slug |
 | `bin/reap-plans` | script | Archives merged and abandoned plan groups into `<plans-dir>/done/` |
 | `bin/link-plans` | script | Shares a gitignored plans dir into a worktree — run manually or as a post-worktree-creation hook |
+| `bin/render-report` | script | Writes a styled, self-contained `.html` beside a report's `.md`: badges, coloured findings and ledger results, reference sections collapsed. Local only |
 | `extras/bin-wrapper` | script | Installed under each script's name on your PATH; runs the installed plugin's copy, so updates need no reinstall |
 
 ## Install
@@ -69,7 +70,7 @@ per script name:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/muhimu/claude-plan-lifecycle/main/extras/bin-wrapper -o /tmp/bin-wrapper
-for n in reap-plans stamp-plans link-plans; do install -m 755 /tmp/bin-wrapper ~/.local/bin/$n; done
+for n in reap-plans stamp-plans link-plans render-report; do install -m 755 /tmp/bin-wrapper ~/.local/bin/$n; done
 ```
 
 Working on the plugin itself? Link a checkout instead: `ln -s "$PWD"/bin/* ~/.local/bin/`.
