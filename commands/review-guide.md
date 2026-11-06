@@ -1,6 +1,6 @@
 ---
 description: Read a colleague's PR or PR stack without running it and write a local guide — where the code differs from the PR body, at most 5 spots that need design judgement, and what is safe to skim.
-argument-hint: [PR or stack number — optional, defaults to the current branch's PR] [head sha] [--expert | --new]
+argument-hint: [PR or stack number — optional, defaults to the current branch's PR] [head sha] [--expert | --new] [--review [effort]]
 ---
 
 # Review guide
@@ -10,7 +10,9 @@ make — the PR's own rulings, what becomes permanent on merge, which deferred
 work may wait, and the few places where the change departs from the system's
 shape — and tell them what they can skip. Correctness is the review stack's
 job (`/code-review`, `/plan-lifecycle:review-stack`); this command does not hunt
-bugs, and the risky-code list it ends with is a pointer for those tools. It writes one page per PR to `local/review-guide/<N>.md`, and
+bugs, and the risky-code list it ends with is a pointer for those tools.
+With `--review`, it runs those tools itself and puts their verified findings
+on the page instead. It writes one page per PR to `local/review-guide/<N>.md`, and
 for a stack one more, `local/review-guide/stack-<S>.md`, each rendered to an
 `.html` page beside it.
 
@@ -19,7 +21,9 @@ for a stack one more, `local/review-guide/stack-<S>.md`, each rendered to an
 - **Read-only.** `gh` GET calls, `git fetch`, `git show`, `git diff`,
   `git grep`, `git log`, `git merge-base`, `git ls-tree` and file reads.
   No checkout, switch, worktree, build, test or script from the PR. No
-  GitHub writes.
+  GitHub writes. One exception: `--review` creates one detached worktree at
+  the tip, runs the review tools there (read-only without `--comment`, which
+  is never passed), and removes it. The reviewer's own checkout never moves.
 - **Rules come from the rules base (`R`),** never from the PR — nor, in a
   stack, from any slice. A PR that edits an ADR or doc is something to
   report, not a source of rules.
@@ -38,7 +42,9 @@ gh repo view --json nameWithOwner,defaultBranchRef -q '.nameWithOwner+" "+.defau
 That gives `OWNER/REPO` and `DEFAULT`. Not in a repository → stop: "Run this
 from a checkout of the PR's repository."
 
-`$ARGUMENTS` is `<N> [<head-sha>] [--expert | --new]`. With no `N`, use the current branch's PR
+`$ARGUMENTS` is `<N> [<head-sha>] [--expert | --new] [--review [<effort>]]`.
+`<effort>` is `low`, `medium`, `high`, `xhigh` or `max`, the token right after
+`--review`; it defaults to `high`. With no `N`, use the current branch's PR
 (`gh pr view --json number -q .number`); none → stop: "Pass a PR or stack
 number."
 
@@ -142,6 +148,39 @@ Read ${CLAUDE_PLUGIN_ROOT}/references/review-guide-brief.md and follow its "## S
 ROOT=<ROOT>  B=<B>  R=<R>  H=<H>  RUN=<RUN>  DEFAULT=<DEFAULT>  MODE=<MODE>
 ```
 
+## Review
+
+Only with `--review`; run it while the agents work. The review tools read
+the code around each hunk from the session's checkout, and
+`/plan-lifecycle:review-stack` stops unless that checkout is at the top of
+the stack, so they run in a worktree at the tip: `H` for one PR, the top
+target's head for a stack. `WT` is `<ROOT>/.claude/worktrees/review-guide-<N>`
+(`review-guide-stack-<S>` for a stack).
+
+```bash
+git worktree remove --force <WT> 2>/dev/null     # left over from an earlier run
+git worktree add --detach <WT> <tip>
+```
+
+Enter it with `EnterWorktree` (`path: <WT>`), then:
+
+- **`STACKED` false:** `Skill` `code-review` with
+  `<effort> https://github.com/<OWNER/REPO>/pull/<N>`; when it returns,
+  `Skill` `plan-lifecycle:verify-findings` with no arguments. The reviewed
+  head is the PR's `headRefOid` when the review started.
+- **`STACKED` true:** `Skill` `plan-lifecycle:review-stack <S> <effort>`.
+  The reviewed heads are the `<base> ← <head>` lines of its summary.
+
+Never pass `--comment` or `--fix`: the guide posts nothing and edits
+nothing. Keep each finding's place, verdict and one-line summary, and each
+rejected finding with its reason. Then, also when a tool stopped,
+`ExitWorktree` (`keep`) and `git worktree remove --force <WT>`. A tool that
+stopped leaves the page as without `--review`; Finish says why.
+
+A target whose reviewed head is not `H` (it moved, or `<head-sha>` pins an
+older commit) gets no findings: its section says "Reviewed at `<8>`, guide
+at `<8>`: findings left out."
+
 ## Compare
 
 When it returns, read what the PR says: the `body` and
@@ -213,7 +252,7 @@ to the bug-hunting tools.
 
 `<author>` · head `<H, 8 chars>` · base `<baseRefName>@<B, 8 chars>` · <date> · <MODE>: <why>
 
-> **<d> decisions · <k> judgement calls · <s> to skip.** <the biggest decision, one clause>
+> **<d> decisions · <k> judgement calls · <s> to skip · <f> review findings (<c> confirmed).** <the biggest decision, one clause>
 
 ## Before you read
 - **Path:** <MAP>
@@ -231,6 +270,14 @@ to the bug-hunting tools.
 - **Precedent:** <how this repo does it elsewhere>
 - **Rule:** <source path> — "<short quote>" | base: <evidence>
 - **Ask the author:** <one question they can answer in the thread>
+
+## Review findings — <tool> (<effort>), verified
+| # | Where | Verdict | Finding |
+|---|-------|---------|---------|
+| 1 | `<file:line>` | <confirmed|plausible> | <one-line summary> |
+
+Rejected:
+- `<file:line>` <summary> — <the verifier's reason>
 
 ## Permanent after merge
 - `<file:line>` — <what> (no ruling covers it)
@@ -278,6 +325,14 @@ to the bug-hunting tools.
   why there?").
 - **Riskiest code** is the READ groups as one line each, in their ranked
   order: where a correctness tool should look hardest. They are not stops.
+  Leave it out when the review ran.
+- **Review findings** only when the review ran; otherwise leave the section
+  and the summary's `<f> review findings` clause out. `<tool>` is
+  `/code-review` or `/review-stack`. Keep the tool's order and summaries;
+  leave out `Rejected:` when empty, and write "No findings." when nothing
+  came back. A finding rejected because the body records it as a decision
+  is also added to that Decision's push-back: "(the review raised this:
+  see Rejected)".
 - A code-vs-body difference tied to a stop goes in that stop's `Why`, never
   repeated under "Not in the body". Leave any empty section out.
 - The PR adds or edits an ADR or doc: that doc is a ⚑ stop (unless already
@@ -320,6 +375,10 @@ order, with two more after the header:
 ## Resolved across the stack
 - <spot in #<N>> — fixed in #<M> (`<file:line>` at the top)
 
+## Review findings — /review-stack (<effort>), verified
+### #<N>: <h> hold, <r> rejected
+…the single-PR table and Rejected list for that slice…
+
 …the remaining single-PR sections…
 ```
 
@@ -333,6 +392,8 @@ order, with two more after the header:
   whole stack, each item tagged with its slice. In Ship or block the tag
   follows the item, never the call: `**Block:** <item> (#<N>) — …`.
 - Leave out "Resolved across the stack" when nothing is.
+- Review findings has one sub-heading per slice, bottom first; `<h>` counts
+  its confirmed and plausible findings. A slice page carries only its own.
 
 Then `rm -rf <RUN>` for every target.
 
@@ -344,6 +405,9 @@ is `Darwin`), else `xdg-open`; skip this when that command is not on PATH.
 
 Print one line:
 `<OWNER/REPO>#<N> (<MODE>): <d> decisions, <k> spots, <s> files to skim, <o> to read → <ROOT>/local/review-guide/<N>.html`.
+With `--review`, add `, <f> review findings (<c> confirmed)` before the
+arrow, or, when the review did not run, a second line:
+"--review skipped: <the tool's stop message>".
 For a stack, print it per target, then
 `<OWNER/REPO> stack #<S> (<MODE>): <d> decisions, <k> spots, <r> resolved across slices → <ROOT>/local/review-guide/stack-<S>.html`.
 If `git -C <ROOT> check-ignore -q local/review-guide/<N>.md` fails, add: "local/ is not
