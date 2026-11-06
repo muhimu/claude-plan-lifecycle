@@ -68,6 +68,15 @@ check "(m) a removed WT is pruned" grep -qF 'git worktree prune' <<<"$review"
 check "(m) the stack summary counts findings" grep -qF '> **<d> decisions · <k> judgement calls · <f> review findings (<c> confirmed).**' "$cmd"
 check "(m) help allows Riskiest code beside findings" grep -qF 'Riskiest code appears only for a PR whose findings are not on the page' "$root/references/review-guide-help.md"
 
+# (f) earlier review threads and the README contact
+help="$root/references/review-guide-help.md"
+check "(f) Compare reads every review thread" grep -qF 'reviewThreads(first:100,after:$endCursor)' <<<"$(section Compare)"
+check "(f) Compare paginates the threads" grep -qF 'gh api graphql --paginate' <<<"$(section Compare)"
+check "(f) Familiarity puts the README contact first under Ask" grep -qF 'Contact' <<<"$(section Familiarity)"
+check "(f) template has the Earlier threads line" grep -qF -- '- Earlier threads — <n> threads, <u> unresolved: <what they asked, one clause>' "$cmd"
+check "(f) help explains Earlier threads" grep -qF 'Earlier threads' <<<"$(awk '/^## Not in the body$/{on=1;next} on&&/^## /{exit} on' "$help")"
+check "(f) help explains the README contact" grep -qF 'Contact' <<<"$(awk '/^## Before you read$/{on=1;next} on&&/^## /{exit} on' "$help")"
+
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
 
