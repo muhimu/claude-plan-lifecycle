@@ -153,33 +153,42 @@ ROOT=<ROOT>  B=<B>  R=<R>  H=<H>  RUN=<RUN>  DEFAULT=<DEFAULT>  MODE=<MODE>
 Only with `--review`; run it while the agents work. The review tools read
 the code around each hunk from the session's checkout, and
 `/plan-lifecycle:review-stack` stops unless that checkout is at the top of
-the stack, so they run in a worktree at the tip: `H` for one PR, the top
-target's head for a stack. `WT` is `<ROOT>/.claude/worktrees/review-guide-<N>`
-(`review-guide-stack-<S>` for a stack).
+the stack, so they run in a worktree at the tip: the `H` of the last
+target. `WT` is `<ROOT>/.claude/worktrees/review-guide-<N>`.
+
+First read each target's current head, `n` being its PR number:
+
+```bash
+gh pr view <n> -R <OWNER/REPO> --json headRefOid -q .headRefOid
+```
+
+A target whose head is not its `H` (it moved since Fetch, or `<head-sha>`
+pins an older commit) gets no findings: its section says "Reviewed at
+`<8>`, guide at `<8>`: findings left out." When that is every target, skip
+the review; Finish says why. Otherwise:
 
 ```bash
 git worktree remove --force <WT> 2>/dev/null     # left over from an earlier run
-git worktree add --detach <WT> <tip>
+rm -rf <WT>
+git worktree add --detach <WT> <H of the last target>
 ```
 
 Enter it with `EnterWorktree` (`path: <WT>`), then:
 
-- **`STACKED` false:** `Skill` `code-review` with
-  `<effort> https://github.com/<OWNER/REPO>/pull/<N>`; when it returns,
-  `Skill` `plan-lifecycle:verify-findings` with no arguments. The reviewed
-  head is the PR's `headRefOid` when the review started.
-- **`STACKED` true:** `Skill` `plan-lifecycle:review-stack <S> <effort>`.
-  The reviewed heads are the `<base> ← <head>` lines of its summary.
+- **One target** (a PR, or one slice pinned by `<head-sha>`): `Skill`
+  `code-review` with `<effort> https://github.com/<OWNER/REPO>/pull/<N>`;
+  when it returns, `Skill` `plan-lifecycle:verify-findings` with no
+  arguments.
+- **A stack:** `Skill` `plan-lifecycle:review-stack <top PR> <effort>`, the
+  top PR being the last target's number (`S` may be `of-<N>`, which it does
+  not take).
 
 Never pass `--comment` or `--fix`: the guide posts nothing and edits
-nothing. Keep each finding's place, verdict and one-line summary, and each
-rejected finding with its reason. Then, also when a tool stopped,
-`ExitWorktree` (`keep`) and `git worktree remove --force <WT>`. A tool that
-stopped leaves the page as without `--review`; Finish says why.
-
-A target whose reviewed head is not `H` (it moved, or `<head-sha>` pins an
-older commit) gets no findings: its section says "Reviewed at `<8>`, guide
-at `<8>`: findings left out."
+nothing. Keep each finding's place, verdict and one-line summary, each
+rejected finding with its reason, and each unverified one with why. Then,
+also when a tool stopped, `ExitWorktree` (`keep`) and
+`git worktree remove --force <WT>`. A tool that stopped leaves the page as
+without `--review`; Finish says why.
 
 ## Compare
 
@@ -279,6 +288,9 @@ to the bug-hunting tools.
 Rejected:
 - `<file:line>` <summary> — <the verifier's reason>
 
+Unverified:
+- `<file:line>` <summary> — not verified: <why>
+
 ## Permanent after merge
 - `<file:line>` — <what> (no ruling covers it)
 
@@ -329,7 +341,7 @@ Rejected:
 - **Review findings** only when the review ran; otherwise leave the section
   and the summary's `<f> review findings` clause out. `<tool>` is
   `/code-review` or `/review-stack`. Keep the tool's order and summaries;
-  leave out `Rejected:` when empty, and write "No findings." when nothing
+  leave out `Rejected:` and `Unverified:` when empty, and write "No findings." when nothing
   came back. A finding rejected because the body records it as a decision
   is also added to that Decision's push-back: "(the review raised this:
   see Rejected)".
@@ -377,7 +389,7 @@ order, with two more after the header:
 
 ## Review findings — /review-stack (<effort>), verified
 ### #<N>: <h> hold, <r> rejected
-…the single-PR table and Rejected list for that slice…
+…the single-PR table, Rejected and Unverified lists for that slice…
 
 …the remaining single-PR sections…
 ```

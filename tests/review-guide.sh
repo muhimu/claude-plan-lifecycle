@@ -20,10 +20,21 @@ check "(a) \$ARGUMENTS names --review" grep -qF '`$ARGUMENTS` is `<N> [<head-sha
 review="$(section Review)"
 check "(b) a ## Review section exists" [ -n "$review" ]
 for step in 'git worktree add --detach' 'EnterWorktree' 'ExitWorktree' 'git worktree remove' \
-  '`code-review`' '`plan-lifecycle:verify-findings`' '`plan-lifecycle:review-stack <S> <effort>`' 'Never pass `--comment`'; do
+  '`code-review`' '`plan-lifecycle:verify-findings`' '`plan-lifecycle:review-stack <top PR> <effort>`' 'Never pass `--comment`'; do
   check "(b) Review names $step" grep -qF -- "$step" <<<"$review"
 done
 check "(b) no review call passes --comment" not grep -qE '(code-review|review-stack)[^`]*--comment' "$cmd"
+
+# (b) the stack call names a PR (a fallback stack's S is "of-<N>", which
+# /review-stack does not take); one pinned slice is one target, not a stack
+check "(b) review-stack is never given S" not grep -qF 'review-stack <S>' "$cmd"
+check "(b) Review branches on targets, not STACKED" not grep -qF 'STACKED' <<<"$review"
+check "(b) Review reads each head just before the review" grep -qF 'gh pr view <n> -R <OWNER/REPO> --json headRefOid -q .headRefOid' <<<"$review"
+check "(b) template keeps unverified findings" grep -qF -- '- `<file:line>` <summary> — not verified: <why>' "$cmd"
+
+# (d) /review-stack accepts the detached worktree the guide makes at the top
+check "(d) session-pr accepts a detached HEAD at a wanted branch's head" grep -qF 'HEAD is detached at the head of a wanted branch' "$root/references/session-pr.md"
+check "(d) only for a caller that does not push" grep -qF 'for a caller that does not push, HEAD is detached' "$root/references/session-pr.md"
 
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"

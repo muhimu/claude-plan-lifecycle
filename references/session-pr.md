@@ -60,7 +60,11 @@ keeps working.
 The current checkout is **usable** when it is a checkout of the PR's
 `OWNER/REPO` (`gh repo view --json nameWithOwner -q .nameWithOwner`) and,
 unless the caller takes **any**, `git branch --show-current` is a wanted
-branch. Usable → done.
+branch, or, for a caller that does not push, HEAD is detached at the head of a wanted branch
+(`git rev-parse HEAD` equals
+`gh pr view <branch> -R OWNER/REPO --json headRefOid -q .headRefOid`):
+`/plan-lifecycle:review-guide --review` runs the review tools in such a
+worktree. Usable → done.
 
 Otherwise list the repo's worktrees: `git -C <a checkout of that repo — the
 current one, or one this session used> worktree list --porcelain` gives each
