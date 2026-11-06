@@ -110,24 +110,40 @@ git diff --name-status <B> <H> > <RUN>/files.txt
 ## Previous guide
 
 Per target, if `<ROOT>/local/review-guide/<N>.md` exists from an earlier
-run, this run is a re-run. Its header line gives the old head and old base (its
-`head` and `base` fields, 8 characters each); expand each with
-`git rev-parse --verify -q <8>^{commit}`. Keep the old page's Decisions and
-Route headings to compare in Write; for a stack, also read
+run, this run is a re-run. Its header line gives the old head and old base
+(its `head` and `base` fields, 8 characters each). Keep the old page's
+Decisions and Route headings to compare in Write; for a stack, also read
 `stack-<S>.md`. No old page → skip; the guide is written as on a first run.
 
-The code delta, per target:
+Expand each field to a commit. One gone from this clone (garbage-collected,
+or a fresh clone) may still be on GitHub:
 
 ```bash
-git merge-base --is-ancestor <old H> <H>      # true and <old B> = <B>: plain new commits
-git log --format='%h %s' <old H>..<H>
-git diff --stat <old H> <H>
+git rev-parse --verify -q <8>^{commit}
+gh api repos/<OWNER/REPO>/commits/<8> -q .sha     # when the line above prints nothing
+git fetch origin <that sha>
 ```
 
-Otherwise the PR was force-pushed or rebased: compare
-`git range-diff <old B>..<old H> <B>..<H>`, so changes from a moved base are
-not listed as the author's. When the old head does not resolve, say
-"previous head no longer exists" and compare the pages only.
+Then pick the delta, first match wins:
+
+- **The old head does not resolve:** say "previous head no longer exists"
+  and compare the pages only.
+- **This guide is older than the last one** (`<head-sha>` pins an earlier
+  commit): `git merge-base --is-ancestor <H> <old H>` succeeds and they
+  differ. Say "this guide is at an older head than the last one" and
+  compare the pages only; Resolved and New would be reversed.
+- **Plain new commits:** `git merge-base --is-ancestor <old H> <H>`
+  succeeds and the old base is `B` (or the old page has no `base` field):
+
+  ```bash
+  git log --format='%h %s' <old H>..<H>
+  git diff --stat <old H> <H>
+  ```
+
+- **Force-pushed or rebased:** with an old base,
+  `git range-diff <old B>..<old H> <B>..<H>`, so changes from a moved base
+  are not listed as the author's. With no `base` field on the old page,
+  say "previous base unknown" and compare the pages only.
 
 This is for the orchestrator only, never to the spot agent: it reviews
 `B..H` fresh.
@@ -426,7 +442,9 @@ Unverified:
   and ruling: one that matches is Still open; a new one with no old match
   is New. An old one with no match is Resolved only when the delta touches its file or ruling,
   naming that change; otherwise it is No longer ranked (the caps pushed it
-  out). Never invent a change. Leave out empty bullets. The new page
+  out). Never invent a change. Leave out empty bullets. List at most 8 items,
+  Resolved first, and end with "<n> more" when there are more, so the page
+  keeps its line cap. The new page
   overwrites the old one.
 - **Before you read** only when `MODE` is `new`; **Hot files** only when it
   is `expert` and some file qualifies. `Precedent` only in `new` mode, and
@@ -492,7 +510,7 @@ order, with two more after the header:
 ```markdown
 # Stack #<S> · <bottom PR> → <top PR> · <what the stack adds, a few words>
 
-`<author>` · #<N> head `<8>` on `<base>@<8>` · … · <date> · <MODE>: <why>
+`<author>` · #<N> head `<8>` on `<base>@<8>` · … · <date> · <MODE>: <why> · updated from `<old head, 8 chars>`
 
 > **<d> decisions · <k> judgement calls.** <the biggest decision, one clause>
 

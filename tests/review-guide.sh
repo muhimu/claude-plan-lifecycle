@@ -114,6 +114,16 @@ check "(h) Reading order names Since the last guide" grep -qF 'Since the last gu
 check "(h) header says updated from" grep -qF 'updated from `<old head, 8 chars>`' "$cmd"
 check "(h) Finish counts resolved, still open and new" grep -qF '<r> resolved, <o> still open, <n> new since the last guide' <<<"$(section Finish)"
 
+# (l) follow-ups: the old head is fetched from GitHub when it is gone locally;
+# a missing base and a guide older than the last are handled; the section has
+# a cap; the stack header says updated from
+check "(l) old head expanded and fetched from GitHub" grep -qF 'gh api repos/<OWNER/REPO>/commits/<8> -q .sha' <<<"$prev"
+check "(l) an old page without a base field" grep -qF 'no `base` field' <<<"$prev"
+check "(l) a guide older than the last one" grep -qF 'git merge-base --is-ancestor <H> <old H>' <<<"$prev"
+check "(l) plain new commits only after the ancestor test" grep -qF '**Plain new commits:**' <<<"$prev"
+check "(l) Since the last guide has a cap" grep -qF 'at most 8 items' "$cmd"
+check "(l) stack header says updated from" grep -qF '<date> · <MODE>: <why> · updated from `<old head, 8 chars>`' <<<"$(grep -F '#<N> head `<8>` on' "$cmd")"
+
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
 
