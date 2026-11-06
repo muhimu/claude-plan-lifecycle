@@ -72,6 +72,7 @@ for n in reap-plans stamp-plans link-plans; do install -m 755 /tmp/bin-wrapper ~
 ```
 
 Working on the plugin itself? Link a checkout instead: `ln -s "$PWD"/bin/* ~/.local/bin/`.
+Run `make test` and `make lint` (needs shellcheck) before opening a PR.
 
 ## Where plans live — the plans-dir convention
 
