@@ -12,14 +12,23 @@
 # Usage:
 #   render-report <file.md>...
 #
-# Exits 1 if any input is not an existing .md file; the valid ones are still
-# rendered.
+# Exits 2 with no arguments, and 1 if any input is not an existing .md
+# file; the valid ones are still rendered.
 
 set -euo pipefail
 
+# usage — the header comment above, from its name line to its last line.
+usage() {
+  awk 'NR > 2 && /^#/ { sub(/^# ?/, ""); print; next } NR > 2 { exit }' "$0"
+}
+
 if [[ "${1:-}" == "-h" ]]; then
-  sed -n '3,16p' "$0" | sed 's/^# \{0,1\}//'
+  usage
   exit 0
+fi
+if (( $# == 0 )); then
+  usage >&2
+  exit 2
 fi
 
 # page_title FILE — two to four words from the report's directory and name.
@@ -318,7 +327,7 @@ HTML
   // an image shows as its alt text, so opening the page fetches nothing.
   marked.use({ renderer: {
     html: function (h) { return escapeHtml(h); },
-    image: function (href, title, text) { return '[image: ' + escapeHtml(text || href) + ']'; }
+    image: function (href, title, text) { return '[image: ' + (text || escapeHtml(href)) + ']'; }
   } });
   page.innerHTML = marked.parse(md);
 
@@ -401,9 +410,9 @@ HTML
     }
   }
 
-  // ⚑ and 🔒 become tags, a slice reference such as "(#12)" a chip, and a
-  // decision's "Agree, or push back on:" starts a line.
-  var mark = /(⚑|🔒|\(#\d+[^()]*\)|Agree, or push back on:)/;
+  // ⚑ and 🔒 become tags, a slice reference, "(#12)" or "(#12, used by
+  // #13)", a chip, and a decision's "Agree, or push back on:" starts a line.
+  var mark = /(⚑|🔒|\(#\d+(?:, used by #\d+)?\)|Agree, or push back on:)/;
   [top, page].forEach(function (root) {
     var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     var texts = [];
@@ -443,13 +452,16 @@ HTML
     }
   });
 
-  // A list of "Label: value" items becomes a label/value grid.
+  // A list of "**Label:** value" items becomes a label/value grid; so does
+  // a list of plain "Label: value" items nested in an item (a finding's
+  // Trigger/Effect/Evidence/Fix), never a top-level prose list.
   all('ul').forEach(function (ul) {
+    var nested = ul.parentNode.nodeName === 'LI';
     var items = Array.prototype.slice.call(ul.children);
     var labels = items.map(function (li) {
       var n = first(li);
       if (n && n.nodeName === 'STRONG') return /\S:$/.test(n.textContent.trim()) ? n : null;
-      return n && n.nodeType === 3 && /^\s*[A-Z][\w-]*( [\w-]+){0,2}: /.test(n.nodeValue) ? n : null;
+      return nested && n && n.nodeType === 3 && /^\s*[A-Z][\w-]*( [\w-]+){0,2}: /.test(n.nodeValue) ? n : null;
     });
     if (!items.length || labels.indexOf(null) >= 0) return;
     var dl = el('dl', 'fields');
@@ -523,11 +535,17 @@ HTML
   });
 
   // Claim-ledger results; tables scroll inside their own box.
-  page.querySelectorAll('td').forEach(function (td) {
-    var t = td.textContent.trim();
-    if (/^reproduced/.test(t)) td.classList.add('ok');
-    else if (/^failed/.test(t)) td.classList.add('bad');
-    else if (/^not reproducible/.test(t)) td.classList.add('na');
+  page.querySelectorAll('table').forEach(function (table) {
+    var heads = Array.prototype.map.call(table.querySelectorAll('thead th'), function (th) { return th.textContent.trim(); });
+    var col = heads.indexOf('Result');
+    if (col < 0) col = heads.length - 1;
+    table.querySelectorAll('tbody tr').forEach(function (tr) {
+      var td = tr.children[col];
+      var t = td ? td.textContent.trim() : '';
+      if (/^reproduced/.test(t)) td.classList.add('ok');
+      else if (/^failed/.test(t)) td.classList.add('bad');
+      else if (/^not reproducible/.test(t)) td.classList.add('na');
+    });
   });
   page.querySelectorAll('table').forEach(function (table) {
     var wrap = document.createElement('div');
@@ -575,6 +593,13 @@ HTML
     var target = e.target.hash && document.getElementById(e.target.hash.slice(1));
     if (target && target.tagName === 'DETAILS') target.open = true;
   });
+  // A page opened at, or moved to, a #section inside a collapsed box opens it.
+  function openHash() {
+    var target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    var box = target && target.closest('details');
+    if (box) { box.open = true; target.scrollIntoView(); }
+  }
+  window.addEventListener('hashchange', openHash);
 
   if (top.children.length) {
     if (toc.children.length > 2) top.appendChild(toc);
@@ -582,6 +607,7 @@ HTML
     header.appendChild(top);
     document.body.insertBefore(header, page);
   }
+  openHash();
 })();
 </script>
 </body>

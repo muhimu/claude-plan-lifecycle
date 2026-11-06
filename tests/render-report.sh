@@ -10,6 +10,8 @@ check() { local d="$1"; shift; if ! "$@"; then echo "FAIL: $d"; fail=1; fi; }
 # shellcheck disable=SC2329  # helpers below run through check
 not() { ! "$@"; }
 # shellcheck disable=SC2329
+last_line_is() { [ "$(tail -1 "$1")" = "$2" ]; }
+# shellcheck disable=SC2329
 is_base64() { printf %s "$1" | grep -Eq '^[A-Za-z0-9+/]+=*$'; }
 
 dir="$tmp/fixture dir"
@@ -72,5 +74,16 @@ check "(e) stderr names the path" grep -qF '/nonexistent.md: no such file' "$tmp
 rc=$?
 check "(f) non-.md exits 1 (got $rc)" [ "$rc" -eq 1 ]
 check "(f) stderr says not a .md file" grep -qF 'notes.txt: not a .md file' "$tmp/err"
+
+# (g) no arguments: usage on stderr, non-zero exit
+"$root/bin/render-report" >"$tmp/out" 2>"$tmp/err"
+rc=$?
+check "(g) no args exits 2 (got $rc)" [ "$rc" -eq 2 ]
+check "(g) no args prints usage on stderr" grep -qF 'render-report <file.md>...' "$tmp/err"
+
+# (h) -h prints the whole header comment and nothing after it
+"$root/bin/render-report" -h >"$tmp/out" 2>&1
+check "(h) -h starts with the name line" grep -q '^render-report — ' "$tmp/out"
+check "(h) -h ends with the exit-code note" last_line_is "$tmp/out" 'file; the valid ones are still rendered.'
 
 exit "$fail"
