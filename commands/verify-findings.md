@@ -115,7 +115,11 @@ before you give CONFIRMED or PLAUSIBLE, then give a verdict:
 - REJECTED: only when one of these holds, and cite it:
   - the code doesn't do what the finding says (quote the line);
   - it is guarded in the reviewed code (cite the guard);
-  - the PR body, an ADR or a CLAUDE.md records it as a decision (quote it);
+  - the PR body, an ADR or a CLAUDE.md records it as a decision (quote it).
+    A `## Follow-ups` or other deferred entry in the PR body is a deferral,
+    not a decision: a finding the body only lists as deferred is CONFIRMED
+    or PLAUSIBLE, with "listed as a follow-up" in the evidence, unless the
+    body says why it cannot be fixed in this PR;
   - a commit message or an earlier review reply on this PR records the
     behaviour as deliberate (quote it, with the sha or the comment's URL).
     A reply is a claim, not the code: it counts only if the reviewed code
