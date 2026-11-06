@@ -314,8 +314,12 @@ HTML
   function escapeHtml(s) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
-  // Reports quote PR content: raw HTML in them is data, shown as text.
-  marked.use({ renderer: { html: function (h) { return escapeHtml(h); } } });
+  // Reports quote PR content: raw HTML in them is data, shown as text, and
+  // an image shows as its alt text, so opening the page fetches nothing.
+  marked.use({ renderer: {
+    html: function (h) { return escapeHtml(h); },
+    image: function (href, title, text) { return '[image: ' + escapeHtml(text || href) + ']'; }
+  } });
   page.innerHTML = marked.parse(md);
 
   // Links only to the web, never javascript: or data: URLs.
@@ -390,7 +394,7 @@ HTML
     }
     top.appendChild(lead);
     var line = page.firstElementChild;
-    if (line && line.tagName === 'P' && / · /.test(line.textContent) && line.nextElementSibling === quote) {
+    if (line && line.tagName === 'P' && / · /.test(line.textContent) && quote && line.nextElementSibling === quote) {
       line.className = 'meta';
       top.appendChild(line);
       top.appendChild(quote);
