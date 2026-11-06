@@ -159,7 +159,9 @@ rm -rf "$RUN"
 
 Run `"${CLAUDE_PLUGIN_ROOT}/bin/render-report"` on every report that exists,
 after Handed-up deferrals (that step reads the `.md`). Open one page with
-`open` (skip this where `open` is not on PATH). For one PR, open that PR's
+`open` on macOS (`uname` is `Darwin`), else `xdg-open`; skip this when that
+command is not on PATH (on Linux, `open` can be the console tool `openvt`).
+For one PR, open that PR's
 page. For a stack, open the first report with a failed claim or a finding,
 else the bottom slice's. The Report column shows the `.html` path; everything
 else keeps reading the `.md`.

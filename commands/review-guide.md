@@ -328,8 +328,8 @@ Then `rm -rf <RUN>` for every target.
 ## Finish
 
 Run `"${CLAUDE_PLUGIN_ROOT}/bin/render-report"` on every page written. Open
-the stack page for a stack, else `<N>.html`, with `open` (skip this where
-`open` is not on PATH).
+the stack page for a stack, else `<N>.html`, with `open` on macOS (`uname`
+is `Darwin`), else `xdg-open`; skip this when that command is not on PATH.
 
 Print one line:
 `<OWNER/REPO>#<N> (<MODE>): <d> decisions, <k> spots, <s> files to skim, <o> to read → <ROOT>/local/review-guide/<N>.html`.
