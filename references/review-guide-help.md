@@ -28,7 +28,7 @@ Sections with nothing in them are left out. Before you read appears only when yo
 
 ## Decisions
 - **You see:** up to three rulings the PR itself records, ranked by stakes, each with its stated cost if wrong.
-- **How to read it:** 🔒 marks a ruling that sets something hard to undo after merge. The line under each ruling names the assumption it rests on: that is what to check. Checked says what the code shows about the ruling's stated reason: confirmed (the code does what the reason says), qualified (only in part, or only under a condition the PR does not state), contradicted (the code does otherwise), or not checkable here (only a live system or another team could answer). A contradicted or qualified ruling ranks first among rulings of the same stakes.
+- **How to read it:** 🔒 marks a ruling that sets something hard to undo after merge. The line under each ruling names the assumption it rests on: that is what to check. Checked says what the code shows about the ruling's stated reason: confirmed (the code does what the reason says), qualified (only in part, or only under a condition the PR does not state), contradicted (the code does otherwise), or not checkable here (only a live system or another team could answer; "check did not run" means the check itself failed, not that the ruling needs one). A contradicted or qualified ruling ranks first among rulings of the same stakes.
 - **Why:** these are the calls only a human can make. Agree in a thread, or push back on the assumption.
 
 **Example**
