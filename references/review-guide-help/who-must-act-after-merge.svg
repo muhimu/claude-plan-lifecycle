@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Two branches merge, then arrows lead to who must act: a person, a client repo, a database">
+  <path d="M14 30c30 0 30 40 56 40M14 110c30 0 30-40 56-40" stroke="var(--muted)"/>
+  <circle cx="74" cy="70" r="8" fill="var(--accent)" stroke="none"/>
+  <path d="M84 70l44-42M84 70h44M84 70l44 42" stroke="var(--accent)"/>
+  <circle cx="148" cy="20" r="6"/><path d="M138 40a10 10 0 0 1 20 0"/>
+  <rect x="136" y="60" width="26" height="20" rx="3"/><path d="M136 66h26" />
+  <ellipse cx="149" cy="104" rx="12" ry="4"/><path d="M137 104v14a12 4 0 0 0 24 0v-14"/>
+  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11"><text x="172" y="34">a person</text><text x="172" y="74">a client</text><text x="172" y="116">a database</text></g>
+</svg>

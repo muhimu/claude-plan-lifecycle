@@ -184,4 +184,28 @@ else
   echo "skip: (o) needs Chrome at \$CHROME"
 fi
 
+# (p) each help section has a picture, drawn in the page's colours, and the
+# page carries one template per picture
+slug() { printf %s "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g'; }
+for pair in "pr-triage:$html" "review-guide:$tmp/review-guide/7.html"; do
+  kind="${pair%%:*}"; page="${pair#*:}"; pics="$root/references/$kind-help"
+  slugs="$(sed -n 's/^## //p' "$root/references/$kind-help.md" | while IFS= read -r h; do slug "$h"; echo; done)"
+  while IFS= read -r s; do
+    check "(p) $kind help \"$s\" has a picture" [ -f "$pics/$s.svg" ]
+  done <<<"$slugs"
+  n=0
+  for f in "$pics"/*.svg; do
+    [ -f "$f" ] || continue
+    n=$((n + 1)); s="$(basename "$f" .svg)"
+    check "(p) $kind/$s.svg names a help section" grep -qxF "$s" <<<"$slugs"
+    check "(p) $kind/$s.svg is an image" grep -qF 'role="img"' "$f"
+    check "(p) $kind/$s.svg has a label" grep -qE 'aria-label="[^"]+"' "$f"
+    check "(p) $kind/$s.svg is 240x140" grep -qF 'viewBox="0 0 240 140"' "$f"
+    check "(p) $kind/$s.svg uses only the page colours" not grep -qE '(fill|stroke|color)="#' "$f"
+    check "(p) $kind page carries $s" grep -qF "<template id=\"help-pic-$s\">" "$page"
+  done
+  check "(p) $kind has pictures" [ "$n" -gt 0 ]
+done
+check "(p) a page with no type has no pictures" not grep -qF '<template id="help-pic-' "$tmp/notes.html"
+
 exit "$fail"

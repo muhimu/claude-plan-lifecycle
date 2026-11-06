@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="A person choosing between two options; one is marked as the recommendation">
+  <circle cx="44" cy="46" r="14"/><path d="M20 106a24 24 0 0 1 48 0"/>
+  <path d="M76 70l30-26M76 70l30 26" stroke="var(--muted)"/>
+  <rect x="112" y="24" width="112" height="36" rx="6" fill="var(--green-soft)" stroke="var(--green)"/>
+  <rect x="112" y="80" width="112" height="36" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+  <path d="M122 42l5 6 9-12" stroke="var(--green)" stroke-width="3"/>
+  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11"><text x="144" y="46" font-weight="600" fill="var(--green)">recommended</text><text x="124" y="102" fill="var(--muted)">the other option</text></g>
+</svg>

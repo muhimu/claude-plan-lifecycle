@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="A list of files; generated code, a rename and a lockfile are greyed out and skipped">
+  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11" font-family="ui-monospace, Menlo, monospace"><text x="44" y="30">cache/store.go</text><text x="44" y="58" fill="var(--muted)" text-decoration="line-through">api.pb.go</text><text x="44" y="86" fill="var(--muted)" text-decoration="line-through">old → new.go</text><text x="44" y="114" fill="var(--muted)" text-decoration="line-through">go.sum</text></g>
+  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11" fill="var(--muted)"><text x="146" y="58">generated</text><text x="146" y="86">rename</text><text x="146" y="114">lockfile</text></g>
+  <path d="M30 26h0" stroke="var(--accent)" stroke-width="8"/>
+  <path d="M30 54h0M30 82h0M30 110h0" stroke="var(--line)" stroke-width="8"/>
+  <path d="M18 34c-10 30-10 50 0 82M12 108l6 8 6-7" stroke="var(--muted)" stroke-dasharray="3 4"/>
+</svg>

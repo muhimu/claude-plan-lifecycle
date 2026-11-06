@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="An iceberg: the PR body is the tip above the water; most of what the code does sits below">
+  <path d="M96 52l16-28 14 10 18 18z" fill="var(--surface)" stroke="var(--accent)"/>
+  <path d="M96 52L58 96l20 30h88l24-40-46-34z" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <path d="M8 52h224" stroke="var(--accent)" stroke-dasharray="6 5"/>
+  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11"><text x="152" y="32">the PR body</text><text x="94" y="96" font-weight="600" fill="var(--accent)">what the</text><text x="94" y="110" font-weight="600" fill="var(--accent)">code does</text></g>
+</svg>

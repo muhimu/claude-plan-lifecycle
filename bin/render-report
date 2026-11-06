@@ -11,7 +11,8 @@
 #
 # The report's folder picks the page type: review-guide/ is a review guide,
 # triage/ a PR triage. Each type gets its own layout and a Help panel from the
-# plugin's references/<type>-help.md; other reports get neither.
+# plugin's references/<type>-help.md; other reports get neither. A picture
+# in references/<type>-help/<section>.svg sits under that Help section.
 #
 # Usage:
 #   render-report <file.md>...
@@ -323,6 +324,7 @@ button.filter { margin: 0 0 8px; }
 .help { background: var(--surface); border-bottom: 1px solid var(--line); }
 .help .wrap { padding-top: 20px; padding-bottom: 32px; }
 .help h2 { margin-top: 32px; }
+.help h2 + svg { display: block; width: 240px; max-width: 100%; height: auto; margin: 4px 0 12px; }
 .sample { margin: 8px 0 16px; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 6px; background: var(--bg); }
 .sample > .eyebrow { margin-bottom: 8px; }
 .sample > :last-child { margin-bottom: 0; }
@@ -353,6 +355,13 @@ HTML
     printf '<script type="text/plain" id="help">'
     base64 < "$help" | tr -d '\n'
     printf '</script>\n'
+    # The plugin's own pictures, not report content: they go in verbatim.
+    for pic in "$plugin_root/references/$kind-help"/*.svg; do
+      [[ -f "$pic" ]] || continue
+      printf '<template id="help-pic-%s">' "$(basename "$pic" .svg)"
+      cat "$pic"
+      printf '</template>\n'
+    done
   fi
   cat <<'HTML'
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
@@ -755,6 +764,11 @@ HTML
     body.appendChild(el('div', 'eyebrow', 'How to read this page'));
     var guide = el('div');
     render(guide, help);
+    // Each section's picture, by its heading's slug: "Ship or block" is ship-or-block.
+    all(guide, 'h2').forEach(function (h2) {
+      var pic = document.getElementById('help-pic-' + h2.textContent.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''));
+      if (pic) h2.after(pic.content.cloneNode(true));
+    });
     dress(guide);
     all(guide, ':scope > p').forEach(function (p) {
       if (p.children.length !== 1 || p.firstElementChild.nodeName !== 'STRONG' || p.textContent.trim() !== 'Example') return;

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="A stop in slice #12 is fixed by slice #13 above it">
+  <rect x="24" y="22" width="150" height="34" rx="5" fill="var(--green-soft)" stroke="var(--green)"/>
+  <rect x="24" y="84" width="150" height="34" rx="5" fill="var(--surface)" stroke="var(--line)"/>
+  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11" font-family="ui-monospace, Menlo, monospace" font-weight="700"><text x="34" y="43" fill="var(--green)">#13</text><text x="34" y="105" fill="var(--muted)">#12</text></g>
+  <g stroke="none" fill="currentColor" font-family="system-ui, sans-serif" font-size="11"><text x="70" y="43" fill="var(--green)">fixes it</text><text x="70" y="105" fill="var(--muted)" text-decoration="line-through">⚑ stop 2</text></g>
+  <path d="M190 39c28 0 28 62 0 62M196 94l-6 7 8 4" stroke="var(--green)"/>
+  <path d="M152 32l6 8 10-14" stroke="var(--green)" stroke-width="3"/>
+</svg>
