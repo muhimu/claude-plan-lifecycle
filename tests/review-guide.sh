@@ -124,6 +124,17 @@ check "(n) rulings brief reads another repo's default branch" grep -qF 'its defa
 check "(k) the 5-stop cap applies after Filter, lens spots ranked in" grep -qF 'The cap applies after Filter' "$cmd"
 check "(k) history follows renames" grep -qF "git log -S'<removed line, trimmed>' --follow" "$brief"
 check "(k) lens heading is one level below Review lenses" grep -qF 'one heading level below `Review lenses`' "$root/references/pr-triage-brief.md"
+# (h) a re-run opens with what changed since the last guide
+prev="$(section 'Previous guide')"
+order="$(grep -nE '^## (Fetch|Previous guide|Profile)$' "$cmd" | cut -d: -f2 | tr '\n' ,)"
+check "(h) Previous guide sits right after Fetch" [ "$order" = "## Fetch,## Previous guide,## Profile," ]
+for step in 'git merge-base --is-ancestor <old H> <H>' "git log --format='%h %s' <old H>..<H>" 'git range-diff <old B>..<old H> <B>..<H>' 'previous head no longer exists' 'never to the spot agent'; do
+  check "(h) Previous guide names $step" grep -qF -- "$step" <<<"$prev"
+done
+check "(h) the section follows the summary line" grep -qx '## Since the last guide — `<old head, 8 chars>`' <<<"$(grep -A2 -F '> **<d> decisions · <k> judgement calls · <s> to skip' "$cmd")"
+check "(h) the stack page has it too" grep -qx '## Since the last guide — `<old head, 8 chars>`' <<<"$(grep -A2 -F '> **<d> decisions · <k> judgement calls.**' "$cmd")"
+check "(h) header says updated from" grep -qF 'updated from `<old head, 8 chars>`' "$cmd"
+check "(h) Finish counts resolved, still open and new" grep -qF '<r> resolved, <o> still open, <n> new since the last guide' <<<"$(section Finish)"
 
 # (o) review round 2: the allow-list covers long flags, write options and
 # chaining; git log on B or H stays with the orchestrator; an H-only check

@@ -16,6 +16,17 @@ Sections with nothing in them are left out. Before you read appears only when yo
 
 > **2 decisions · 1 judgement call · 3 to skip.** Whether the new cache lives in the request path.
 
+## Since the last guide
+- **You see:** on a page written again for the same PR, what changed since the last guide: the new commits, or a line saying the PR was rebased, then the earlier stops and Decisions sorted into Resolved, Still open and New.
+- **How to read it:** Resolved names the change that settled it; Still open points at its new place on this page; New says which commit brought it. "Rebased onto" means the author moved the PR onto a newer base: what came from the base is not listed as theirs. "Previous head no longer exists" means the old commits are gone, so only the pages were compared.
+- **Why:** the author's answers show up as code changes, so you read only what moved since your last pass.
+
+**Example**
+
+- 2 commits: move the cache call into the service; add an eviction test
+- Resolved: `internal/cache/store.go:42` — the storage import is gone (`internal/service/orders.go:88` now calls it)
+- Still open: Retries stay in the client (now Decision 1)
+
 ## How the stack splits
 - **You see:** one line per slice of the stack, bottom first: what that slice adds.
 - **How to read it:** later sections tag each item with its slice, like `(#12)`, or `(#12, used by #13)` when a higher slice depends on it.
