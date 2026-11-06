@@ -516,14 +516,21 @@ HTML
     });
 
     // Ship or block: an item that opens with a bold call gets a pill instead.
+    // A loose item's <p> is unwrapped, so it still lays out as a row.
     var calls = { 'Block': 'red', 'Ship unless': 'amber', 'After merge': 'amber', 'Ship': 'green' };
     all(root, 'h2').forEach(function (h2) {
-      if (h2.textContent.trim() !== 'Ship or block') return;
+      if (h2.textContent.split(' — ')[0].trim() !== 'Ship or block') return;
       for (var n = h2.nextElementSibling; n && n.tagName !== 'H2'; n = n.nextElementSibling) {
         if (n.tagName === 'UL') Array.prototype.forEach.call(n.children, function (li) {
-          var s = first(li), call = s && s.nodeName === 'STRONG' && s.textContent.replace(/:\s*$/, '');
-          if (!calls.hasOwnProperty(call) || !/:\s*$/.test(s.textContent)) return;
-          s.replaceWith(el('span', 'pill ' + calls[call], call));
+          var s = first(li), m = s && s.nodeName === 'STRONG' && /^(Block|Ship unless|After merge|Ship):\s*$/.exec(s.textContent);
+          if (!m) return;
+          var t = s.nextSibling, p = s.parentNode;
+          if (t && t.nodeType === 3) t.nodeValue = t.nodeValue.replace(/^\s+/, '');
+          s.replaceWith(el('span', 'pill ' + calls[m[1]], m[1]));
+          if (p.nodeName === 'P' && li.children.length === 1) {
+            while (p.firstChild) li.insertBefore(p.firstChild, p);
+            p.remove();
+          }
         });
       }
     });
@@ -633,6 +640,8 @@ HTML
   marks(top);
   dress(page);
 
+HTML
+  cat <<'HTML'
   // Section headings: an id and a contents link; "x — y" is a title and a
   // hint; the asks under "For a human" become callouts.
   var toc = el('nav', 'toc');
