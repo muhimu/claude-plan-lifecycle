@@ -14,7 +14,7 @@ last_line_is() { [ "$(tail -1 "$1")" = "$2" ]; }
 # shellcheck disable=SC2329
 is_base64() { printf %s "$1" | grep -Eq '^[A-Za-z0-9+/]+=*$'; }
 
-dir="$tmp/fixture dir"
+dir="$tmp/fixture dir/triage"
 mkdir -p "$dir"
 md="$dir/12.md"
 html="$dir/12.html"
@@ -85,5 +85,61 @@ check "(g) no args prints usage on stderr" grep -qF 'render-report <file.md>...'
 "$root/bin/render-report" -h >"$tmp/out" 2>&1
 check "(h) -h starts with the name line" grep -q '^render-report — ' "$tmp/out"
 check "(h) -h ends with the exit-code note" last_line_is "$tmp/out" 'file; the valid ones are still rendered.'
+
+# (i) --help and -h print usage, exit 0 and write nothing
+for flag in --help -h; do
+  out="$(cd "$tmp" && "$root/bin/render-report" "$flag" 2>&1)"
+  rc=$?
+  check "(i) $flag writes no file" [ ! -e "$tmp/$flag.html" ]
+  check "(i) $flag exits 0 (got $rc)" [ "$rc" -eq 0 ]
+  check "(i) $flag prints usage" grep -qF 'render-report <file.md>' <<<"$out"
+done
+
+# (j) the report's folder picks the page type and its help
+help_block() { sed -n 's|.*<script type="text/plain" id="help">\([^<]*\)</script>.*|\1|p' "$1"; }
+if [ -f "$html" ]; then
+  check "(j) triage/ is a triage page" grep -qF '<body data-kind="pr-triage">' "$html"
+  help_block "$html" | base64 --decode > "$tmp/help" 2>/dev/null
+  check "(j) triage page embeds the triage help" cmp -s "$root/references/pr-triage-help.md" "$tmp/help"
+fi
+mkdir -p "$tmp/review-guide"
+printf '# #7 x\n' > "$tmp/review-guide/7.md"
+"$root/bin/render-report" "$tmp/review-guide/7.md" >/dev/null
+check "(j) review-guide/ is a review-guide page" grep -qF '<body data-kind="review-guide">' "$tmp/review-guide/7.html"
+help_block "$tmp/review-guide/7.html" | base64 --decode > "$tmp/help" 2>/dev/null
+check "(j) review-guide page embeds its help" cmp -s "$root/references/review-guide-help.md" "$tmp/help"
+for other in notes 12; do
+  printf '# notes\n' > "$tmp/$other.md"
+  "$root/bin/render-report" "$tmp/$other.md" >/dev/null
+  check "(j) $other.md outside triage/ has no type" grep -qF '<body>' "$tmp/$other.html"
+  check "(j) $other.md outside triage/ has no help" not grep -qF 'id="help"' "$tmp/$other.html"
+done
+check "(j) 12.md outside triage/ is not titled Triage" not grep -qF '<title>Triage #12</title>' "$tmp/12.html"
+
+# (k) a symlinked script still finds the help
+ln -s "$root/bin/render-report" "$tmp/linked-render-report"
+"$tmp/linked-render-report" "$tmp/review-guide/7.md" >/dev/null
+check "(k) linked script embeds the help" grep -qF 'id="help"' "$tmp/review-guide/7.html"
+
+# (l) every section of a report template has a help entry
+# headings FILE START — the "## " headings of the markdown fences after START,
+# up to the next heading of START's level, without a " — hint".
+headings() {
+  awk -v start="$2" '
+    index($0, start) == 1 { on = 1; lvl = index($0, " "); next }
+    on && /^#+ / && index($0, " ") <= lvl && !fence { exit }
+    on && /^```/ { fence = !fence; next }
+    on && fence && /^## / { sub(/^## /, ""); sub(/ — .*/, ""); print }
+  ' "$1" | sort -u
+}
+for pair in "commands/review-guide.md:## Write:review-guide" "references/pr-triage-brief.md:### 6. Write the report:pr-triage"; do
+  file="${pair%%:*}"; rest="${pair#*:}"; start="${rest%:*}"; kind="${rest##*:}"
+  want="$(headings "$root/$file" "$start")"
+  check "(l) $file has template headings" [ -n "$want" ]
+  while IFS= read -r h; do
+    [ -n "$h" ] || continue
+    check "(l) $kind help explains \"$h\"" grep -qxF "## $h" "$root/references/$kind-help.md"
+  done <<<"$want"
+done
 
 exit "$fail"

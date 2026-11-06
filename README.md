@@ -53,7 +53,7 @@ aggressive about writing plans without accumulating a graveyard.
 | `bin/stamp-plans` | script | Stamps `pr: <N>` into every plan file sharing a slug |
 | `bin/reap-plans` | script | Archives merged and abandoned plan groups into `<plans-dir>/done/` |
 | `bin/link-plans` | script | Shares a gitignored plans dir into a worktree — run manually or as a post-worktree-creation hook |
-| `bin/render-report` | script | Writes a styled, self-contained `.html` beside a report's `.md`: badges, coloured findings and ledger results, reference sections collapsed. Local only |
+| `bin/render-report` | script | Writes a styled, self-contained `.html` beside a report's `.md`, laid out for its reader: a triage page (verdict tiles, a ledger filter) or a review guide (stops, a Copy button on each question for the author). Each has a Help panel from `references/<type>-help.md`. Local only |
 | `extras/bin-wrapper` | script | Installed under each script's name on your PATH; runs the installed plugin's copy, so updates need no reinstall |
 
 ## Install
