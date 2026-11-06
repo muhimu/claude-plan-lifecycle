@@ -342,12 +342,17 @@ Unverified:
   why there?").
 - **Riskiest code** is the READ groups as one line each, in their ranked
   order: where a correctness tool should look hardest. They are not stops.
-  Leave it out when the review ran.
+  Leave it out for a target whose findings are on the page; keep it when
+  the review did not run or its findings were left out.
 - **Review findings** only when the review ran; otherwise leave the section
   and the summary's `<f> review findings` clause out. `<tool>` is
   `/code-review` or `/review-stack`. Keep the tool's order and summaries;
   leave out `Rejected:` and `Unverified:` when empty, and write "No findings." when nothing
-  came back. A finding rejected because the body records it as a decision
+  came back. `<f>` counts confirmed and plausible findings, `<c>` the
+  confirmed ones. With more than 8 findings, list the first 8 and end the
+  table's section with "<n> more in the review's output, lower ranked";
+  list at most 5 rejected and 5 unverified the same way, so the page keeps
+  its line cap. A finding rejected because the body records it as a decision
   is also added to that Decision's push-back: "(the review raised this:
   see Rejected)".
 - A code-vs-body difference tied to a stop goes in that stop's `Why`, never
@@ -424,7 +429,9 @@ Print one line:
 `<OWNER/REPO>#<N> (<MODE>): <d> decisions, <k> spots, <s> files to skim, <o> to read → <ROOT>/local/review-guide/<N>.html`.
 With `--review`, add `, <f> review findings (<c> confirmed)` before the
 arrow, or, when the review did not run, a second line:
-"--review skipped: <the tool's stop message>".
+"--review skipped: <the tool's stop message>". When `--review` passed an
+effort level, add: "/code-review keeps that effort level for later runs;
+type another level to change it."
 For a stack, print it per target, then
 `<OWNER/REPO> stack #<S> (<MODE>): <d> decisions, <k> spots, <r> resolved across slices → <ROOT>/local/review-guide/stack-<S>.html`.
 If `git -C <ROOT> check-ignore -q local/review-guide/<N>.md` fails, add: "local/ is not

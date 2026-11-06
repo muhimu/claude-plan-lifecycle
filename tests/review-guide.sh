@@ -37,6 +37,13 @@ check "(b) template keeps unverified findings" grep -qF -- '- `<file:line>` <sum
 check "(d) session-pr accepts a detached HEAD at a wanted branch's head" grep -qF 'HEAD is detached at the head of a wanted branch' "$root/references/session-pr.md"
 check "(d) only for a caller that does not push" grep -qF 'for a caller that does not push, HEAD is detached' "$root/references/session-pr.md"
 
+# (i) follow-ups: findings left out keep Riskiest code; the table has a cap;
+# <f> is defined; the sticky effort is said
+check "(i) Riskiest code stays for a target without findings" grep -qF 'Leave it out for a target whose findings are on the page' "$cmd"
+check "(i) the findings table has a cap" grep -qF 'more than 8 findings' "$cmd"
+check "(i) <f> counts confirmed and plausible" grep -qF '`<f>` counts confirmed and plausible findings' "$cmd"
+check "(i) Finish says the effort is sticky" grep -qF 'keeps that effort level for later runs' <<<"$(section Finish)"
+
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
 
