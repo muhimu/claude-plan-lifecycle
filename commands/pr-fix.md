@@ -266,8 +266,9 @@ reviewers are not posted here.
 
 A PR body's `## Follow-ups` section lists known gaps the PR left; once this
 run fixes one, the entry is stale and misleads the next review. After the
-last push and restack, for each PR in `TARGET_PRS` and each slice this run
-pushed a fix to:
+last push and restack, if this run pushed any fix, for each PR in
+`TARGET_PRS` and each slice this run pushed a fix to whose body has a
+`## Follow-ups` section:
 
 1. Read the body as it is now: `gh pr view <PR> --json body -q .body >
    <scratchpad>/pr-fix-body-<PR>.md` (after `/restack`, which may have

@@ -162,7 +162,9 @@ when `FOLLOWUPS` is empty.
 
 First resolve `TEST_CMD` / `LINT_CMD` as Step 4 says; if a resolved command
 does not exist, stop with Step 4's "No verify commands found" message. Then
-run ONE fix pass over `FOLLOWUPS`, in this session, on this branch:
+commit what the execution skill left uncommitted, as Step 5 does (S3.4 in
+stacked mode), so the pass starts from a clean tree and each fix's changes
+are only its own. Then run ONE fix pass over `FOLLOWUPS`, in this session, on this branch:
 
 1. **Drop** an item the branch no longer shows (read the code it names), or
    one a later slice of this plan does (stacked mode).
@@ -175,8 +177,10 @@ run ONE fix pass over `FOLLOWUPS`, in this session, on this branch:
    and watch it fail, fix, watch it pass, then run `$TEST_CMD` and
    `$LINT_CMD`. An item with no behaviour to test (wording, docs) needs no
    test. Commit each fix with a Conventional-Commits subject, staging only
-   its files, never `local`. If a fix cannot get to green, undo it with
-   `git restore` (not `git stash`, whose stack all worktrees share) and keep
+   its files, never `local`. If a fix cannot get to green, undo it, new
+   files included: `git reset -q --hard HEAD && git clean -fdq` (everything
+   uncommitted is that fix's; `git clean` without `-x` leaves the ignored
+   `local` alone; never `git stash`, whose stack all worktrees share). Keep
    the item as `attempted, blocked by: <blocker>`: it can still be fixed in
    this PR.
 
@@ -282,8 +286,10 @@ Per the plan-lifecycle convention: every plans file of the effort must carry the
 
 ## Step 7a — Write the follow-ups stub
 
-The stub is your personal copy of what the PR body lists: the items Step
-3a kept, not the ones it fixed. Skip this step when `FOLLOWUPS` and
+The stub is your personal copy of what the PR body listed when it opened:
+the items Step 3a kept, not the ones it fixed. It is a snapshot: `/pr-fix`
+later removes fixed entries from the body only, so check the body when you
+triage. Skip this step when `FOLLOWUPS` and
 `ADR_IMPACTS` are both empty. Each
 `ADR_IMPACTS` entry becomes a stub item too — changing a settled ADR needs a
 plan of its own.
@@ -503,11 +509,11 @@ a few seconds and query again — a new stack may not be readable yet. If
 `gh stack` is not installed, `link` fails, or `STACK_NUM` is still empty, say
 so in one line and continue without a native stack.
 
-Then update every stack PR body via `gh pr edit <PR_NUM[N]> --body <updated>`,
+Then update every stack PR body via `gh pr edit <PR_NUM[N]> --body-file <updated file>`,
 replacing only its `## Stack` section and preserving Summary, Rulings,
-Follow-ups, and Verification untouched. Build `<updated>` from the body as it
-is now (`gh pr view <PR_NUM[N]> --json body -q .body`), not as this run wrote
-it: on a resumed run, `/pr-fix` may have removed Follow-ups entries since.
+Follow-ups, and Verification untouched. Build the file from the body as it
+is now (`gh pr view <PR_NUM[N]> --json body -q .body > <file>`), not as this run wrote
+it; a file, not `--body`, so its backticks and `$` survive the shell: on a resumed run, `/pr-fix` may have removed Follow-ups entries since.
 
 - **Native stack linked** — no table (the stack UI is authoritative and a
   hand-kept table drifts):

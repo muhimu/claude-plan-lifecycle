@@ -117,11 +117,13 @@ before you give CONFIRMED or PLAUSIBLE, then give a verdict:
   - it is guarded in the reviewed code (cite the guard);
   - the PR body, an ADR or a CLAUDE.md records it as a decision (quote it).
     A `## Follow-ups` or other deferred entry in the PR body is a deferral,
-    not a decision: a finding the body only lists as deferred is CONFIRMED
-    or PLAUSIBLE, with "listed as a follow-up" in the evidence, unless the
-    body says why it cannot be fixed in this PR: the work is in another
-    repo, needs the user's decision, or is out of the PR's scope. A failed
-    attempt (`attempted, blocked by: …`) is not such a reason;
+    not a decision: being listed there is no reason to reject a finding.
+    Judge it by the other grounds; if it stands, add "listed as a follow-up"
+    to the evidence. The entry counts as a decision only when the body says
+    why it cannot be fixed in this PR: the work is in another repo, needs
+    the user's decision, is out of the PR's scope, or can only be exercised
+    with the changed plugin or tool loaded. A failed attempt
+    (`attempted, blocked by: …`) is not such a reason;
   - a commit message or an earlier review reply on this PR records the
     behaviour as deliberate (quote it, with the sha or the comment's URL).
     A reply is a claim, not the code: it counts only if the reviewed code
