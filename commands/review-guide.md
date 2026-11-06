@@ -1,6 +1,6 @@
 ---
 description: Read a colleague's PR or PR stack without running it and write a local guide — where the code differs from the PR body, at most 5 spots that need design judgement, and what is safe to skim.
-argument-hint: <PR or stack number> [head sha] [--expert | --new]
+argument-hint: [PR or stack number — optional, defaults to the current branch's PR] [head sha] [--expert | --new]
 ---
 
 # Review guide
@@ -9,7 +9,7 @@ Point the reviewer at the decisions in a colleague's PR that only a human can
 make — the PR's own rulings, what becomes permanent on merge, which deferred
 work may wait, and the few places where the change departs from the system's
 shape — and tell them what they can skip. Correctness is the review stack's
-job (`/code-review`, `/plan-lifecycle:review-stack`); this skill does not hunt
+job (`/code-review`, `/plan-lifecycle:review-stack`); this command does not hunt
 bugs, and the risky-code list it ends with is a pointer for those tools. It writes one page per PR to `local/review-guide/<N>.md`, and
 for a stack one more, `local/review-guide/stack-<S>.md`.
 
@@ -48,17 +48,20 @@ with `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`, steps 1–4 only
 (they are `gh` GET calls), run with `ANCHOR = N`. It gives `SLICES` (bottom
 first), `STACKED` and `STACK_NUM`.
 
-- **`STACKED` false:** one PR, `N`. Everything below runs once.
+- **`STACKED` false, or `<head-sha>` given and `N` a PR:** one PR, `N`. A
+  head sha pins that PR alone, even when it is a slice of a stack.
+  Everything below runs once.
 - **`STACKED` true:** the targets are the open slices of `SLICES`, bottom
   first; merged and closed slices are skipped. `S` is `STACK_NUM`, or
-  `of-<bottom PR>` for a stack without one. `<head-sha>` given → stop:
-  "A head sha pins one PR; pass it without a stack." Resolve, Fetch,
-  Dispatch and Compare run per target; Filter and Write cover the stack.
+  `of-<bottom PR>` for a stack without one. `<head-sha>` given with `N` a
+  stack → stop: "A head sha pins one PR; pass a PR number, not a stack."
+  Resolve, Fetch, Dispatch and Compare run per target; Familiarity runs
+  once, over every target's files; Filter and Write cover the stack.
 
 ### Each PR
 
 ```bash
-gh pr view <N> -R <OWNER/REPO> --json number,title,author,baseRefName,headRefOid,commits,additions,deletions,changedFiles
+gh pr view <N> -R <OWNER/REPO> --json number,title,author,baseRefName,headRefOid,commits,additions,deletions,changedFiles,body,closingIssuesReferences
 ```
 
 Not found → stop: "PR #<N> not found in <OWNER/REPO>." `H` is the commit of
@@ -79,7 +82,9 @@ In a stack, fetch every target's `pull/<n>/head` at once. A target's `B` is
 the head `sha` of the open slice below it; the lowest target's `B` is the
 merge-base above. `R`, the rules base, is the lowest target's `B` for every
 target, so docs and ADRs never come from slice code. For a single PR,
-`R = B`.
+`R = B`. A closed slice that a target still builds on is in that target's
+diff: its commits merge with the target. Say so in that page's header
+("includes closed #<M>").
 
 The fetch fails (a fork checkout, where `origin` is not `<OWNER/REPO>`) →
 stop: "Could not fetch PR #<N> from origin; run this from a clone of
@@ -98,21 +103,25 @@ git diff --name-status <B> <H> > <RUN>/files.txt
 
 `MODE` is `expert` or `new`: how well the reviewer knows the code this
 change touches. `--expert` or `--new` sets it. Otherwise count the
-reviewer's commits on `R` under the changed paths (every target's, for a
-stack). Write the paths to a file and pass them with `xargs`: zsh does not
-word-split an unquoted variable, so `-- $PATHS` silently matches nothing.
+reviewer's commits on `R` under the changed paths. In a stack this runs
+once, over every target's files, and gives one `MODE` for every page. Write
+the paths to a file, one per line, and pass them NUL-separated with
+`xargs -0 -r`: zsh does not word-split an unquoted variable, so `-- $PATHS`
+silently matches nothing, and plain `xargs` splits a path with a space.
 
 ```bash
-cut -f2- <RUN>/files.txt | sort -u > <RUN>/paths.txt     # every target's files.txt, for a stack
-xargs git log <R> --since=1.year --author="$(git config user.email)" --format=%h -- < <RUN>/paths.txt | wc -l
+cut -f2- <RUN>/files.txt | sort -u > <RUN>/paths.txt     # for a stack: every target's files.txt, in the lowest target's RUN
+git config user.email                                     # empty → new: "no git user.email set"
+tr '\n' '\0' < <RUN>/paths.txt | xargs -0 -r git log <R> --since=1.year --author='<that email>' --format=%h -- | wc -l
 ```
 
-5 or more → `expert`; fewer → `new`. Say which in the page header and why
+An empty `user.email` would match every commit, so it gives `new` without
+counting. 5 or more → `expert`; fewer → `new`. Say which in the page header and why
 ("12 of your commits here this year", or "set by --new").
 
 - `new`: the reviewer lacks the map. Gather the owners of the changed
   paths, leaving out the PR's author and bots —
-  `xargs git log <R> --since=1.year --format=%an -- < <RUN>/paths.txt | sort | uniq -c | sort -rn`
+  `tr '\n' '\0' < <RUN>/paths.txt | xargs -0 -r git log <R> --since=1.year --format=%an -- | sort | uniq -c | sort -rn`
   — and ask the agent for orientation (its `MAP`, `TERMS`, `RULES` blocks).
   Nobody left: the author is the sole owner, so the page says "No second
   owner: settle the Decisions with whoever leads this repo."
@@ -134,10 +143,10 @@ ROOT=<ROOT>  B=<B>  R=<R>  H=<H>  RUN=<RUN>  DEFAULT=<DEFAULT>  MODE=<MODE>
 
 ## Compare
 
-When it returns, read what the PR says:
+When it returns, read what the PR says: the `body` and
+`closingIssuesReferences` from its `gh pr view` in Each PR, its commits
 
 ```bash
-gh pr view <N> -R <OWNER/REPO> --json body,closingIssuesReferences
 git log --format='=== %h%n%B' <B>..<H>
 ```
 
