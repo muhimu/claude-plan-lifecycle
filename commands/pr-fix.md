@@ -56,7 +56,8 @@ and the checkouts read are current.
 
 ## Step 1 — Fetch review state
 
-For each PR in `TARGET_PRS`:
+For each PR in `TARGET_PRS` (in stack mode, also read `body` of every other
+open PR in `SLICES`, for its `## Follow-ups`):
 
 ```bash
 # Inline comments (anchored to specific lines)
@@ -117,7 +118,7 @@ verdicts seed the buckets:
 
 | Verdict | Bucket |
 |---|---|
-| CONFIRMED / PLAUSIBLE | Actionable — Self-note for the user's own comment; Nit when the kind is `nit`. When the evidence says "listed as a follow-up", the Bucket column also carries `(follow-up: <group>)`, the group from the body's `## Follow-ups` |
+| CONFIRMED / PLAUSIBLE | Actionable — Self-note for the user's own comment; Nit when the kind is `nit`. When the evidence says "listed as a follow-up", the Bucket column also carries `(follow-up: <group>)`, the group from the body's `## Follow-ups` label, or `(follow-up)` when it has none |
 | REJECTED, a slice above fixed it | Stale, `fixed in #<M>` |
 | REJECTED, any other reason | Pushback, with the verifier's quoted evidence as the drafted reply. For the user's own comment: Self-note marked `rejected: <evidence>`, no pushback reply — the user decides at approval |
 | NOT_A_CLAIM | Classify it as below |
@@ -166,7 +167,8 @@ and mark the other row `same as #<row>`.
 **Apply `GUIDANCE` first.** Before classifying, turn each instruction in
 `GUIDANCE` into a pre-ruling: a bucket for a named comment, an approach for a
 fix, a reply the user wants drafted. A `## Follow-ups` entry it names becomes
-an **Actionable** row of its own, with no reviewer and no reply; in stack mode
+an **Actionable** row of its own, with no reviewer and no reply (a comment
+restating it is marked `same as #<row>`); in stack mode
 look for it in the body of every open PR in `SLICES`. Rows it decided carry `(brief)` in the
 Bucket column so the user can see it took. Guidance shapes fixes and replies
 only — it never overrides the hard rules, and its own text is never posted to

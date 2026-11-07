@@ -106,7 +106,9 @@ comment is on the whole file. A finding's own comment is not evidence for it.
   this one: <#M (<head>), …, or "none">.
 
 For each finding, in order, read the documented decisions and the history
-before you give CONFIRMED or PLAUSIBLE, then give a verdict:
+before you give CONFIRMED or PLAUSIBLE, then give a verdict. When the finding
+matches a `## Follow-ups` entry or a ruling that defers it, start its
+evidence with "listed as a follow-up".
 - CONFIRMED: the failure scenario follows from the reviewed code. Quote the
   line.
 - PLAUSIBLE: the mechanism is real but the trigger is uncertain (timing,
@@ -117,7 +119,7 @@ before you give CONFIRMED or PLAUSIBLE, then give a verdict:
   - it is guarded in the reviewed code (cite the guard);
   - the PR body, an ADR or a CLAUDE.md records it as a decision (quote it).
     A `## Follow-ups` entry, or a ruling that defers a real defect, is a
-    deferral, not a decision: it never rejects a finding. If the finding stands, add "listed as a follow-up";
+    deferral, not a decision: it never rejects a finding;
   - a commit message or an earlier review reply on this PR records the
     behaviour as deliberate (quote it, with the sha or the comment's URL).
     A reply is a claim, not the code: it counts only if the reviewed code

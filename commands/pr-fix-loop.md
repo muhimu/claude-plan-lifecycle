@@ -23,7 +23,7 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   the round summary's `### Follow-ups` list as `⚠ raised by …`, carried
   through every round; a later comment restating it joins that line. Held
   rows are left out of the clean/stop judgment, and the final summary
-  repeats the full list. Reply in bot and my own threads
+  repeats the full list. This overrides the restatement rule below. Reply in bot and my own threads
   as pr-fix's Step 4c says; replies to human reviewers stay as drafts in the
   summary — don't post them, and don't ask me about them: end the round on
   the summary. All of pr-fix's hard rules still apply (no other
