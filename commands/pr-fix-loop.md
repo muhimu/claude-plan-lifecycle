@@ -18,7 +18,12 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   each item — my guidance in the arguments above takes precedence over your own
   classification and holds for every round. A self-note the verifier
   rejected stays a Self-note and is fixed; list it with its `rejected:`
-  evidence in the summary so I can revert it. Reply in bot and my own threads
+  evidence in the summary so I can revert it. A row marked `(follow-up: …)`
+  is held unless my guidance names its entry: no fix, no reply. It stays in
+  the round summary's `### Follow-ups` list as `⚠ raised by …`, carried
+  through every round; a later comment restating it joins that line. Held
+  rows are left out of the clean/stop judgment, and the final summary
+  repeats the full list. Reply in bot and my own threads
   as pr-fix's Step 4c says; replies to human reviewers stay as drafts in the
   summary — don't post them, and don't ask me about them: end the round on
   the summary. All of pr-fix's hard rules still apply (no other

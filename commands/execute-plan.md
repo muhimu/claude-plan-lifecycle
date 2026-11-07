@@ -136,7 +136,7 @@ Print one line naming the choice. Then **invoke the chosen skill** via the `Skil
 > - follow-on work the plan itself defers (a "follow-ups" / "future work" list, or a step telling you to record follow-ups in the plan file — the plan file must not be edited, so ledger them instead): `Plan: observation: <one-liner>`
 > - a Minor finding from the final whole-branch review that is not fixed: `Final: minor (deferred): <one-liner>`
 >
-> Your human partner has decided how minors go: a Minor finding on code this branch changes enters the final review's fix pass with the Critical and Important ones, verified as your skill verifies those fixes (wording, docs and behaviour-preserving cleanups need only the green suite). Ledger it as `Final: minor (deferred)` only when it cannot be fixed here: the work is in another repo, the plan defers it, or its fix did not go green — then revert that fix before you go on. Observations stay for your partner to read unless your skill confirms one as a real gap.
+> Your human partner has decided how minors go: a Minor finding on code this branch changes, from a task review or the final review, enters the final review's fix pass with the Critical and Important ones, verified as your skill verifies those fixes (wording, docs and behaviour-preserving cleanups need only the green suite). Ledger it as `Final: minor (deferred)` only when it cannot be fixed here: the work is in another repo, the plan defers it, or its fix did not go green — then revert that fix and its test (through a fix subagent under subagent-driven-development) before you go on. Observations stay for your partner to read unless your skill confirms one as a real gap.
 >
 > When you stop to ask your human partner and they decide, ledger the decision as `Task <N>: Ruling: (user) <decision> — <the question it answered> — <cost if wrong>` (keep the literal `Ruling:` so your "Rulings I made" collection picks it up). If they leave the question open, your stop rules still apply: continue only if the run can proceed safely without the answer, and then ledger `Task <N>: observation: open question — <question>`; otherwise stay stopped.
 >
@@ -147,7 +147,7 @@ Print one line naming the choice. Then **invoke the chosen skill** via the `Skil
 >
 > In your Finish step, where you collect "Rulings I made" before deleting anything, also build a "Follow-ups" list from the ledger — before the workspace is deleted, never from memory. Then, when you reach the point where you would invoke `superpowers:finishing-a-development-branch`, do NOT — return control to `/execute-plan`, which opens the PR. Return your "Rulings I made" list verbatim in your final message; if you made no rulings, say so. Then return the "Follow-ups" list, built from every `minor (deferred)`, `observation`, and real-but-deferred `parked` ledger line, curated: merge lines that describe the same issue into one item; drop items a later fix closed; where a later review showed a line's description is wrong, correct it and mark it `(corrected: <what changed>)`. Each item keeps its source tags (e.g. `Task 3, Final`) and names its group, the first that fits: `other repo` (name the repo), `plan` (the plan defers it), `live test` (it can only be checked by running the changed thing), else `look` (an observation, an open question, a parked finding, or a minor whose fix did not go green). If there are none, say so.
 
-Both skills end by invoking `finishing-a-development-branch`, which presents merge/PR/keep options that collide with Steps 5–7. The instruction above pre-empts that. Capture the returned rulings list as `RULINGS` and the follow-ups list as `FOLLOWUPS` (each empty if none), and set `ADR_IMPACTS` = the `RULINGS` entries ending in `— ADR impact: …`. A real-but-deferred `parked` finding appears in both lists: the Rulings entry is the decision, the Follow-ups entry the work it leaves. Follow-ups are discovered work the run did not do; without this capture they die with the skill's workspace.
+Both skills end by invoking `finishing-a-development-branch`, which presents merge/PR/keep options that collide with Steps 5–7. The instruction above pre-empts that. Capture the returned rulings list as `RULINGS` and the follow-ups list as `FOLLOWUPS` (each empty if none), and set `ADR_IMPACTS` = the `RULINGS` entries ending in `— ADR impact: …`. A real-but-deferred `parked` finding appears in both lists: the Rulings entry records the deferral, the Follow-ups entry the work it leaves. Follow-ups are discovered work the run did not do; without this capture they die with the skill's workspace.
 
 **Stacked mode exception:** do NOT invoke here — record the choice and jump to the Stacked execution section; the skill is invoked once per slice in S3 with a slice-scoped instruction.
 
@@ -345,7 +345,8 @@ For each slice N = 1..M in order, the slice is **already done** iff both:
   record its number as `PR_NUM[N]`.
 
 For each done slice, read `RULINGS[N]` and `FOLLOWUPS[N]` back from its PR
-body's `## Rulings` and `## Follow-ups` sections (empty when absent), so S3's
+body's `## Rulings` and `## Follow-ups` sections (empty when absent; an entry's
+bold group label gives its group), so S3's
 de-duplication and S5's stub see every slice, not only this run's.
 
 Let `R` be the first slice that is not already done (R = M+1 if all are done;
@@ -475,7 +476,10 @@ replacing only its `## Stack` section and preserving Summary, Rulings,
 Follow-ups, and Verification untouched. Build the file from the body as it
 is now (`gh pr view <PR_NUM[N]> --json body -q .body > <file>`), not as this
 run wrote it: on a resumed run `/pr-fix` may have removed Follow-ups entries
-since, and a file keeps the body's backticks and `$` away from the shell:
+since, and a file keeps the body's backticks and `$` away from the shell.
+Before the edit, `diff --strip-trailing-cr` the fetched body and the new
+file; if lines outside the `## Stack` section (any heading starting
+`## Stack`) differ, skip that PR and say so in the report:
 
 - **Native stack linked** — no table (the stack UI is authoritative and a
   hand-kept table drifts):

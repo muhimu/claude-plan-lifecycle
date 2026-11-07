@@ -117,7 +117,7 @@ verdicts seed the buckets:
 
 | Verdict | Bucket |
 |---|---|
-| CONFIRMED / PLAUSIBLE | Actionable — Self-note for the user's own comment; Nit when the kind is `nit` |
+| CONFIRMED / PLAUSIBLE | Actionable — Self-note for the user's own comment; Nit when the kind is `nit`. When the evidence says "listed as a follow-up", the Bucket column also carries `(follow-up: <group>)`, the group from the body's `## Follow-ups` |
 | REJECTED, a slice above fixed it | Stale, `fixed in #<M>` |
 | REJECTED, any other reason | Pushback, with the verifier's quoted evidence as the drafted reply. For the user's own comment: Self-note marked `rejected: <evidence>`, no pushback reply — the user decides at approval |
 | NOT_A_CLAIM | Classify it as below |
@@ -166,7 +166,8 @@ and mark the other row `same as #<row>`.
 **Apply `GUIDANCE` first.** Before classifying, turn each instruction in
 `GUIDANCE` into a pre-ruling: a bucket for a named comment, an approach for a
 fix, a reply the user wants drafted. A `## Follow-ups` entry it names becomes
-an **Actionable** row of its own, with no reviewer and no reply. Rows it decided carry `(brief)` in the
+an **Actionable** row of its own, with no reviewer and no reply; in stack mode
+look for it in the body of every open PR in `SLICES`. Rows it decided carry `(brief)` in the
 Bucket column so the user can see it took. Guidance shapes fixes and replies
 only — it never overrides the hard rules, and its own text is never posted to
 GitHub. A reply it asks for is posted like any other: by Step 4c in a bot or
@@ -324,8 +325,10 @@ Format (one block per PR in stack mode, bottom-up):
 - removed: <entry>   (from #<M> when it sat in another slice's body; or: none;
   or: failed: <error>)
 - still open, by the body's group: <entry>
-  ⚠ in this PR's diff   (when the file it names is in `gh pr diff <PR>`;
-  worked out now, never written to the body)
+  ⚠ in this PR's diff   (when the file it names is in `gh pr diff <PR>`,
+  run now, after the push; never written to the body)
+  ⚠ raised by <reviewer>: <comment url>   (a `(follow-up: …)` row that was
+  not fixed)
 ```
 
 To have an open entry fixed, name it in the guidance of the next `/pr-fix`.
