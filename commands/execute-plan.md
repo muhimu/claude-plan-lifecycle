@@ -157,14 +157,17 @@ Set `FIXED_FOLLOWUPS` = 0. When it returns control, proceed to Step 3a. If the s
 
 The PR body's `## Follow-ups` section is the public record of known gaps:
 the plans dir is private, so reviewers and verifiers see only the body. A
-gap that could have been fixed here should not wait there. Skip this step
-when `FOLLOWUPS` is empty.
+gap that could have been fixed here should not wait there.
 
-First resolve `TEST_CMD` / `LINT_CMD` as Step 4 says; if a resolved command
-does not exist, stop with Step 4's "No verify commands found" message. Then
-commit what the execution skill left uncommitted, as Step 5 does (S3.4 in
-stacked mode), so the pass starts from a clean tree and each fix's changes
-are only its own. Then run ONE fix pass over `FOLLOWUPS`, in this session, on this branch:
+Always, even when `FOLLOWUPS` is empty: resolve `TEST_CMD` / `LINT_CMD`
+(Step 4 defines how, and its "No verify commands found" stop applies);
+commit what the execution skill left uncommitted, as Step 5 describes
+(S3.4's message in stacked mode), so each fix's changes are only its own;
+then run `$TEST_CMD` and `$LINT_CMD` once, and on red stop with Step 4's
+message: a red tree would make every fix look blocked.
+
+Skip the rest when `FOLLOWUPS` is empty. Otherwise run ONE fix pass over
+`FOLLOWUPS`, in this session, on this branch:
 
 1. **Drop** an item the branch no longer shows (read the code it names).
    In stacked mode, also set aside an item a later slice `K` of this plan
@@ -176,7 +179,8 @@ are only its own. Then run ONE fix pass over `FOLLOWUPS`, in this session, on th
    The reasons: the work is in another repo; it needs a decision only the
    user can make (this includes editing an ADR this plan's diff does not
    write); it is outside the plan's scope, for an `outside diff` item only
-   (a defect in code this PR changes is always in scope); or it can only be
+   (a defect in code this PR changes is always in scope); the plan itself
+   defers it (a `Plan:` item, in or outside the diff); or it can only be
    exercised with the changed plugin or tool loaded.
 3. **Fix** every other item, test-first: write a test that reproduces it
    and watch it fail, fix, watch it pass, then run `$TEST_CMD` and
@@ -201,7 +205,7 @@ S3 runs this step once per slice instead.
 
 ## Step 4 — Verification (mandatory, halt-on-red)
 
-Resolve the verify commands once (the verify convention): if the repo's CLAUDE.md declares test and lint commands, use those as `TEST_CMD` / `LINT_CMD`; otherwise default to `TEST_CMD="make test"`, `LINT_CMD="make lint"`. Both checks must pass before the PR is opened.
+Step 3a resolved the verify commands (the verify convention): if the repo's CLAUDE.md declares test and lint commands, use those as `TEST_CMD` / `LINT_CMD`; otherwise default to `TEST_CMD="make test"`, `LINT_CMD="make lint"`. Both checks must pass before the PR is opened.
 
 1. **Tests:** run `$TEST_CMD`. Capture exit code and the last ~20 lines of output as `TEST_TAIL`. If non-zero, **stop**: "Tests failed. Worktree preserved. Fix and re-run when ready." Do not attempt to fix forward — that's the user's call.
 
@@ -211,7 +215,7 @@ If a resolved command does not exist (e.g. `make: *** No rule to make target` on
 
 ## Step 5 — Commit anything still staged
 
-If `git status --porcelain` shows nothing but `?? local`, skip this step — the execution skill already committed everything.
+If `git status --porcelain` shows nothing but `?? local`, skip this step — Step 3a already committed the execution skill's leftovers, so this usually is a no-op.
 
 Otherwise stage and commit pending changes, never the `local` plans symlink
 (a `local/` gitignore entry does not match a symlink, so `git add -A` would

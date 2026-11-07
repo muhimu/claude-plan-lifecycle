@@ -1,5 +1,5 @@
 ---
-description: Address PR review feedback — fetch comments, plan fixes, implement, push, reply in bot and your own review threads, drop the fixed entries from the PR body's Follow-ups, then summarize with replies to other reviewers drafted for your approval. Accepts a PR number or a GitHub stack number; on a stacked PR it fixes each comment in the slice that owns the code and restacks the branches above.
+description: Address PR review feedback — fetch comments, plan fixes, implement, push, reply in bot and your own review threads, bring the PR body's Follow-ups up to date, then summarize with replies to other reviewers drafted for your approval. Accepts a PR number or a GitHub stack number; on a stacked PR it fixes each comment in the slice that owns the code and restacks the branches above.
 argument-hint: [PR or stack number — optional, auto-detects from the current branch or this session's PRs] [free-text guidance for the fixes]
 ---
 
@@ -117,6 +117,7 @@ verdicts seed the buckets:
 
 | Verdict | Bucket |
 |---|---|
+| CONFIRMED / PLAUSIBLE, evidence notes "awaiting the user's decision" | Follow-up, "your call" |
 | CONFIRMED / PLAUSIBLE | Actionable — Self-note for the user's own comment; Nit when the kind is `nit` |
 | REJECTED, a slice above fixed it | Stale, `fixed in #<M>` |
 | REJECTED, any other reason | Pushback, with the verifier's quoted evidence as the drafted reply. For the user's own comment: Self-note marked `rejected: <evidence>`, no pushback reply — the user decides at approval |
@@ -176,11 +177,18 @@ own thread, after the user's approval in a human reviewer's.
 changes is still this PR's to fix, even when no reviewer raised it. For each
 PR in `TARGET_PRS`, take each entry of its body's `## Follow-ups` that is
 about lines its diff adds or changes (tagged `in diff`, or untagged and
-naming such a line) and that no comment row covers. Each becomes a row with
-reviewer `follow-up`, no verdict, bucket **Follow-up**, and proposed action
-"fix", or "your call" when its reason is a decision only the user can make.
-Under `/plan-lifecycle:pr-fix-loop` a "your call" row is not fixed. Entries
-outside the diff get no row; Step 5 lists them.
+naming such a line) and that no comment row covers. Read the code at the
+head first: an entry the head no longer shows gets no row, and Step 4d
+removes it. An entry recording the user's answer (`(user) keep: …`) gets
+no row either. Each other entry becomes a row with reviewer `follow-up`, no
+verdict, bucket **Follow-up**, and proposed action "fix" — or "your call"
+when its reason is a decision only the user can make, a deferral the plan
+made, a failed attempt (`attempted, blocked by: …`) or a test that needs the
+changed plugin loaded, since a plain retry would hit the same wall. At
+approval the user answers a "your call" row with "fix" (it becomes an
+edit) or "keep: <why>" (Step 4d records it). Under
+`/plan-lifecycle:pr-fix-loop` a "your call" row is neither fixed nor
+answered. Entries outside the diff get no row; Step 5 lists them.
 
 Present the full plan to the user as a table (the PR column appears only in
 stack mode):
@@ -273,12 +281,13 @@ reply, nor does a Follow-up row. Replies never @-mention anyone: `@claude` in a 
 Claude workflow, and any mention notifies a person. Replies to human
 reviewers are not posted here.
 
-### Step 4d — Drop fixed follow-ups from the PR body
+### Step 4d — Bring the PR body's Follow-ups up to date
 
 A PR body's `## Follow-ups` section lists known gaps the PR left; once this
 run fixes one, the entry is stale and misleads the next review. After the
-last push and restack, if this run pushed any fix, for each PR whose body
-has a `## Follow-ups` section — in stack mode every open PR in `SLICES`,
+last push and restack, if this run pushed any fix, Step 2 found entries the
+head no longer shows, or the user answered a row "keep", then for each PR
+whose body has a `## Follow-ups` section — in stack mode every open PR in `SLICES`,
 since an entry may sit on a slice that was only restacked; in single mode
 the one PR:
 
@@ -286,9 +295,13 @@ the one PR:
    <scratchpad>/pr-fix-body-<PR>.md` (after `/restack`, which may have
    edited its `## Stack` section).
 2. Remove each `## Follow-ups` entry that describes a defect this run
-   fixed, wherever the fix landed. If none is left, remove the heading too. Change nothing else.
+   fixed, wherever the fix landed, or that the head no longer shows. If
+   none is left, remove the heading too. For an entry the user answered
+   "keep: <why>", replace its reason with `(user) keep: <why>`, so later
+   runs and the verifier treat it as decided. Change nothing else.
    Write the result to `<scratchpad>/pr-fix-body-<PR>.new.md`.
-3. If anything was removed, `diff` the old and new files: only lines of the
+3. If anything changed, `diff --strip-trailing-cr` the old and new files
+   (a body edited on GitHub's web page comes back with CRLF): only lines of the
    `## Follow-ups` section may differ; if others do, skip the edit and note
    `failed: diff outside Follow-ups`. Then
    `gh pr edit <PR> --body-file <scratchpad>/pr-fix-body-<PR>.new.md`.
@@ -331,19 +344,20 @@ Format (one block per PR in stack mode, bottom-up):
 ### Restack
 - <branch> <old-short> → <new-short>  (or: not needed — tip)
 
-### Follow-ups removed from the body
-- <the entry>   (or: none; or: failed: <error>)
+### Follow-ups updated in the body
+- removed: <the entry>   |   kept (user): <the entry>
+  (or: none; or: failed: <error>)
 
 ### Follow-ups still open
 - <the entry> — <its reason>   (or: none)
-  → ⚠ should be fixed in this PR   (an in-diff entry this run did not fix)
+  → ⚠ should be fixed in this PR   (an in-diff entry this run did not fix and the user did not keep)
 ```
 
 When there are `draft` replies, end by asking the user to approve, edit or skip each one, then post the approved ones as Step 4c does. Keep every reply factual and short — no "thanks", no "great catch", no performative agreement (`receiving-code-review` already covers this).
 
 ## Hard rules
 
-- **No GitHub mutations from this command except thread replies and Step 4d's body edit.** The only posts are Step 4c's replies and the human-reviewer replies the user approved, each inside its comment's thread (`gh api repos/OWNER/REPO/pulls/<PR>/comments/<id>/replies -f body=…`), never as a top-level PR comment. The only body edit is Step 4d's `gh pr edit --body-file`, which removes fixed `## Follow-ups` entries and leaves every other section byte-for-byte unchanged; Summary and Rulings stay the author's. No other mutating `gh api` calls (read-only calls are fine, including Step 1's GraphQL query), no `gh pr review`, no `gh pr comment`, no thread resolution, no `gh pr merge`. The only other sanctioned mutations happen inside `/restack` (its own gated lease-push and `## Stack` table edits), never here.
+- **No GitHub mutations from this command except thread replies and Step 4d's body edit.** The only posts are Step 4c's replies and the human-reviewer replies the user approved, each inside its comment's thread (`gh api repos/OWNER/REPO/pulls/<PR>/comments/<id>/replies -f body=…`), never as a top-level PR comment. The only body edit is Step 4d's `gh pr edit --body-file`, which removes fixed or gone `## Follow-ups` entries and records the user's "keep" answers there, leaving every other section unchanged; Summary and Rulings stay the author's. No other mutating `gh api` calls (read-only calls are fine, including Step 1's GraphQL query), no `gh pr review`, no `gh pr comment`, no thread resolution, no `gh pr merge`. The only other sanctioned mutations happen inside `/restack` (its own gated lease-push and `## Stack` table edits), never here.
 - **A reply to a human reviewer is posted only after the user approves its text.** Bot and own threads get theirs without asking (Step 4c).
 - **No force push from this command.** Plain `git push` on the fixed branch. If rejected, stop. Rewriting branches *above* the fixed one is `/restack`'s job, behind its gate.
 - **Never touch branches below the fixed slice.** A fix moves down only by being committed on the owning slice's branch in the bottom-up loop.
