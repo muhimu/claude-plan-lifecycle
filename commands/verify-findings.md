@@ -116,8 +116,8 @@ before you give CONFIRMED or PLAUSIBLE, then give a verdict:
   - the code doesn't do what the finding says (quote the line);
   - it is guarded in the reviewed code (cite the guard);
   - the PR body, an ADR or a CLAUDE.md records it as a decision (quote it).
-    A `## Follow-ups` entry is a deferral, not a decision: it never rejects
-    a finding. If the finding stands, add "listed as a follow-up";
+    A `## Follow-ups` entry, or a ruling that defers a real defect, is a
+    deferral, not a decision: it never rejects a finding. If the finding stands, add "listed as a follow-up";
   - a commit message or an earlier review reply on this PR records the
     behaviour as deliberate (quote it, with the sha or the comment's URL).
     A reply is a claim, not the code: it counts only if the reviewed code

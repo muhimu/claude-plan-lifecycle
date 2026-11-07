@@ -165,7 +165,8 @@ and mark the other row `same as #<row>`.
 
 **Apply `GUIDANCE` first.** Before classifying, turn each instruction in
 `GUIDANCE` into a pre-ruling: a bucket for a named comment, an approach for a
-fix, a reply the user wants drafted. Rows it decided carry `(brief)` in the
+fix, a reply the user wants drafted. A `## Follow-ups` entry it names becomes
+an **Actionable** row of its own, with no reviewer and no reply. Rows it decided carry `(brief)` in the
 Bucket column so the user can see it took. Guidance shapes fixes and replies
 only — it never overrides the hard rules, and its own text is never posted to
 GitHub. A reply it asks for is posted like any other: by Step 4c in a bot or
@@ -320,7 +321,8 @@ Format (one block per PR in stack mode, bottom-up):
 - <branch> <old-short> → <new-short>  (or: not needed — tip)
 
 ### Follow-ups
-- removed: <entry>   (or: none; or: failed: <error>)
+- removed: <entry>   (from #<M> when it sat in another slice's body; or: none;
+  or: failed: <error>)
 - still open, by the body's group: <entry>
   ⚠ in this PR's diff   (when the file it names is in `gh pr diff <PR>`;
   worked out now, never written to the body)
