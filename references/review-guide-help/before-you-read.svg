@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="A fork in the road with a signpost: one way the path a request takes, the other the terms and docs">
+  <path d="M120 132V88C120 70 96 62 60 44L36 30M120 88C120 70 144 62 180 44L204 30" stroke="var(--line)" stroke-width="12"/>
+  <path d="M120 132V88C120 70 96 62 60 44L36 30M120 88C120 70 144 62 180 44L204 30" stroke="var(--surface)" stroke-width="2" stroke-dasharray="6 6"/>
+  <path d="M120 120V40" stroke="var(--muted)" stroke-width="3"/>
+  <path d="M118 44H66l-10 9 10 9h52z" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <path d="M122 70h72l10 9-10 9h-72z" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <g stroke="none" fill="currentColor" fill="var(--accent)" font-weight="600"><text x="70" y="57">the path</text><text x="128" y="83">terms, docs</text></g>
+</svg>

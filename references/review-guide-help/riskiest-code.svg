@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="A magnifying glass over code, on the riskiest line">
+  <path d="M20 24h90M20 40h60M20 56h80M20 88h70M20 104h50M20 120h84" stroke="var(--line)" stroke-width="5"/>
+  <path d="M20 72h76" stroke="var(--red)" stroke-width="5"/>
+  <circle cx="132" cy="68" r="34" fill="var(--red-soft)" fill-opacity=".5" stroke-width="5"/>
+  <path d="M157 93l34 34" stroke-width="10"/>
+  <g stroke="none" fill="currentColor"><text x="176" y="40" fill="var(--muted)">look</text><text x="176" y="54" fill="var(--muted)">here first</text></g>
+</svg>

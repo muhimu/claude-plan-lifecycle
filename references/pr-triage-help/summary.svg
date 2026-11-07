@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="A paragraph on what the change does and how, leading to why it got its impact and risk">
+  <rect x="12" y="14" width="136" height="112" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+  <g stroke="none" fill="currentColor" font-weight="600"><text x="22" y="34">what</text><text x="22" y="70">how</text></g>
+  <path d="M22 44h110M22 52h80M22 80h104M22 88h90M22 104h70M22 112h96" stroke="var(--line)" stroke-width="4"/>
+  <path d="M152 70h18M164 64l6 6-6 6" stroke="var(--muted)"/>
+  <rect x="176" y="34" width="54" height="30" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <rect x="176" y="76" width="54" height="30" rx="5" fill="var(--red-soft)" stroke="var(--red)"/>
+  <g stroke="none" fill="currentColor" font-weight="600" text-anchor="middle"><text x="203" y="53" fill="var(--amber)">impact</text><text x="203" y="95" fill="var(--red)">risk</text></g>
+</svg>

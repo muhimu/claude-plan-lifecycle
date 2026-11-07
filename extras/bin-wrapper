@@ -4,7 +4,7 @@
 #
 # Install one copy per script name; the name it is called by picks the script:
 #   curl -fsSL https://raw.githubusercontent.com/muhimu/claude-plan-lifecycle/main/extras/bin-wrapper -o /tmp/bin-wrapper
-#   for n in reap-plans stamp-plans link-plans; do
+#   for n in reap-plans stamp-plans link-plans render-report; do
 #     install -m 755 /tmp/bin-wrapper ~/.local/bin/$n
 #   done
 #

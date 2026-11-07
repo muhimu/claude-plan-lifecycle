@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="A file with a flame: recent fix and revert commits">
+  <path d="M40 16h46l18 18v90H40z" fill="var(--surface)"/><path d="M86 16v18h18"/>
+  <path d="M52 50h40M52 64h30M52 78h36M52 92h24" stroke="var(--line)" stroke-width="4"/>
+  <path d="M104 122c-18 0-26-12-22-26 3-9 10-12 9-22 10 6 14 14 13 22 4-3 5-7 5-11 7 7 10 15 8 23-2 9-6 14-13 14z" fill="var(--red)" stroke="var(--red)"/>
+  <path d="M104 122c-7 0-10-6-8-12 1-4 4-6 4-10 5 4 9 9 8 14 0 5-2 8-4 8z" fill="var(--amber)" stroke="none"/>
+  <g stroke="none" fill="currentColor" font-family="var(--mono)"><text x="140" y="56" fill="var(--red)">fix: …</text><text x="140" y="76" fill="var(--red)">revert: …</text><text x="140" y="96" fill="var(--muted)">90 days</text></g>
+</svg>
