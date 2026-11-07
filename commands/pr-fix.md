@@ -64,7 +64,7 @@ gh api "repos/OWNER/REPO/pulls/<PR>/comments" --paginate > <scratchpad>/pr-fix-i
 
 # Top-level reviews and issue comments (automated reviewers often post their
 # summary as a plain comment, not a review)
-gh pr view <PR> --json reviews,comments,headRefName,baseRefName,headRefOid
+gh pr view <PR> --json reviews,comments,headRefName,baseRefName,headRefOid,body
 
 # Thread state — resolved and outdated threads are skipped, not re-litigated
 gh api graphql --paginate -F o=OWNER -F r=REPO -F n=<PR> -f query='query($o:String!,$r:String!,$n:Int!,$endCursor:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{isResolved isOutdated comments(first:1){nodes{databaseId}}}}}}}'
@@ -136,6 +136,7 @@ Sort each remaining comment into one bucket:
 | **Question** | Reviewer asking for clarification, no code change | Draft a reply for the user |
 | **Suggestion** | Reviewer's preference — requires judgment | Evaluate, then either Actionable or Pushback |
 | **Nit** | Stylistic, low-stakes | Plan a code edit (cheap to address) |
+| **Follow-up** | An in-diff `## Follow-ups` entry no comment covers | Plan a code edit, or ask the user when it awaits their decision |
 | **Pushback** | Suggestion is wrong for this codebase | Draft a reply explaining why |
 | **Stale** | Comment is on code that's since been changed — in stack mode, also code a higher slice already fixed | Skip, note it |
 
@@ -171,6 +172,16 @@ only — it never overrides the hard rules, and its own text is never posted to
 GitHub. A reply it asks for is posted like any other: by Step 4c in a bot or
 own thread, after the user's approval in a human reviewer's.
 
+**Read the body's Follow-ups.** A `## Follow-ups` entry on code this PR
+changes is still this PR's to fix, even when no reviewer raised it. For each
+PR in `TARGET_PRS`, take each entry of its body's `## Follow-ups` that is
+about lines its diff adds or changes (tagged `in diff`, or untagged and
+naming such a line) and that no comment row covers. Each becomes a row with
+reviewer `follow-up`, no verdict, bucket **Follow-up**, and proposed action
+"fix", or "your call" when its reason is a decision only the user can make.
+Under `/plan-lifecycle:pr-fix-loop` a "your call" row is not fixed. Entries
+outside the diff get no row; Step 5 lists them.
+
 Present the full plan to the user as a table (the PR column appears only in
 stack mode):
 
@@ -182,7 +193,7 @@ Wait for user approval before any code changes. The user may redirect individual
 
 ## Step 3 — Implement
 
-Apply code changes for all approved Actionable + Self-note + Nit items. Group commits by logical area, not one-commit-per-comment — if three nits are in the same file, that's one commit. If two actionable fixes touch unrelated subsystems, that's two commits.
+Apply code changes for all approved Actionable + Self-note + Nit + Follow-up items. Group commits by logical area, not one-commit-per-comment — if three nits are in the same file, that's one commit. If two actionable fixes touch unrelated subsystems, that's two commits.
 
 **Rules during implementation:**
 
@@ -258,7 +269,7 @@ If a post fails (a deleted comment, no write access), keep its row as
 `failed: <error>` and carry on with the rest.
 
 A comment outside a review thread (a plain PR comment, a review body) gets no
-reply. Replies never @-mention anyone: `@claude` in a reply starts the repo's
+reply, nor does a Follow-up row. Replies never @-mention anyone: `@claude` in a reply starts the repo's
 Claude workflow, and any mention notifies a person. Replies to human
 reviewers are not posted here.
 
@@ -266,9 +277,10 @@ reviewers are not posted here.
 
 A PR body's `## Follow-ups` section lists known gaps the PR left; once this
 run fixes one, the entry is stale and misleads the next review. After the
-last push and restack, if this run pushed any fix, for each PR in
-`TARGET_PRS` and each slice this run pushed a fix to whose body has a
-`## Follow-ups` section:
+last push and restack, if this run pushed any fix, for each PR whose body
+has a `## Follow-ups` section — in stack mode every open PR in `SLICES`,
+since an entry may sit on a slice that was only restacked; in single mode
+the one PR:
 
 1. Read the body as it is now: `gh pr view <PR> --json body -q .body >
    <scratchpad>/pr-fix-body-<PR>.md` (after `/restack`, which may have
@@ -321,6 +333,10 @@ Format (one block per PR in stack mode, bottom-up):
 
 ### Follow-ups removed from the body
 - <the entry>   (or: none; or: failed: <error>)
+
+### Follow-ups still open
+- <the entry> — <its reason>   (or: none)
+  → ⚠ should be fixed in this PR   (an in-diff entry this run did not fix)
 ```
 
 When there are `draft` replies, end by asking the user to approve, edit or skip each one, then post the approved ones as Step 4c does. Keep every reply factual and short — no "thanks", no "great catch", no performative agreement (`receiving-code-review` already covers this).

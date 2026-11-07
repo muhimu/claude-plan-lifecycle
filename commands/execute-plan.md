@@ -166,23 +166,33 @@ commit what the execution skill left uncommitted, as Step 5 does (S3.4 in
 stacked mode), so the pass starts from a clean tree and each fix's changes
 are only its own. Then run ONE fix pass over `FOLLOWUPS`, in this session, on this branch:
 
-1. **Drop** an item the branch no longer shows (read the code it names), or
-   one a later slice of this plan does (stacked mode).
-2. **Keep** an item that cannot be done in this PR, with its reason: the
-   work is in another repo; it needs a decision only the user can make
-   (this includes editing an ADR this plan's diff does not write); it is
-   outside the plan's scope; or it can only be exercised with the changed
-   plugin or tool loaded.
+1. **Drop** an item the branch no longer shows (read the code it names).
+   In stacked mode, also set aside an item a later slice `K` of this plan
+   does: remove it from `SEEN_FOLLOWUPS` too, so slice K's fix pass sees it
+   again when the ledger returns it, and drops it only if the branch then
+   no longer shows it.
+2. **Keep** an item that cannot be done in this PR. Tag it `in diff` when
+   it is about lines this PR's diff adds or changes, else `outside diff`.
+   The reasons: the work is in another repo; it needs a decision only the
+   user can make (this includes editing an ADR this plan's diff does not
+   write); it is outside the plan's scope, for an `outside diff` item only
+   (a defect in code this PR changes is always in scope); or it can only be
+   exercised with the changed plugin or tool loaded.
 3. **Fix** every other item, test-first: write a test that reproduces it
    and watch it fail, fix, watch it pass, then run `$TEST_CMD` and
    `$LINT_CMD`. An item with no behaviour to test (wording, docs) needs no
    test. Commit each fix with a Conventional-Commits subject, staging only
    its files, never `local`. If a fix cannot get to green, undo it, new
-   files included: `git reset -q --hard HEAD && git clean -fdq` (everything
-   uncommitted is that fix's; `git clean` without `-x` leaves the ignored
-   `local` alone; never `git stash`, whose stack all worktrees share). Keep
-   the item as `attempted, blocked by: <blocker>`: it can still be fixed in
-   this PR.
+   files included: `git reset -q --hard HEAD && git clean -fdq -e local`
+   (everything uncommitted is that fix's; `-e local` keeps the plans
+   symlink, which a `local/` ignore entry does not match; never
+   `git stash`, whose stack all worktrees share). Keep the item, tagged as
+   above, with the reason `attempted, blocked by: <blocker>`: it can still
+   be fixed in this PR.
+
+This session makes these fixes, an ADR this plan's diff writes included:
+`FINISH_INSTRUCTION`'s "never in the controller session" binds the
+execution skill only.
 
 `FOLLOWUPS` is now only the kept items, each with its reason; add the
 number fixed to `FIXED_FOLLOWUPS`. A red test inside this pass is the
@@ -249,8 +259,9 @@ Use plain `git commit` — no `--no-verify`. Follow the repo's commit-message co
    ## Follow-ups
 
    <one bullet per FOLLOWUPS item — the one-liner, its source tags, and
-   `not fixed here: <reason>` from Step 3a. Known issues this PR cannot
-   fix; a reviewer may still ask for one to be fixed here. Omit the whole
+   `not fixed here (<in diff | outside diff>): <reason>` from Step 3a.
+   Known issues this PR did not fix; the tag tells reviewers, the verifier
+   and `/pr-fix` whether it is still this PR's to fix. Omit the whole
    section when FOLLOWUPS is empty.>
 
    ## Verification
@@ -337,7 +348,7 @@ PR: <PR URL> (#<PR_NUM>, draft)
 $TEST_CMD: passed
 $LINT_CMD: passed
 Plan stamped with PR number.
-Follow-ups: <FIXED_FOLLOWUPS> fixed; <stub path> (<n> left)   # "<F> fixed; none left" without a stub; "Follow-ups: none" when there were none
+Follow-ups: <FIXED_FOLLOWUPS> fixed, <n> left; stub: <stub path>   # "stub: none" when Step 7a wrote none; "Follow-ups: none" when there were none and no stub
 ADR impact: ADR-<NNNN> <how>          # one line per ADR_IMPACTS entry; omit when none
 ```
 
@@ -422,7 +433,7 @@ is already done.
    `RULINGS[N]` = returned rulings minus every entry already in
    `RULINGS[1..N-1]`, and `FOLLOWUPS[N]` = returned follow-ups minus every
    item in `SEEN_FOLLOWUPS` (all that earlier slices returned, fixed or
-   kept; match by the one-liner, ignoring a `not fixed here:` suffix); then add `FOLLOWUPS[N]` to `SEEN_FOLLOWUPS`. `ADR_IMPACTS` for the
+   kept; match by the one-liner, ignoring a `not fixed here …` suffix); then add `FOLLOWUPS[N]` to `SEEN_FOLLOWUPS`. `ADR_IMPACTS` for the
    S5 report and stub is the `ADR impact` entries of `RULINGS[1..M]`.
 2a. **Fix pass** — Step 3a over `FOLLOWUPS[N]`, on `BRANCH[N]`, before its
    PR opens, so each fix lands in this slice and nothing needs a restack.
@@ -559,7 +570,7 @@ Stack opened (<M> draft PRs, native stack #<STACK_NUM>):   # or "no native stack
 #<PR_NUM[2]>  <slice 2 title>   base: <BRANCH[1]>   test/lint: passed
 ...
 Plan stamped with tip PR #<PR_NUM[M]>.
-Follow-ups: <FIXED_FOLLOWUPS> fixed; <stub path> (<n> left)   # "<F> fixed; none left" without a stub; "Follow-ups: none" when there were none
+Follow-ups: <FIXED_FOLLOWUPS> fixed, <n> left; stub: <stub path>   # "stub: none" when Step 7a wrote none; "Follow-ups: none" when there were none and no stub
 ADR impact: ADR-<NNNN> <how>          # one line per ADR_IMPACTS entry; omit when none
 Merging is a cascade: after each squash-merge, run /restack in this
 worktree — it rebases the surviving branches, verifies the tip, and
