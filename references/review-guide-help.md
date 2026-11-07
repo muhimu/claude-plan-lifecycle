@@ -3,7 +3,7 @@ This page points you at the parts of a colleague's PR that need a human's judgem
 ## Reading order
 - **First:** the summary line under the title, then Decisions, then Route, then Review findings when the guide ran the review.
 - **Then:** Permanent after merge, Ship or block, Who must act after merge.
-- **Last, or never:** Riskiest code (hand it to a bug-hunting tool) and Skip. A page with Review findings has no Riskiest code: the tool already looked.
+- **Last, or never:** Riskiest code (hand it to a bug-hunting tool) and Skip. Riskiest code appears only for a PR whose findings are not on the page: where they are, the tool already looked.
 
 Sections with nothing in them are left out. Before you read appears only when you know little of this code (`new` mode); Hot files only when you know it well (`expert` mode). A stack page adds How the stack splits and Resolved across the stack.
 

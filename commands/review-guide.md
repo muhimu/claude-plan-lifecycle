@@ -154,8 +154,12 @@ ROOT=<ROOT>  B=<B>  R=<R>  H=<H>  RUN=<RUN>  DEFAULT=<DEFAULT>  MODE=<MODE>
 Only with `--review`; run it while the agents work. The review tools read
 the code around each hunk from the session's checkout, and
 `/plan-lifecycle:review-stack` stops unless that checkout is at the top of
-the stack, so they run at the tip: the `H` of the last target, in your
-checkout when it is already there, else in a worktree. `WT` is `<ROOT>/.claude/worktrees/review-guide-<N>`.
+the stack, so they run at the tip: the last target's current head, in
+your checkout when it is already there, else in a worktree. `WT` is
+`<MAIN>/.claude/worktrees/review-guide-<N>`, `<MAIN>` being the main
+checkout (the parent of
+`git rev-parse --path-format=absolute --git-common-dir`), so a session that
+runs in a linked worktree does not nest one inside it.
 
 First read each target's current head, `n` being its PR number:
 
@@ -166,24 +170,29 @@ gh pr view <n> -R <OWNER/REPO> --json headRefOid -q .headRefOid
 A target whose head is not its `H` (it moved since Fetch, or `<head-sha>`
 pins an older commit) gets no findings: its section says "Reviewed at
 `<8>`, guide at `<8>`: findings left out." When that is every target, skip
-the review; Finish says why.
+the review: the section holds those lines alone, and Finish says why. A
+moved top does not stop the others: the tools run at its current head, and
+only the moved targets' findings are left out.
 
 A checkout already at the tip needs no worktree: when `git rev-parse HEAD`
-is the last target's `H` and `git status --porcelain` lists only `??`
+is the last target's current head and `git status --porcelain` lists only `??`
 lines, run the tools below right here. Otherwise make one:
 
 ```bash
-git worktree remove --force <WT> 2>/dev/null     # left over from an earlier run
+git worktree unlock <WT> 2>/dev/null             # left over from an earlier run
+git worktree remove --force <WT> 2>/dev/null
 rm -rf <WT>
-git worktree add --detach <WT> <H of the last target>
+git worktree prune
+git worktree add --detach <WT> <the last target's current head>
 ```
 
 and enter it with `EnterWorktree` (`path: <WT>`). Then:
 
 - **One target** (a PR, or one slice pinned by `<head-sha>`): `Skill`
   `code-review` with `<effort> https://github.com/<OWNER/REPO>/pull/<N>`;
-  when it returns, `Skill` `plan-lifecycle:verify-findings` with no
-  arguments.
+  once its result is in, `Skill` `plan-lifecycle:verify-findings` with no
+  arguments. The result comes either at once or, when the call says the
+  review runs in the background, by task notification: wait for it.
 - **A stack:** `Skill` `plan-lifecycle:review-stack <top PR> <effort>`, the
   top PR being the last target's number (`S` may be `of-<N>`, which it does
   not take).
@@ -344,7 +353,8 @@ Unverified:
   order: where a correctness tool should look hardest. They are not stops.
   Leave it out for a target whose findings are on the page; keep it when
   the review did not run or its findings were left out.
-- **Review findings** only when the review ran; otherwise leave the section
+- **Review findings** only when the review ran or every target moved (then
+  the section holds the "findings left out" lines alone); otherwise leave the section
   and the summary's `<f> review findings` clause out. `<tool>` is
   `/code-review` or `/review-stack`. Keep the tool's order and summaries;
   leave out `Rejected:` and `Unverified:` when empty, and write "No findings." when nothing
@@ -379,7 +389,7 @@ order, with two more after the header:
 
 `<author>` · #<N> head `<8>` on `<base>@<8>` · … · <date> · <MODE>: <why>
 
-> **<d> decisions · <k> judgement calls.** <the biggest decision, one clause>
+> **<d> decisions · <k> judgement calls · <f> review findings (<c> confirmed).** <the biggest decision, one clause>
 
 ## How the stack splits
 - **#<N>** <what this slice adds, one line>
@@ -429,9 +439,10 @@ Print one line:
 `<OWNER/REPO>#<N> (<MODE>): <d> decisions, <k> spots, <s> files to skim, <o> to read → <ROOT>/local/review-guide/<N>.html`.
 With `--review`, add `, <f> review findings (<c> confirmed)` before the
 arrow, or, when the review did not run, a second line:
-"--review skipped: <the tool's stop message>". When `--review` passed an
-effort level, add: "/code-review keeps that effort level for later runs;
-type another level to change it."
+"--review skipped: <the tool's stop message>", or
+"--review skipped: every PR moved since Fetch" when no tool ran. When the
+review ran, add (the default `high` sticks too):
+"/code-review keeps that effort level for later runs; type another level to change it."
 For a stack, print it per target, then
 `<OWNER/REPO> stack #<S> (<MODE>): <d> decisions, <k> spots, <r> resolved across slices → <ROOT>/local/review-guide/stack-<S>.html`.
 If `git -C <ROOT> check-ignore -q local/review-guide/<N>.md` fails, add: "local/ is not

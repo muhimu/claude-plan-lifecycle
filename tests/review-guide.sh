@@ -44,6 +44,19 @@ check "(i) the findings table has a cap" grep -qF 'more than 8 findings' "$cmd"
 check "(i) <f> counts confirmed and plausible" grep -qF '`<f>` counts confirmed and plausible findings' "$cmd"
 check "(i) Finish says the effort is sticky" grep -qF 'keeps that effort level for later runs' <<<"$(section Finish)"
 
+# (m) review round 2: the tip is the top's current head; the default effort
+# sticks too; a background review is waited for; WT lives under the main
+# checkout and survives a lock; the stack summary and the help agree
+check "(m) the worktree is at the top's current head" grep -qF "the last target's current head" <<<"$review"
+check "(m) Finish notes the sticky effort whenever the review ran" grep -qF 'review ran, add (the default `high` sticks too)' <<<"$(section Finish)"
+check "(m) Finish says when every PR moved" grep -qF -- '--review skipped: every PR moved since Fetch' <<<"$(section Finish)"
+check "(m) a background review is waited for" grep -qF 'by task notification' <<<"$review"
+check "(m) WT is under the main checkout" grep -qF 'git rev-parse --path-format=absolute --git-common-dir' <<<"$review"
+check "(m) a locked WT is unlocked and pruned" grep -qF 'git worktree unlock <WT>' <<<"$review"
+check "(m) a removed WT is pruned" grep -qF 'git worktree prune' <<<"$review"
+check "(m) the stack summary counts findings" grep -qF '> **<d> decisions · <k> judgement calls · <f> review findings (<c> confirmed).**' "$cmd"
+check "(m) help allows Riskiest code beside findings" grep -qF 'Riskiest code appears only for a PR whose findings are not on the page' "$root/references/review-guide-help.md"
+
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
 
