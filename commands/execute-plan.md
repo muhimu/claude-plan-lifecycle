@@ -136,6 +136,8 @@ Print one line naming the choice. Then **invoke the chosen skill** via the `Skil
 > - follow-on work the plan itself defers (a "follow-ups" / "future work" list, or a step telling you to record follow-ups in the plan file — the plan file must not be edited, so ledger them instead): `Plan: observation: <one-liner>`
 > - a Minor finding from the final whole-branch review that is not fixed: `Final: minor (deferred): <one-liner>`
 >
+> Your human partner has decided how minors go: a Minor finding on code this branch changes enters the final review's fix pass with the Critical and Important ones, under the same test-first rule (wording, docs and behaviour-preserving cleanups need no failing test, only the green suite). Ledger it as `Final: minor (deferred)` only when it cannot be fixed here: the work is in another repo, the plan defers it, or its fix did not go green. Do not act on observations; they are for your partner to read.
+>
 > When you stop to ask your human partner and they decide, ledger the decision as `Task <N>: Ruling: (user) <decision> — <the question it answered> — <cost if wrong>` (keep the literal `Ruling:` so your "Rulings I made" collection picks it up). If they leave the question open, your stop rules still apply: continue only if the run can proceed safely without the answer, and then ledger `Task <N>: observation: open question — <question>`; otherwise stay stopped.
 >
 > ADRs live in the repo's ADR directory (e.g. `docs/adr/`, or wherever its CLAUDE.md says; no ADR directory → skip this paragraph). At setup, list its file titles once; read an ADR only when a ruling's subject matches a title. When a ruling — yours or theirs — changes what an ADR states:
@@ -143,7 +145,7 @@ Print one line naming the choice. Then **invoke the chosen skill** via the `Skil
 > - **An ADR file this plan's diff creates or modifies:** amend it in the same task — through the implementer or a fix round, never in the controller session — so it merges matching the code, and end the ruling's ledger line with `— ADR-<NNNN> updated`.
 > - **Any other ADR:** do not edit it — changing a settled ADR is a planning decision. End the ruling's ledger line with `— ADR impact: ADR-<NNNN> <how the ruling bears on it>`. Ledger nothing else for it; the ruling carries it.
 >
-> In your Finish step, where you collect "Rulings I made" before deleting anything, also build a "Follow-ups" list from the ledger — before the workspace is deleted, never from memory. Then, when you reach the point where you would invoke `superpowers:finishing-a-development-branch`, do NOT — return control to `/execute-plan`, which opens the PR. Return your "Rulings I made" list verbatim in your final message; if you made no rulings, say so. Then return the "Follow-ups" list, built from every `minor (deferred)`, `observation`, and real-but-deferred `parked` ledger line, curated: merge lines that describe the same issue into one item; drop items a later fix closed; where a later review showed a line's description is wrong, correct it and mark it `(corrected: <what changed>)`. Each item keeps its source tags (e.g. `Task 3, Final`) and names the file it concerns, if any: `/execute-plan` tries to fix each item next. If there are none, say so.
+> In your Finish step, where you collect "Rulings I made" before deleting anything, also build a "Follow-ups" list from the ledger — before the workspace is deleted, never from memory. Then, when you reach the point where you would invoke `superpowers:finishing-a-development-branch`, do NOT — return control to `/execute-plan`, which opens the PR. Return your "Rulings I made" list verbatim in your final message; if you made no rulings, say so. Then return the "Follow-ups" list, built from every `minor (deferred)`, `observation`, and real-but-deferred `parked` ledger line, curated: merge lines that describe the same issue into one item; drop items a later fix closed; where a later review showed a line's description is wrong, correct it and mark it `(corrected: <what changed>)`. Each item keeps its source tags (e.g. `Task 3, Final`) and names its group: `look` (an observation, an open question, or a minor whose fix did not go green), `live test` (it can only be checked by running the changed thing), `other repo` (name the repo) or `plan` (the plan defers it). If there are none, say so.
 
 Both skills end by invoking `finishing-a-development-branch`, which presents merge/PR/keep options that collide with Steps 5–7. The instruction above pre-empts that. Capture the returned rulings list as `RULINGS` and the follow-ups list as `FOLLOWUPS` (each empty if none), and set `ADR_IMPACTS` = the `RULINGS` entries ending in `— ADR impact: …`. A real-but-deferred `parked` finding appears in both lists: the Rulings entry is the decision, the Follow-ups entry the work it leaves. Follow-ups are discovered work the run did not do; without this capture they die with the skill's workspace.
 
@@ -151,61 +153,11 @@ Both skills end by invoking `finishing-a-development-branch`, which presents mer
 
 Whichever skill runs owns TDD discipline, per-task review checkpoints, and intra-plan verification. Do not duplicate its work — let it run.
 
-Set `FIXED_FOLLOWUPS` = 0. When it returns control, proceed to Step 3a. If the skill aborts (user cancels, blocking question, etc.), stop with whatever message the skill produced.
-
-## Step 3a — Fix pass on the follow-ups
-
-The PR body's `## Follow-ups` section is the public record of known gaps:
-the plans dir is private, so reviewers and verifiers see only the body. A
-gap that could have been fixed here should not wait there.
-
-Always, even when `FOLLOWUPS` is empty: resolve `TEST_CMD` / `LINT_CMD`
-(Step 4 defines how, and its "No verify commands found" stop applies);
-commit what the execution skill left uncommitted, as Step 5 describes
-(S3.4's message in stacked mode), so each fix's changes are only its own;
-then run `$TEST_CMD` and `$LINT_CMD` once, and on red stop with Step 4's
-message: a red tree would make every fix look blocked.
-
-Skip the rest when `FOLLOWUPS` is empty. Otherwise run ONE fix pass over
-`FOLLOWUPS`, in this session, on this branch:
-
-1. **Drop** an item the branch no longer shows (read the code it names).
-   In stacked mode, also set aside an item a later slice `K` of this plan
-   does: remove it from `SEEN_FOLLOWUPS` too, so slice K's fix pass sees it
-   again when the ledger returns it, and drops it only if the branch then
-   no longer shows it.
-2. **Keep** an item that cannot be done in this PR. Tag it `in diff` when
-   it is about lines this PR's diff adds or changes, else `outside diff`.
-   The reasons: the work is in another repo; it needs a decision only the
-   user can make (this includes editing an ADR this plan's diff does not
-   write); it is outside the plan's scope, for an `outside diff` item only
-   (a defect in code this PR changes is always in scope); the plan itself
-   defers it (a `Plan:` item, in or outside the diff); or it can only be
-   exercised with the changed plugin or tool loaded.
-3. **Fix** every other item, test-first: write a test that reproduces it
-   and watch it fail, fix, watch it pass, then run `$TEST_CMD` and
-   `$LINT_CMD`. An item with no behaviour to test (wording, docs) needs no
-   test. Commit each fix with a Conventional-Commits subject, staging only
-   its files, never `local`. If a fix cannot get to green, undo it, new
-   files included: `git reset -q --hard HEAD && git clean -fdq -e local`
-   (everything uncommitted is that fix's; `-e local` keeps the plans
-   symlink, which a `local/` ignore entry does not match; never
-   `git stash`, whose stack all worktrees share). Keep the item, tagged as
-   above, with the reason `attempted, blocked by: <blocker>`: it can still
-   be fixed in this PR.
-
-This session makes these fixes, an ADR this plan's diff writes included:
-`FINISH_INSTRUCTION`'s "never in the controller session" binds the
-execution skill only.
-
-`FOLLOWUPS` is now only the kept items, each with its reason; add the
-number fixed to `FIXED_FOLLOWUPS`. A red test inside this pass is the
-red-green loop, not a halt; Step 4 then verifies the result. In stacked mode
-S3 runs this step once per slice instead.
+When it returns control, proceed to Step 4. If the skill aborts (user cancels, blocking question, etc.), stop with whatever message the skill produced.
 
 ## Step 4 — Verification (mandatory, halt-on-red)
 
-Step 3a resolved the verify commands (the verify convention): if the repo's CLAUDE.md declares test and lint commands, use those as `TEST_CMD` / `LINT_CMD`; otherwise default to `TEST_CMD="make test"`, `LINT_CMD="make lint"`. Both checks must pass before the PR is opened.
+Resolve the verify commands once (the verify convention): if the repo's CLAUDE.md declares test and lint commands, use those as `TEST_CMD` / `LINT_CMD`; otherwise default to `TEST_CMD="make test"`, `LINT_CMD="make lint"`. Both checks must pass before the PR is opened.
 
 1. **Tests:** run `$TEST_CMD`. Capture exit code and the last ~20 lines of output as `TEST_TAIL`. If non-zero, **stop**: "Tests failed. Worktree preserved. Fix and re-run when ready." Do not attempt to fix forward — that's the user's call.
 
@@ -215,7 +167,7 @@ If a resolved command does not exist (e.g. `make: *** No rule to make target` on
 
 ## Step 5 — Commit anything still staged
 
-If `git status --porcelain` shows nothing but `?? local`, skip this step — Step 3a already committed the execution skill's leftovers, so this usually is a no-op.
+If `git status --porcelain` shows nothing but `?? local`, skip this step — the execution skill already committed everything.
 
 Otherwise stage and commit pending changes, never the `local` plans symlink
 (a `local/` gitignore entry does not match a symlink, so `git add -A` would
@@ -262,11 +214,15 @@ Use plain `git commit` — no `--no-verify`. Follow the repo's commit-message co
 
    ## Follow-ups
 
-   <one bullet per FOLLOWUPS item — the one-liner, its source tags, and
-   `not fixed here (<in diff | outside diff>): <reason>` from Step 3a.
-   Known issues this PR did not fix; the tag tells reviewers, the verifier
-   and `/pr-fix` whether it is still this PR's to fix. Omit the whole
-   section when FOLLOWUPS is empty.>
+   <FOLLOWUPS grouped for the reader, each group a bold label followed by
+   its bullets (the one-liner and its source tags), in this order and
+   only when non-empty:
+   **Needs a look** — concerns and open questions from execution (`look`)
+   **Needs a live test** — can only be checked by running it (`live test`)
+   **Other repo** — bullets name the repo (`other repo`)
+   **Deferred by the plan** (`plan`)
+   No tool acts on the groups; they tell the author what to do next.
+   Omit the whole section when FOLLOWUPS is empty.>
 
    ## Verification
 
@@ -301,11 +257,7 @@ Per the plan-lifecycle convention: every plans file of the effort must carry the
 
 ## Step 7a — Write the follow-ups stub
 
-The stub is your personal copy of what the PR body listed when it opened:
-the items Step 3a kept, not the ones it fixed. It is a snapshot: `/pr-fix`
-later removes fixed entries from the body only, so check the body when you
-triage. Skip this step when `FOLLOWUPS` and
-`ADR_IMPACTS` are both empty. Each
+Skip this step when `FOLLOWUPS` and `ADR_IMPACTS` are both empty. Each
 `ADR_IMPACTS` entry becomes a stub item too — changing a settled ADR needs a
 plan of its own.
 
@@ -327,11 +279,13 @@ pr:
 Parent plan: <basename of PLAN_PATH> · PR <PR URL> · Issue <ISSUE_REF, or "none">
 
 Discovered during execution and deliberately not done. Triage, then turn
-what survives into a plan (brainstorming → writing-plans).
+what survives into a plan (brainstorming → writing-plans). A snapshot from
+when the PR opened: `/pr-fix` later removes fixed entries from the PR body
+only, so check the body when you triage.
 
 ## <one-liner of item 1>
 
-<the item as kept — source tags, why it was not fixed, and any `(corrected: …)` note>
+<the item as returned — its group, source tags, and any `(corrected: …)` note>
 
 ## <one-liner of item 2>
 ...
@@ -352,7 +306,7 @@ PR: <PR URL> (#<PR_NUM>, draft)
 $TEST_CMD: passed
 $LINT_CMD: passed
 Plan stamped with PR number.
-Follow-ups: <FIXED_FOLLOWUPS> fixed, <n> left; stub: <stub path>   # "stub: none" when Step 7a wrote none; "Follow-ups: none" when there were none and no stub
+Follow-ups: <stub path> (<n> items)   # or "Follow-ups: none"
 ADR impact: ADR-<NNNN> <how>          # one line per ADR_IMPACTS entry; omit when none
 ```
 
@@ -392,11 +346,7 @@ For each slice N = 1..M in order, the slice is **already done** iff both:
 
 For each done slice, read `RULINGS[N]` and `FOLLOWUPS[N]` back from its PR
 body's `## Rulings` and `## Follow-ups` sections (empty when absent), so S3's
-de-duplication and S5's stub see every slice, not only this run's. The body
-lists only what that slice's fix pass kept (and what `/pr-fix` has not since
-removed); the items it fixed are gone, and S3's fix pass drops them when
-they come back from the ledger. Start `SEEN_FOLLOWUPS` as the union of
-these, and `FIXED_FOLLOWUPS` as 0.
+de-duplication and S5's stub see every slice, not only this run's.
 
 Let `R` be the first slice that is not already done (R = M+1 if all are done;
 skip straight to S5). If R > 1, run `git checkout "BRANCH[R-1]"` so slice R
@@ -435,13 +385,9 @@ is already done.
    `review-package` rejects a base that is not an ancestor. The skill returns every ruling and
    follow-up in the shared ledger, including earlier slices'. Set
    `RULINGS[N]` = returned rulings minus every entry already in
-   `RULINGS[1..N-1]`, and `FOLLOWUPS[N]` = returned follow-ups minus every
-   item in `SEEN_FOLLOWUPS` (all that earlier slices returned, fixed or
-   kept; match by the one-liner, ignoring a `not fixed here …` suffix); then add `FOLLOWUPS[N]` to `SEEN_FOLLOWUPS`. `ADR_IMPACTS` for the
-   S5 report and stub is the `ADR impact` entries of `RULINGS[1..M]`.
-2a. **Fix pass** — Step 3a over `FOLLOWUPS[N]`, on `BRANCH[N]`, before its
-   PR opens, so each fix lands in this slice and nothing needs a restack.
-   `FOLLOWUPS[N]` becomes the kept items.
+   `RULINGS[1..N-1]`, and `FOLLOWUPS[N]` likewise against
+   `FOLLOWUPS[1..N-1]`. `ADR_IMPACTS` for the S5 report and stub is the
+   `ADR impact` entries of `RULINGS[1..M]`.
 3. **Verify** — identical to Step 4 (`$TEST_CMD`, `$LINT_CMD`, halt-on-red),
    capturing `TEST_TAIL[N]` / `LINT_TAIL[N]`. On red, stop: "Slice <N>
    failed <check>. Slices 1..<N-1> are pushed and green; worktree preserved
@@ -524,11 +470,12 @@ a few seconds and query again — a new stack may not be readable yet. If
 `gh stack` is not installed, `link` fails, or `STACK_NUM` is still empty, say
 so in one line and continue without a native stack.
 
-Then update every stack PR body via `gh pr edit <PR_NUM[N]> --body-file <updated file>`,
+Then update every stack PR body via `gh pr edit <PR_NUM[N]> --body-file <file>`,
 replacing only its `## Stack` section and preserving Summary, Rulings,
 Follow-ups, and Verification untouched. Build the file from the body as it
-is now (`gh pr view <PR_NUM[N]> --json body -q .body > <file>`), not as this run wrote
-it; a file, not `--body`, so its backticks and `$` survive the shell: on a resumed run, `/pr-fix` may have removed Follow-ups entries since.
+is now (`gh pr view <PR_NUM[N]> --json body -q .body > <file>`), not as this
+run wrote it: on a resumed run `/pr-fix` may have removed Follow-ups entries
+since, and a file keeps the body's backticks and `$` away from the shell:
 
 - **Native stack linked** — no table (the stack UI is authoritative and a
   hand-kept table drifts):
@@ -561,10 +508,9 @@ Stamp the **tip PR only**, exactly per Step 7's procedure, with
 `<PR_NUM[M]>` as the number (tip merges last under the squash cascade, so
 tip-merged ⇔ whole stack merged; `reap-plans` unchanged).
 
-Then write the follow-ups stub per Step 7a over `FOLLOWUPS[1..M]` (the kept
-items) and the `ADR_IMPACTS` of `RULINGS[1..M]` (done slices' entries were
-read back in S2), linking every stack PR in the header and noting each item's
-slice.
+Then write the follow-ups stub per Step 7a over `FOLLOWUPS[1..M]` and the
+`ADR_IMPACTS` of `RULINGS[1..M]` (done slices' entries were read back in S2),
+linking every stack PR in the header and noting each item's slice.
 
 Final report:
 
@@ -574,7 +520,7 @@ Stack opened (<M> draft PRs, native stack #<STACK_NUM>):   # or "no native stack
 #<PR_NUM[2]>  <slice 2 title>   base: <BRANCH[1]>   test/lint: passed
 ...
 Plan stamped with tip PR #<PR_NUM[M]>.
-Follow-ups: <FIXED_FOLLOWUPS> fixed, <n> left; stub: <stub path>   # "stub: none" when Step 7a wrote none; "Follow-ups: none" when there were none and no stub
+Follow-ups: <stub path> (<n> items)   # or "Follow-ups: none"
 ADR impact: ADR-<NNNN> <how>          # one line per ADR_IMPACTS entry; omit when none
 Merging is a cascade: after each squash-merge, run /restack in this
 worktree — it rebases the surviving branches, verifies the tip, and
@@ -587,7 +533,7 @@ retargets the next PR to `$DEFAULT_BRANCH`.
 - **Never run on the default branch.** Pre-flight stops this.
 - **Never push to the default branch.** Only pushes the current feature branch via `git push -u`.
 - **No `--force` push, no `--force-with-lease`, no `--no-verify`.** Plain commits, plain pushes; the repo's conventions govern message format.
-- **Halt-on-red.** Tests or lint red means stop. Do not fix forward, do not retry. The exception is the red-green loop inside the Step 3a fix pass; a fix that cannot get to green is reverted and its item kept.
+- **Halt-on-red.** Tests or lint red means stop. Do not fix forward, do not retry.
 - **No GitHub mutations beyond `gh pr create --draft`, `gh pr view`/`gh pr list` (read-only), and — stacked mode only — the S4 `gh stack link` and `gh pr edit` on bodies of PRs this stack created.** No auto-merge, no comment posting, no thread resolution.
 - **Plan file is read for execution but never rewritten except to stamp the PR number** (frontmatter `pr:` field). No content edits. The only new plans-dir file is the Step 7a follow-ups stub.
 - **Stop semantics:** print the indicated message and end the turn. Do not advance to subsequent steps.
