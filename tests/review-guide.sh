@@ -132,7 +132,7 @@ for step in 'git merge-base --is-ancestor <old H> <H>' "git log --format='%h %s'
   check "(h) Previous guide names $step" grep -qF -- "$step" <<<"$prev"
 done
 check "(h) the section follows the summary line" grep -qx '## Since the last guide — `<old head, 8 chars>`' <<<"$(grep -A2 -F '> **<d> decisions · <k> judgement calls · <s> to skip' "$cmd")"
-check "(h) the stack page has it too" grep -qx '## Since the last guide — `<old head, 8 chars>`' <<<"$(grep -A2 -F '> **<d> decisions · <k> judgement calls.**' "$cmd")"
+check "(h) the stack page has it too" grep -qx '## Since the last guide — `<old head, 8 chars>`' <<<"$(grep -A2 -F '> **<d> decisions · <k> judgement calls · <f> review' "$cmd")"
 check "(h) Resolved only when the delta touches it" grep -qF 'Resolved only when the delta touches its file or ruling' "$cmd"
 check "(h) an item pushed out of the top is no longer ranked" grep -qF -- '- No longer ranked: ' "$cmd"
 check "(h) an item of a merged slice is merged" grep -qF 'Merged: <old stop or Decision> (#<N>)' "$cmd"
