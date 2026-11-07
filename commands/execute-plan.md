@@ -136,6 +136,8 @@ Print one line naming the choice. Then **invoke the chosen skill** via the `Skil
 > - follow-on work the plan itself defers (a "follow-ups" / "future work" list, or a step telling you to record follow-ups in the plan file — the plan file must not be edited, so ledger them instead): `Plan: observation: <one-liner>`
 > - a Minor finding from the final whole-branch review that is not fixed: `Final: minor (deferred): <one-liner>`
 >
+> Your human partner has decided how minors go: a Minor finding on code this branch changes enters the final review's fix pass with the Critical and Important ones, verified as your skill verifies those fixes (wording, docs and behaviour-preserving cleanups need only the green suite). Ledger it as `Final: minor (deferred)` only when it cannot be fixed here: the work is in another repo, the plan defers it, or its fix did not go green — then revert that fix before you go on. Observations stay for your partner to read unless your skill confirms one as a real gap.
+>
 > When you stop to ask your human partner and they decide, ledger the decision as `Task <N>: Ruling: (user) <decision> — <the question it answered> — <cost if wrong>` (keep the literal `Ruling:` so your "Rulings I made" collection picks it up). If they leave the question open, your stop rules still apply: continue only if the run can proceed safely without the answer, and then ledger `Task <N>: observation: open question — <question>`; otherwise stay stopped.
 >
 > ADRs live in the repo's ADR directory (e.g. `docs/adr/`, or wherever its CLAUDE.md says; no ADR directory → skip this paragraph). At setup, list its file titles once; read an ADR only when a ruling's subject matches a title. When a ruling — yours or theirs — changes what an ADR states:
@@ -143,7 +145,7 @@ Print one line naming the choice. Then **invoke the chosen skill** via the `Skil
 > - **An ADR file this plan's diff creates or modifies:** amend it in the same task — through the implementer or a fix round, never in the controller session — so it merges matching the code, and end the ruling's ledger line with `— ADR-<NNNN> updated`.
 > - **Any other ADR:** do not edit it — changing a settled ADR is a planning decision. End the ruling's ledger line with `— ADR impact: ADR-<NNNN> <how the ruling bears on it>`. Ledger nothing else for it; the ruling carries it.
 >
-> In your Finish step, where you collect "Rulings I made" before deleting anything, also build a "Follow-ups" list from the ledger — before the workspace is deleted, never from memory. Then, when you reach the point where you would invoke `superpowers:finishing-a-development-branch`, do NOT — return control to `/execute-plan`, which opens the PR. Return your "Rulings I made" list verbatim in your final message; if you made no rulings, say so. Then return the "Follow-ups" list, built from every `minor (deferred)`, `observation`, and real-but-deferred `parked` ledger line, curated: merge lines that describe the same issue into one item; drop items a later fix closed; where a later review showed a line's description is wrong, correct it and mark it `(corrected: <what changed>)`. Each item keeps its source tags (e.g. `Task 3, Final`). If there are none, say so.
+> In your Finish step, where you collect "Rulings I made" before deleting anything, also build a "Follow-ups" list from the ledger — before the workspace is deleted, never from memory. Then, when you reach the point where you would invoke `superpowers:finishing-a-development-branch`, do NOT — return control to `/execute-plan`, which opens the PR. Return your "Rulings I made" list verbatim in your final message; if you made no rulings, say so. Then return the "Follow-ups" list, built from every `minor (deferred)`, `observation`, and real-but-deferred `parked` ledger line, curated: merge lines that describe the same issue into one item; drop items a later fix closed; where a later review showed a line's description is wrong, correct it and mark it `(corrected: <what changed>)`. Each item keeps its source tags (e.g. `Task 3, Final`) and names its group, the first that fits: `other repo` (name the repo), `plan` (the plan defers it), `live test` (it can only be checked by running the changed thing), else `look` (an observation, an open question, a parked finding, or a minor whose fix did not go green). If there are none, say so.
 
 Both skills end by invoking `finishing-a-development-branch`, which presents merge/PR/keep options that collide with Steps 5–7. The instruction above pre-empts that. Capture the returned rulings list as `RULINGS` and the follow-ups list as `FOLLOWUPS` (each empty if none), and set `ADR_IMPACTS` = the `RULINGS` entries ending in `— ADR impact: …`. A real-but-deferred `parked` finding appears in both lists: the Rulings entry is the decision, the Follow-ups entry the work it leaves. Follow-ups are discovered work the run did not do; without this capture they die with the skill's workspace.
 
@@ -212,10 +214,15 @@ Use plain `git commit` — no `--no-verify`. Follow the repo's commit-message co
 
    ## Follow-ups
 
-   <one bullet per FOLLOWUPS item — the one-liner and its source tags.
-   Known issues deliberately left out of this PR; a reviewer may ask for
-   one to be fixed here. Omit the whole section when FOLLOWUPS is
-   empty.>
+   <FOLLOWUPS grouped for the reader, each group a bold label followed by
+   its bullets (the one-liner and its source tags), in this order and
+   only when non-empty:
+   **Needs a look** — concerns and open questions from execution (`look`)
+   **Needs a live test** — can only be checked by running it (`live test`)
+   **Other repo** — bullets name the repo (`other repo`)
+   **Deferred by the plan** (`plan`)
+   No tool acts on the groups; they tell the author what to do next.
+   Omit the whole section when FOLLOWUPS is empty.>
 
    ## Verification
 
@@ -272,11 +279,13 @@ pr:
 Parent plan: <basename of PLAN_PATH> · PR <PR URL> · Issue <ISSUE_REF, or "none">
 
 Discovered during execution and deliberately not done. Triage, then turn
-what survives into a plan (brainstorming → writing-plans).
+what survives into a plan (brainstorming → writing-plans). A snapshot from
+when the PR opened: `/pr-fix` later removes fixed entries from the PR body
+only, so check the body when you triage.
 
 ## <one-liner of item 1>
 
-<the item as returned — source tags, and any `(corrected: …)` note>
+<the item as returned — its group, source tags, and any `(corrected: …)` note>
 
 ## <one-liner of item 2>
 ...
@@ -414,7 +423,7 @@ is already done.
 
    ## Follow-ups
 
-   <one bullet per entry in FOLLOWUPS[N], as in Step 6; omit the section
+   <the entries of FOLLOWUPS[N], grouped as in Step 6; omit the section
    when empty>
 
    ## Stack
@@ -461,9 +470,12 @@ a few seconds and query again — a new stack may not be readable yet. If
 `gh stack` is not installed, `link` fails, or `STACK_NUM` is still empty, say
 so in one line and continue without a native stack.
 
-Then update every stack PR body via `gh pr edit <PR_NUM[N]> --body <updated>`,
+Then update every stack PR body via `gh pr edit <PR_NUM[N]> --body-file <file>`,
 replacing only its `## Stack` section and preserving Summary, Rulings,
-Follow-ups, and Verification untouched:
+Follow-ups, and Verification untouched. Build the file from the body as it
+is now (`gh pr view <PR_NUM[N]> --json body -q .body > <file>`), not as this
+run wrote it: on a resumed run `/pr-fix` may have removed Follow-ups entries
+since, and a file keeps the body's backticks and `$` away from the shell:
 
 - **Native stack linked** — no table (the stack UI is authoritative and a
   hand-kept table drifts):
