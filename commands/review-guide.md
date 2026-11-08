@@ -63,7 +63,7 @@ first), `STACKED` and `STACK_NUM`.
   first; merged and closed slices are skipped. `S` is `STACK_NUM`, or
   `of-<bottom PR>` for a stack without one. `<head-sha>` given with `N` a
   stack → stop: "A head sha pins one PR; pass a PR number, not a stack."
-  Resolve, Fetch, Dispatch and Compare run per target; Familiarity runs
+  Resolve, Fetch, Dispatch, Compare and Check rulings run per target; Familiarity runs
   once, over every target's files; Filter and Write cover the stack.
 
 ### Each PR
@@ -134,7 +134,8 @@ counting. 5 or more → `expert`; fewer → `new`. Say which in the page header 
   A README on `R` with a Contact section (a heading that starts with
   "Contact", in `git show <R>:README.md`) names who owns the repo: put
   them first under Ask, before the commit owners, unless it is the PR's
-  author. Nobody left, with no README contact either: the author is the
+  author. A README contact who is the PR's author counts as none. Nobody
+  left, with no README contact either: the author is the
   sole owner, so the page says "No second owner: settle the Decisions with
   whoever leads this repo."
 - `expert`: the reviewer has the map but not the time. Skip orientation and
@@ -223,11 +224,14 @@ works for an issue in another repository), and its review threads, every
 page of them:
 
 ```bash
-gh api graphql --paginate -F o=<OWNER> -F r=<REPO> -F n=<N> -f query='query($o:String!,$r:String!,$n:Int!,$endCursor:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{path body}}}}}}}' \
-  --jq '.data.repository.pullRequest.reviewThreads.nodes[] | [.isResolved, .comments.nodes[0].path, (.comments.nodes[0].body[0:200])] | @tsv'
+gh api graphql --paginate -F o=<OWNER> -F r=<REPO> -F n=<n> -f query='query($o:String!,$r:String!,$n:Int!,$endCursor:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{isResolved isOutdated comments(first:1){nodes{path body author{__typename}}}}}}}}' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isOutdated | not) | select(.comments.nodes[0].author.__typename != "Bot") | select(.comments.nodes[0].body | contains("plan-lifecycle:review-stack") | not) | [.isResolved, .comments.nodes[0].path, (.comments.nodes[0].body[0:200])] | @tsv'
 ```
 
-`<OWNER>` and `<REPO>` are the two halves of `<OWNER/REPO>`. They give the
+`<OWNER>` and `<REPO>` are the two halves of `<OWNER/REPO>`, and `<n>` is
+the target's PR number. Outdated threads, threads a bot started and those
+`/review-stack` posted are left out: what is left are people's open
+questions on the current code. They give the
 Earlier threads line in Write: one line per thread, so `<n>` is the line
 count and `<u>` the lines that start with `false`; the first comment's first
 200 characters say what it asked. The spot agent never sees them. List where BLIND and the body,
@@ -242,8 +246,8 @@ Then pull out what the reviewer must decide, from the body and commits:
   argued in prose), and the refs the reason cites: paths, ADRs, `org/repo`
   paths. Rank them: one that sets something in PERMANENT first, then by how
   many callers or users its cost reaches. A ruling with no stated reason
-  ranks above one with a reason; at the same stakes, a `contradicted` or
-  `qualified` ruling (Check rulings) ranks above a confirmed one.
+  ranks above one with a reason; at the same stakes, by Checked status
+  (Check rulings): `contradicted` first, then `qualified`, then `not checkable here`, then confirmed.
 - **Deferred:** follow-ups, known test gaps, parked items — anything the PR
   says it leaves for later.
 - **Who must act:** people, repos or environments that must do something
@@ -270,7 +274,8 @@ RULINGS:
 Its `CHECKED` lines give each Decision its `Checked` line in Write. A ruling
 its reply leaves out, or an agent that fails, is
 "not checkable here — check did not run": never fill in a result or evidence
-yourself.
+yourself. Write waits for every rulings agent to reply: an agent still
+running has not failed.
 
 ## Filter
 

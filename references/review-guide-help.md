@@ -100,7 +100,7 @@ Rejected:
 
 ## Not in the body
 - **You see:** what the code does that the PR's description does not say: behaviour it leaves out, claims the code does not carry out, scope beyond what it states.
-- **How to read it:** a difference tied to a stop sits in that stop's Why instead. Earlier threads counts the PR's review threads, how many are unresolved, and what they asked: check that the code answers them before you raise the same point.
+- **How to read it:** a difference tied to a stop sits in that stop's Why instead. Earlier threads counts the review threads people opened on the current code (not outdated ones, nor a bot's), how many are unresolved, and what they asked: check that the code answers them before you raise the same point.
 - **Why:** the description is what reviewers and later readers trust.
 
 ## Skip

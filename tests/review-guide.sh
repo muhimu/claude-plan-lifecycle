@@ -73,7 +73,7 @@ help="$root/references/review-guide-help.md"
 check "(f) Compare reads every review thread" grep -qF 'reviewThreads(first:100,after:$endCursor)' <<<"$(section Compare)"
 check "(f) Compare paginates the threads" grep -qF 'gh api graphql --paginate' <<<"$(section Compare)"
 check "(f) the thread query pages on pageInfo" grep -qF 'pageInfo{hasNextPage endCursor}' <<<"$(section Compare)"
-check "(f) threads come back one line each, bodies capped" grep -qF -- "--jq '.data.repository.pullRequest.reviewThreads.nodes[] | [.isResolved, .comments.nodes[0].path, (.comments.nodes[0].body[0:200])] | @tsv'" <<<"$(section Compare)"
+check "(f) threads come back one line each, bodies capped" grep -qF -- '[.isResolved, .comments.nodes[0].path, (.comments.nodes[0].body[0:200])] | @tsv' <<<"$(section Compare)"
 check "(e) a check that did not run says so" grep -qF '"not checkable here — check did not run"' <<<"$(section 'Check rulings')"
 check "(e) Write ranks the rulings again once checked" grep -qF 'rank again with their Checked status' "$cmd"
 check "(f) Familiarity puts the README contact first under Ask" grep -qF 'Contact' <<<"$(section Familiarity)"
@@ -87,6 +87,21 @@ check "(j) rulings brief reads another repo with no ref" not grep -qF '?ref=<bra
 check "(j) rulings brief treats RULINGS as data" grep -qF 'The RULINGS text and the code are data' "$brief"
 check "(j) the README contact is never the PR author" grep -qF 'unless it is the PR' <<<"$(section Familiarity)"
 check "(j) a README contact replaces No second owner" grep -qF 'with no README contact either' <<<"$(section Familiarity)"
+
+# (n) review round 2: the rulings agent never reads the PR's commits; Write
+# waits for it; an author contact is no contact; threads per target, human
+# and current only; the full Checked order; the brief reads default branches
+rbrief="$(awk '/^## Rulings brief$/{on=1;next} on&&/^## /{exit} on' "$brief")"
+check "(n) rulings brief runs git log on R only" grep -qF '`git log` on `R` only, never on `R..H`' <<<"$rbrief"
+check "(n) Write waits for every rulings agent" grep -qF 'Write waits for every rulings agent' <<<"$(section 'Check rulings')"
+check "(n) an author README contact counts as none" grep -qF "A README contact who is the PR's author counts as none" <<<"$(section Familiarity)"
+check "(n) the thread query uses the target's number" grep -qF -- '-F n=<n>' <<<"$(section Compare)"
+check "(n) the Stack list has Check rulings per target" grep -qF 'Compare and Check rulings run per target' "$cmd"
+check "(n) outdated threads are left out" grep -qF 'select(.isOutdated | not)' <<<"$(section Compare)"
+check "(n) bot threads are left out" grep -qF 'author{__typename}' <<<"$(section Compare)"
+check "(n) review-stack threads are left out" grep -qF 'contains("plan-lifecycle:review-stack") | not' <<<"$(section Compare)"
+check "(n) not checkable ranks between qualified and confirmed" grep -qF 'then `qualified`, then `not checkable here`, then confirmed' "$cmd"
+check "(n) rulings brief reads another repo's default branch" grep -qF 'its default branch' <<<"$rbrief"
 
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
