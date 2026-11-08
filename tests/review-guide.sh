@@ -97,7 +97,7 @@ check "(g) Profile reads the default branch" grep -qF 'origin/<DEFAULT>:.claude/
 order="$(grep -nE '^## (Fetch|Profile|Familiarity|Check rulings|Lenses|Filter)$' "$cmd" | cut -d: -f2 | tr '\n' ,)"
 check "(g) Profile after Fetch; Lenses between Check rulings and Filter" [ "$order" = "## Fetch,## Profile,## Familiarity,## Check rulings,## Lenses,## Filter," ]
 check "(g) a cross-repo lens with no org/repo is skipped" grep -qF 'names no `org/repo`' <<<"$(section Lenses)"
-check "(g) lens checks are allow-listed" grep -qF 'git show`, `git grep`, `git log`, `git ls-tree`, `git diff` or `gh api` with no `-X`, `--method`, `-f`, `-F` or `--input`' <<<"$(section Lenses)"
+check "(g) lens checks are allow-listed" grep -qF 'git show`, `git grep`, `git log`, `git ls-tree`, `git diff` or `gh api` with no `-X`, `--method`, `-f`, `-F`, `--field`, `--raw-field` or `--input`' <<<"$(section Lenses)"
 check "(g) diff text is quoted into a check" grep -qF 'single-quoted, every quote in it escaped' "$brief"
 check "(g) a local path or placeholder repo is skipped" grep -qF 'a local path, `{owner}/{repo}` or a placeholder' <<<"$(section Lenses)"
 check "(g) the rule test admits history and lens rules" grep -qF 'the commit that added the removed code, or a lens check' "$brief"
@@ -124,6 +124,23 @@ check "(n) rulings brief reads another repo's default branch" grep -qF 'its defa
 check "(k) the 5-stop cap applies after Filter, lens spots ranked in" grep -qF 'The cap applies after Filter' "$cmd"
 check "(k) history follows renames" grep -qF "git log -S'<removed line, trimmed>' --follow" "$brief"
 check "(k) lens heading is one level below Review lenses" grep -qF 'one heading level below `Review lenses`' "$root/references/pr-triage-brief.md"
+
+# (o) review round 2: the allow-list covers long flags, write options and
+# chaining; git log on B or H stays with the orchestrator; an H-only check
+# takes its rule from R; diff text has a slot; another branch of this repo
+# is a rule; history reads the old path and the newest adding commit
+lenses="$(section Lenses)"
+check "(o) the allow-list rejects --field and --raw-field" grep -qF -- '`--field`, `--raw-field`' <<<"$lenses"
+check "(o) the allow-list rejects write options" grep -qF -- '`--output`, `--ext-diff`, `--open-files-in-pager`, `-c`' <<<"$lenses"
+check "(o) the allow-list rejects chaining" grep -qF -- '`;`, `&&`, `|`, `>`, `<`, `$(` or a backtick' <<<"$lenses"
+check "(o) git log on B or H waits for Lenses" grep -qF '`git log` on `<R>`' <<<"$(section Profile)"
+check "(o) the spot brief takes git log on R only for lenses" grep -qF 'or `git log` on R' "$brief"
+check "(o) an H-only check takes its rule from R" grep -qF 'the same check with R in place of H' "$brief"
+check "(o) the diff-text slot is defined" grep -qF 'Write the place diff text goes as `<…>`' "$root/references/pr-triage-brief.md"
+check "(o) another branch of this repo can be a Rule" grep -qF '`<OWNER/REPO>@<branch>:<path>:<line>`' <<<"$lenses"
+check "(o) history reads the old path on R" grep -qF "the old path when the PR renames it" "$brief"
+check "(o) history takes the newest adding commit" grep -qF -- "--format='%h %s' <R> -- <file> | head -1" "$brief"
+check "(o) a lens spot's Rule is the evidence it rests on" grep -qF 'its `Rule` is the evidence it rests on' <<<"$lenses"
 
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"

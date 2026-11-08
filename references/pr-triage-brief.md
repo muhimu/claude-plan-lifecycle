@@ -479,8 +479,11 @@ one heading level below `Review lenses`, with three lines:
 
 - **Trigger:** what in the diff calls for it — a new migration file, a new
   config key or env var, a changed proto field.
-- **Check:** one read-only command. `git` on `<R>`, `<B>` or `<H>` runs in
-  the spot agent; anything that reads another branch (`origin/release-*`) or
+- **Check:** one read-only command. Write the place diff text goes as `<…>`
+  (for example `<key>`): it is filled with the matching text from the diff,
+  single-quoted. `git show`, `grep`, `diff` or `ls-tree` on `<R>`, `<B>` or
+  `<H>`, or `git log` on `<R>`, runs in the spot agent; `git log` on `<B>` or
+  `<H>`, anything that reads another branch (`origin/release-*`) or
   another repository (`gh api repos/<org/repo>/...`, the repository named
   as `org/repo`, never a local path) runs in the orchestrator.
 - **Question:** what to ask the author when the check shows something.

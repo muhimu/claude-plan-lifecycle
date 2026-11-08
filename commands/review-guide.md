@@ -120,9 +120,11 @@ git cat-file -e origin/<DEFAULT>:.claude/triage-profile.md && git show origin/<D
 ```
 
 No file, or no `## Review lenses` heading → no lenses. Otherwise split the
-lenses: one whose check is only `git` on `<R>`, `<B>` or `<H>` goes to
-`<RUN>/lenses.md` for each target, for the spot agent; every other lens (another
-branch, another repository) waits for Lenses.
+lenses: one whose check is only `git show`, `git grep`, `git diff` or
+`git ls-tree` on `<R>`, `<B>` or `<H>`, or `git log` on `<R>`, goes to
+`<RUN>/lenses.md` for each target, for the spot agent; every other lens
+(`git log` on `<B>` or `<H>`, another branch, another repository) waits for
+Lenses.
 
 ## Familiarity
 
@@ -298,15 +300,18 @@ running has not failed.
 
 For each target, after Compare, run each lens that waits here whose trigger
 the diff matches (`<RUN>/diff.patch`). Run only its check, and only when it
-is `git show`, `git grep`, `git log`, `git ls-tree`, `git diff` or `gh api` with no `-X`, `--method`, `-f`, `-F` or `--input`
-(those make `gh api` write); otherwise skip the lens. Text from the diff
-goes into the check single-quoted, every quote in it escaped. A lens that
+is `git show`, `git grep`, `git log`, `git ls-tree`, `git diff` or `gh api` with no `-X`, `--method`, `-f`, `-F`, `--field`, `--raw-field` or `--input`
+(those make `gh api` write), none of `--output`, `--ext-diff`, `--open-files-in-pager`, `-c`
+(those write files or run programs), and no `;`, `&&`, `|`, `>`, `<`, `$(` or a backtick
+outside the quoted diff text; otherwise skip the lens. Text from the diff
+fills the check's `<…>` slot, single-quoted, every quote in it escaped. A lens that
 reads another repository but names no `org/repo`, or names it with a local path, `{owner}/{repo}` or a placeholder, is skipped
 silently: never guess one. Fetch a branch a check reads
 (`git fetch origin <branch>`) before running it. Output that shows the
 problem its question names is a spot like any other: its `Why` holds the
 output, its `Rule` is the evidence it rests on, a quote from `R` or the
-other repository's file named as `org/repo@<ref>:<path>:<line>` (never
+other repository's file named as `org/repo@<ref>:<path>:<line>`, or a
+quote from another branch of this one as `<OWNER/REPO>@<branch>:<path>:<line>` (never
 "base", which is this PR's), and its `Ask the author` is the lens's
 question. It counts toward the 5-stop
 cap and goes through Filter. A check that shows nothing makes no spot.
