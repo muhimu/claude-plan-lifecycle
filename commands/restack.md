@@ -233,8 +233,15 @@ recipe."
    authoritative; a table is documentation, so keep it truthful. For each surviving PR,
    edit ONLY its `## Stack` section (preserve Summary/Verification): annotate
    merged rows' PR column as `#<N> ✅ merged`, and set the first surviving
-   row's Base to `$DEFAULT_BRANCH`. Same sanction boundary as `/execute-plan`
-   S4 — bodies of this stack's PRs only.
+   row's Base to `$DEFAULT_BRANCH`. Read the body as it is now
+   (`gh pr view <PR> --json body -q .body > <scratchpad>/restack-body-<PR>.md`;
+   `/pr-fix` may have edited its `## Follow-ups`), write the edited copy to
+   `<scratchpad>/restack-body-<PR>.new.md`, check with
+   `diff --strip-trailing-cr` that only `## Stack` lines differ (otherwise
+   skip that PR and report it), then
+   `gh pr edit <PR> --body-file <scratchpad>/restack-body-<PR>.new.md` — a
+   file keeps backticks and `$` away from the shell. Same sanction boundary
+   as `/execute-plan` S4 — bodies of this stack's PRs only.
 3. **Report:**
 
    ```
