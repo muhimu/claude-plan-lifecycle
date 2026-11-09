@@ -101,8 +101,8 @@ closed one is ignored.
     && WT="$(git -C "$ROOT" worktree list --porcelain \
       | awk -v b="branch refs/heads/$BRANCH" '/^worktree /{p=substr($0,10)} $0==b{print p}')" \
     && test "$(git -C "$WT" branch --show-current)" = "$BRANCH" \
-    && printf 'WT=%s\n' "$WT"
-  command -v link-plans >/dev/null && link-plans "$WT"
+    && printf 'WT=%s\n' "$WT" \
+    && { ! command -v link-plans >/dev/null || link-plans "$WT"; }
   ```
   The first command fails → stop with its error. Shell variables die with
   each call: copy the printed `WT` into every later command, never retype it.
@@ -137,12 +137,19 @@ generated paths. On a conflict, take each file of
   branch commits it, the release branch generates it. A file the release
   branch tracks is merged even when a pattern matches it.
   `git -C "$WT" rm -q -- "$F"`, recorded as a dropped generated path.
+- **Manifest** (lock files, `go.mod`, `go.sum`, `pyproject.toml`, image
+  tags): not traced, since every dependency bump would become a question.
+  Keep the release branch's pins (Step 5); a fix that needs the newer
+  dependency stops there.
 - **Otherwise trace both sides, on the conflicting lines only.** A whole-file
   history would ask about unrelated PRs.
   - **Source side (prerequisites).** Take each `-a,b` range of
-    `git -C "$WT" diff -U1 "$SHA^" "$SHA" -- "$F"` (no `,b` means 1;
+    `git -C "$WT" diff -U0 "$SHA^" "$SHA" -- "$F"` (no `,b` means 1;
     `-0,0` is a new file: skip) and blame it in the source's parent:
-    `git -C "$WT" blame -s -L "a,+b" "$SHA^" -- "$F"`. Keep each commit
+    `git -C "$WT" blame -s -L "a,+b" "$SHA^" -- "$F"`. For a pure
+    insertion (`b` = 0, after line `a`), blame the two lines around it,
+    `a` and `a+1`, those that exist. No context lines: their commits are
+    unrelated to the fix. Keep each commit
     `c` for which `git -C "$WT" merge-base --is-ancestor "$c" HEAD` fails.
     Map it to its PR by the `(#M)` at the end of its subject, and drop
     every `#M` that Step 1's signals find on `HEAD`. A commit with no
@@ -202,7 +209,8 @@ Name the backports across all its files, and their main PRs.
   backported are dropped while resolving.
 - **Resolve by hand.** Recommended otherwise: Step 3's "Neither" path.
 
-**Then, in this order:**
+**When any answer is Include or Revert and replay**, rebuild in this
+order:
 
 1. `git -C "$WT" cherry-pick --abort`. Picks already made stay.
 2. Revert the chosen backports, newest first: `git -C "$WT" revert --no-edit <backport>`.
@@ -213,6 +221,12 @@ Name the backports across all its files, and their main PRs.
    `mergedAt` order (Step 3).
 4. Replay the reverted backports' main originals in `mergedAt` order:
    `git -C "$WT" cherry-pick -x <C>`, with Step 3's handling.
+
+**Otherwise** (every answer Rewrite or Resolve by hand) don't abort:
+resolve the live conflict in place and continue the pick (Step 3).
+
+A prerequisite or backport already answered is never asked again: when a
+later pick's trace finds it, apply the earlier answer.
 
 ## Step 5 — Pins
 
@@ -249,14 +263,18 @@ Pins come before verification, so the tree that is verified is the tree that is 
   `chore: regenerate <what> for release/X.Y`.
 - **Skipped tests:** list them for the Test plan.
 - **Red run:** re-run only the failing command on the untouched release
-  tip, in a throwaway worktree outside `ROOT`: `TMP="$(mktemp -d)/release"`,
+  tip, in a throwaway worktree outside `ROOT`:
+  `TMP="$(mktemp -d)/release" && printf 'TMP=%s\n' "$TMP"` (copy the
+  printed path, as with `WT`),
   `git -C "$ROOT" worktree add --detach "$TMP" "origin/${TARGET}"`, then
   generate and run with `cd "$TMP/<dir>" && …`, then
   `git -C "$ROOT" worktree remove --force "$TMP"`.
   - **Red there too:** pre-existing. List it under Test plan; carry on.
   - **Red only here, on a missing symbol:** find the commit that brought
     it, `git -C "$WT" log -S<symbol> --format='%h %s' "HEAD..origin/${DEFAULT}"`, and
-    ask as in Step 4a.
+    ask as in Step 4a. No pick is in progress, so nothing is aborted:
+    Include → pick #M on top (Step 3), then redo Steps 5 and 6; Rewrite →
+    add the missing code by hand, recorded under Applied by hand.
   - **Red only here, in code a resolution or rewrite touched** (lint
     included): fix it and record it under Applied by hand.
   - **Anything else:** stop before pushing, with the failure and `WT`. No
@@ -299,7 +317,7 @@ block above, every variable is written out as its value: shell variables
 don't survive between calls.
 
 ```markdown
-Backport of #A, #B and #C to `release/X.Y`.
+Backport of #N1, #N2 and #N3 to `release/X.Y`.
 
 Refs #I
 
