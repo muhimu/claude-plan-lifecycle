@@ -118,7 +118,7 @@ verdicts seed the buckets:
 
 | Verdict | Bucket |
 |---|---|
-| CONFIRMED / PLAUSIBLE | Actionable — Self-note for the user's own comment; Nit when the kind is `nit`. When the evidence says "listed as a follow-up", the Bucket column also carries `(follow-up: <group>)`, the group from the body's `## Follow-ups` label, or `(follow-up)` when it has none |
+| CONFIRMED / PLAUSIBLE | Actionable — Self-note for the user's own comment; Nit when the kind is `nit`. When the evidence says "listed as a follow-up", the Bucket column also carries `(follow-up: <group>)`, the group from the `## Follow-ups` label in whichever slice's body lists the entry, or `(follow-up)` when it has none |
 | REJECTED, a slice above fixed it | Stale, `fixed in #<M>` |
 | REJECTED, any other reason | Pushback, with the verifier's quoted evidence as the drafted reply. For the user's own comment: Self-note marked `rejected: <evidence>`, no pushback reply — the user decides at approval |
 | NOT_A_CLAIM | Classify it as below |

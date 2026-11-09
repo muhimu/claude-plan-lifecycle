@@ -82,7 +82,8 @@ to values first, and leave `<path>` for the verifier.
 - **Stacked PR** — as **PR**, except `<TARGET>`: PR #<N> (slice <P>/<SIZE> of
   stack #<S>), the ADRs and CLAUDE.md files are read at `<top sha>`, and
   `<base sha>` is the head sha of the open slice below — as **PR** for the
-  lowest open slice.
+  lowest open slice. `<DECISIONS>` also has the `## Follow-ups` sections of
+  the other open slices' bodies (`gh pr view <M> --json body`).
 
 Lines marked `(stack)` go in only for a stacked PR, and lines marked
 `(comments)` only when the findings are a PR's review comments; both without
