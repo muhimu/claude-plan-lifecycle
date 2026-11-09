@@ -188,4 +188,9 @@ check "(p) a same head precedes plain new commits" order '**Same head:**' '**Pla
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
 
+# (q) live-run fixes: the session's repo, an emoji Contact heading
+check "(q) Resolve says --review needs a session started in the PR's checkout" grep -qF 'EnterWorktree` takes only worktrees of the session' <<<"$(section Resolve)"
+check "(q) a Contact heading may carry an emoji" grep -qF 'a heading that contains' <<<"$(section Familiarity)"
+check "(q) the Contact rule no longer needs the heading to start with it" not grep -qF 'a heading that starts with' <<<"$(section Familiarity)"
+
 exit "$fail"
