@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="A page header: the PR number and title, a line of commits and mode, and the summary line with its counts">
+  <rect x="10" y="10" width="220" height="120" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+  <g stroke="none" fill="currentColor"><text x="24" y="30" font-size="9" letter-spacing="1" fill="var(--accent)">REVIEW GUIDE</text>
+  <text x="24" y="52" font-size="15" font-weight="700"><tspan fill="var(--muted)">#12</tspan> Add a request cache</text></g>
+  <path d="M24 64h60M90 64h40M136 64h50" stroke="var(--line)" stroke-width="4"/>
+  <rect x="24" y="80" width="192" height="36" rx="5" fill="var(--accent-soft)" stroke="none"/>
+  <path d="M24 82v32" stroke="var(--accent)" stroke-width="4"/>
+  <g stroke="none" fill="currentColor" font-weight="600"><text x="34" y="102">2 decisions · 1 call · 3 to skip</text></g>
+</svg>

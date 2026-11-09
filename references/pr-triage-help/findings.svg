@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Two finding pills, Must-fix and Should-fix, above the four parts of a finding: trigger, effect, evidence, fix">
+  <rect x="20" y="16" width="86" height="24" rx="12" fill="var(--red)" stroke="none"/>
+  <rect x="122" y="16" width="96" height="24" rx="12" fill="var(--amber)" stroke="none"/>
+  <g stroke="none" fill="currentColor" font-weight="700" text-anchor="middle" fill="var(--surface)"><text x="63" y="32">Must-fix</text><text x="170" y="32">Should-fix</text></g>
+  <g fill="var(--accent-soft)" stroke="var(--accent)"><rect x="6" y="70" width="52" height="40" rx="5"/><rect x="68" y="70" width="48" height="40" rx="5"/><rect x="126" y="70" width="62" height="40" rx="5"/><rect x="198" y="70" width="36" height="40" rx="5"/></g>
+  <g stroke="none" fill="currentColor" font-size="10" text-anchor="middle" fill="var(--accent)"><text x="32" y="94">trigger</text><text x="92" y="94">effect</text><text x="157" y="94">evidence</text><text x="216" y="94">fix</text></g>
+  <path d="M58 90h10M116 90h10M188 90h10" stroke="var(--accent)"/>
+</svg>

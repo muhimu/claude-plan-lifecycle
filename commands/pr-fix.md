@@ -1,13 +1,14 @@
 ---
-description: Address PR review feedback — fetch comments, plan fixes, implement, push, then summarize for the user to post replies. Accepts a PR number or a GitHub stack number; on a stacked PR it fixes each comment in the slice that owns the code and restacks the branches above.
+description: Address PR review feedback — fetch comments, plan fixes, implement, push, reply in bot and your own review threads, remove the fixed entries from the PR body's Follow-ups, then summarize with replies to other reviewers drafted for your approval. Accepts a PR number or a GitHub stack number; on a stacked PR it fixes each comment in the slice that owns the code and restacks the branches above.
 argument-hint: [PR or stack number — optional, auto-detects from the current branch or this session's PRs] [free-text guidance for the fixes]
 ---
 
 # PR Fix
 
 Address review feedback on a pull request, or on every open PR of a stack.
-You handle code changes and pushing commits; the user handles all GitHub
-replies and thread resolution.
+You handle code changes, pushing commits, and replies in the threads of bot
+reviewers and of the user's own comments. A reply to anyone else is a draft
+the user approves before it is posted; thread resolution stays with the user.
 
 ## Resolving the target
 
@@ -55,7 +56,8 @@ and the checkouts read are current.
 
 ## Step 1 — Fetch review state
 
-For each PR in `TARGET_PRS`:
+For each PR in `TARGET_PRS` (in stack mode, also read `body` of every other
+open PR in `SLICES`, for its `## Follow-ups`):
 
 ```bash
 # Inline comments (anchored to specific lines)
@@ -63,7 +65,7 @@ gh api "repos/OWNER/REPO/pulls/<PR>/comments" --paginate > <scratchpad>/pr-fix-i
 
 # Top-level reviews and issue comments (automated reviewers often post their
 # summary as a plain comment, not a review)
-gh pr view <PR> --json reviews,comments,headRefName,baseRefName,headRefOid
+gh pr view <PR> --json reviews,comments,headRefName,baseRefName,headRefOid,body
 
 # Thread state — resolved and outdated threads are skipped, not re-litigated
 gh api graphql --paginate -F o=OWNER -F r=REPO -F n=<PR> -f query='query($o:String!,$r:String!,$n:Int!,$endCursor:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{isResolved isOutdated comments(first:1){nodes{databaseId}}}}}}}'
@@ -79,7 +81,7 @@ moved).
 
 **Do not drop the user's own comments.** Self-review notes left inline
 ("this re-implements X", "extract this block") are work items — bucket them
-as **Self-note** (treated like Actionable, no reply drafted). Only skip the
+as **Self-note** (treated like Actionable; once fixed, Step 4c replies with the commit). Only skip the
 user's *replies* inside threads started by someone else.
 
 **Comments containing `<!-- plan-lifecycle:review-stack -->` are not
@@ -88,6 +90,13 @@ self-notes**, though they sit under the user's account: `/review-stack
 reviewer's comment, with `review-stack` as the reviewer. The marked
 review's body holds the findings on files outside the diff; each of those is
 a comment too.
+
+**Who gets a reply without asking.** An inline comment's author is a *bot*
+when its `user.type` is `Bot` in the inline JSON; a comment with the
+`review-stack` marker counts as a bot too. *Own* comments are the user's
+(`gh api user --jq .login`). Anyone else is a *human reviewer*. Step 4c
+replies in bot and own threads; a reply to a human reviewer waits for the
+user's approval (Step 5).
 
 ## Step 2 — Classify and plan
 
@@ -109,9 +118,9 @@ verdicts seed the buckets:
 
 | Verdict | Bucket |
 |---|---|
-| CONFIRMED / PLAUSIBLE | Actionable — Self-note for the user's own comment; Nit when the kind is `nit` |
+| CONFIRMED / PLAUSIBLE | Actionable — Self-note for the user's own comment; Nit when the kind is `nit`. When the evidence says "listed as a follow-up", the Bucket column also carries `(follow-up: <group>)`, the group from the body's `## Follow-ups` label, or `(follow-up)` when it has none |
 | REJECTED, a slice above fixed it | Stale, `fixed in #<M>` |
-| REJECTED, any other reason | Pushback, with the verifier's quoted evidence as the drafted reply. For the user's own comment: Self-note marked `rejected: <evidence>`, no reply — the user decides at approval |
+| REJECTED, any other reason | Pushback, with the verifier's quoted evidence as the drafted reply. For the user's own comment: Self-note marked `rejected: <evidence>`, no pushback reply — the user decides at approval |
 | NOT_A_CLAIM | Classify it as below |
 
 A verdict overrides a reviewer's `**blocking**:` prefix; a `nit:` prefix
@@ -124,7 +133,7 @@ Sort each remaining comment into one bucket:
 | Bucket | Meaning | Action |
 |---|---|---|
 | **Actionable** | Clear code change requested | Plan a code edit |
-| **Self-note** | The user's own inline note to self (no review-stack marker) | Plan a code edit, no reply |
+| **Self-note** | The user's own inline note to self (no review-stack marker) | Plan a code edit; Step 4c replies with the commit |
 | **Question** | Reviewer asking for clarification, no code change | Draft a reply for the user |
 | **Suggestion** | Reviewer's preference — requires judgment | Evaluate, then either Actionable or Pushback |
 | **Nit** | Stylistic, low-stakes | Plan a code edit (cheap to address) |
@@ -157,9 +166,14 @@ and mark the other row `same as #<row>`.
 
 **Apply `GUIDANCE` first.** Before classifying, turn each instruction in
 `GUIDANCE` into a pre-ruling: a bucket for a named comment, an approach for a
-fix, a reply the user wants drafted. Rows it decided carry `(brief)` in the
-Bucket column so the user can see it took. Guidance shapes fixes and drafted
-replies only — it never overrides the hard rules and is never posted to GitHub.
+fix, a reply the user wants drafted. A `## Follow-ups` entry it names becomes
+an **Actionable** row of its own, with no reviewer and no reply (a comment
+restating it is marked `same as #<row>`); in stack mode
+look for it in the body of every open PR in `SLICES`. Rows it decided carry `(brief)` in the
+Bucket column so the user can see it took. Guidance shapes fixes and replies
+only — it never overrides the hard rules, and its own text is never posted to
+GitHub. A reply it asks for is posted like any other: by Step 4c in a bot or
+own thread, after the user's approval in a human reviewer's.
 
 Present the full plan to the user as a table (the PR column appears only in
 stack mode):
@@ -177,6 +191,22 @@ Apply code changes for all approved Actionable + Self-note + Nit items. Group co
 **Rules during implementation:**
 
 - Run the test command (the verify convention: test and lint commands declared in the repo's CLAUDE.md, else `make test` / `make lint`) after each logical group, and the lint command once, after the last group on a branch and before pushing it. If something breaks, stop and report — don't paper over.
+- A test added or changed alongside a code fix must fail without that fix.
+  Before committing the group, set the fix aside with a patch — not
+  `git stash`, whose stack every worktree of the repo shares — and run the
+  test:
+
+  ```bash
+  git add -N -- <new non-test files>   # so the patch carries them too
+  git diff HEAD -- <non-test files> > <scratchpad>/pr-fix-aside.patch
+  git apply -R <scratchpad>/pr-fix-aside.patch   # fix out, tests stay
+  # run the test: it must fail for the reason the comment names
+  git apply <scratchpad>/pr-fix-aside.patch      # fix back
+  ```
+
+  A test that passes without the fix does not cover it; rewrite it. A
+  test-only item (the reviewer asked for coverage of code that is already
+  right) has no fix to set aside: its test only has to pass.
 - Do not create branches. Commit to the currently checked-out PR branch.
 - Commit messages should describe the change, not reference the comment ID — comment IDs rot, code messages don't.
 
@@ -217,9 +247,52 @@ continue to the next slice.
 
 Pushing to the tip needs no restack.
 
+### Step 4c — Reply in bot and own threads
+
+After the last push and restack, reply to each handled inline comment whose
+author is a bot or the user (Step 1), inside its thread:
+`gh api repos/OWNER/REPO/pulls/<PR>/comments/<id>/replies -f body=…`.
+
+- Addressed or Self-note: `Fixed in <short sha>: <what changed, one line>`
+  (`in #<M>` when the fix landed in a lower slice).
+- Pushback or Question: the drafted reply.
+- Stale: `No change: <why it's stale>`.
+
+If a post fails (a deleted comment, no write access), keep its row as
+`failed: <error>` and carry on with the rest.
+
+A comment outside a review thread (a plain PR comment, a review body) gets no
+reply. Replies never @-mention anyone: `@claude` in a reply starts the repo's
+Claude workflow, and any mention notifies a person. Replies to human
+reviewers are not posted here.
+
+### Step 4d — Remove fixed follow-ups from the PR body
+
+A `## Follow-ups` entry this run fixed is stale and misleads the next
+review. If this run pushed any fix, then after the last push and restack,
+for each PR whose body has a `## Follow-ups` section (in stack mode every
+open PR in `SLICES`: an entry may sit on a slice that was only restacked):
+
+1. Read the body as it is now (after `/restack`, which may have edited its
+   `## Stack` section): `gh pr view <PR> --json body -q .body >
+   <scratchpad>/pr-fix-body-<PR>.md`.
+2. Remove each entry that describes a defect this run fixed, wherever the
+   fix landed; then any group label left with no entries, and the heading
+   when the section is empty. Change nothing else. Write the result to
+   `<scratchpad>/pr-fix-body-<PR>.new.md`.
+3. If anything was removed, `diff --strip-trailing-cr` the two files (a body
+   edited on GitHub's web page comes back with CRLF). If lines outside
+   `## Follow-ups` differ, skip the edit and note `failed: diff outside
+   Follow-ups`. Otherwise
+   `gh pr edit <PR> --body-file <scratchpad>/pr-fix-body-<PR>.new.md`; if
+   that fails, note `failed: <error>`.
+
 ## Step 5 — Summarize for the user
 
-This is the final output. Print a structured summary the user can use to write GitHub replies themselves. **Do not post any replies to GitHub.** Do not call `gh api POST` or any mutation endpoint on comments/threads.
+This is the final output. Print a structured summary. Each reply line's
+`<state>` is `posted` for a reply Step 4c posted, `failed: <error>` for one
+whose post failed, or `draft` for a reply to a human reviewer, which is not
+posted yet.
 
 Format (one block per PR in stack mode, bottom-up):
 
@@ -229,16 +302,16 @@ Format (one block per PR in stack mode, bottom-up):
 ### Addressed (code pushed)
 - <file:line> [<reviewer>]: <comment summary>
   → <what you changed, in one line>   (in #<M> when it landed in a lower slice)
-  → Suggested reply: "<short factual reply text>"
+  → Reply (<state>): "<short factual reply text>"
   → Verifier rejected it: <evidence>   (only for your own note fixed despite a REJECTED verdict)
 
 ### Pushed back
 - <file:line> [<reviewer>]: <comment summary>
-  → Suggested reply: "<technical reasoning for not making the change>"
+  → Reply (<state>): "<technical reasoning for not making the change>"
 
 ### Questions for reviewer
 - <file:line> [<reviewer>]: <comment summary>
-  → Suggested reply: "<clarification question>"
+  → Reply (<state>): "<clarification question>"
 
 ### Stale (no action)
 - <file:line> [<reviewer>]: <why it's stale>
@@ -249,14 +322,25 @@ Format (one block per PR in stack mode, bottom-up):
 
 ### Restack
 - <branch> <old-short> → <new-short>  (or: not needed — tip)
+
+### Follow-ups
+- removed: <entry>   (from #<M> when it sat in another slice's body; or: none;
+  or: failed: <error>)
+- still open, by the body's group: <entry>
+  ⚠ in this PR's diff   (when the file it names is in `gh pr diff <PR>`,
+  run now, after the push; never written to the body)
+  ⚠ raised by <reviewer>: <comment url>   (a `(follow-up: …)` row that was
+  not fixed)
 ```
 
-The "Suggested reply" lines are drafts for the user to copy, edit, and post manually. Keep them factual and short — no "thanks", no "great catch", no performative agreement (`receiving-code-review` already covers this).
+To have an open entry fixed, name it in the guidance of the next `/pr-fix`.
+
+When there are `draft` replies, end by asking the user to approve, edit or skip each one, then post the approved ones as Step 4c does. Keep every reply factual and short — no "thanks", no "great catch", no performative agreement (`receiving-code-review` already covers this).
 
 ## Hard rules
 
-- **No GitHub mutations from this command.** No mutating `gh api` calls (read-only calls are fine, including Step 1's GraphQL query), no `gh pr review`, no `gh pr comment`, no thread resolution, no `gh pr merge`. The only sanctioned mutations happen inside `/restack` (its own gated lease-push and `## Stack` table edits), never here.
-- **Posting replies only on request, after the run.** If the user asks afterwards to post the drafted replies, post each inside its comment's thread (`gh api repos/OWNER/REPO/pulls/<PR>/comments/<id>/replies -f body=…`), never as a top-level PR comment.
+- **No GitHub mutations from this command except thread replies and Step 4d's body edit.** The only posts are Step 4c's replies and the human-reviewer replies the user approved, each inside its comment's thread (`gh api repos/OWNER/REPO/pulls/<PR>/comments/<id>/replies -f body=…`), never as a top-level PR comment. The only body edit is Step 4d's `gh pr edit --body-file`, which removes fixed `## Follow-ups` entries and changes nothing else. No other mutating `gh api` calls (read-only calls are fine, including Step 1's GraphQL query), no `gh pr review`, no `gh pr comment`, no thread resolution, no `gh pr merge`. The only other sanctioned mutations happen inside `/restack` (its own gated lease-push and `## Stack` table edits), never here.
+- **A reply to a human reviewer is posted only after the user approves its text.** Bot and own threads get theirs without asking (Step 4c).
 - **No force push from this command.** Plain `git push` on the fixed branch. If rejected, stop. Rewriting branches *above* the fixed one is `/restack`'s job, behind its gate.
 - **Never touch branches below the fixed slice.** A fix moves down only by being committed on the owning slice's branch in the bottom-up loop.
 - **No auto-merge.** Even if the PR is now green, do not merge it.

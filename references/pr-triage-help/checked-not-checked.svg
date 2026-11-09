@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Two lists: Checked with ticks, and Not checked with hollow circles, each with a next step">
+  <g stroke="none" fill="currentColor" font-weight="700"><text x="14" y="26" fill="var(--green)">Checked</text><text x="126" y="26" fill="var(--muted)">Not checked</text></g>
+  <path d="M116 14v116" stroke="var(--line)"/>
+  <path d="M14 50l4 5 8-10M14 80l4 5 8-10M14 110l4 5 8-10" stroke="var(--green)" stroke-width="3"/>
+  <path d="M36 50h60M36 80h48M36 110h56" stroke="var(--line)" stroke-width="5"/>
+  <circle cx="132" cy="50" r="6" stroke="var(--muted)"/><circle cx="132" cy="90" r="6" stroke="var(--muted)"/>
+  <path d="M146 50h60M146 90h48" stroke="var(--line)" stroke-width="5"/>
+  <g stroke="none" fill="currentColor" font-size="10" fill="var(--accent)"><text x="146" y="68">→ next step</text><text x="146" y="108">→ next step</text></g>
+</svg>
