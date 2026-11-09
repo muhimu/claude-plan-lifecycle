@@ -35,7 +35,10 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   to post NEW feedback before starting the next round. It may arrive as a plain PR
   comment, not a review — poll `gh pr view <N> -R OWNER/REPO --json comments,reviews` (the pinned PR's repo) and only
   proceed once the workflow has posted something with a timestamp later than your
-  push. Ignore every review and comment whose author is you
+  push. Also wait until `gh run list -R OWNER/REPO --commit <pushed sha> --json status`
+  shows no run queued or in progress (Step 4d's body edit can start a second review
+  run on the same head), then take all feedback newer than the push as one round.
+  Ignore every review and comment whose author is you
   (`gh api user --jq .login`): your Step 4c replies show up under `reviews`
   too, as COMMENTED reviews dated after the push. In stack mode, wait on EVERY PR whose branch was pushed or restacked this
   round — a restack retriggers CI and review on the slices above. Never re-process
