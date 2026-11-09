@@ -389,7 +389,7 @@ is already done.
    the same slice. It is needed because on a resume an entry `/pr-fix` removed
    from a done slice's body is still in the ledger. The skill returns every ruling and
    follow-up in the shared ledger, including earlier slices'. Set
-   `RULINGS[N]` = returned rulings minus every entry already in
+   `RULINGS[N]` = returned rulings (tag dropped) minus every entry already in
    `RULINGS[1..N-1]`, and `FOLLOWUPS[N]` likewise against
    `FOLLOWUPS[1..N-1]`. `ADR_IMPACTS` for the S5 report and stub is the
    `ADR impact` entries of `RULINGS[1..M]`.
