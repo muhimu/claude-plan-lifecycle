@@ -245,7 +245,7 @@ if [ -x "$chrome" ]; then
   printf '# #14 x\n\n## Findings\n\n1. **Must-fix:** a\n2. **Should-fix:** b\n' > "$tmp/review-guide/14.md"
   "$root/bin/render-report" "$tmp/review-guide/14.md" >/dev/null
   "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/14.html" > "$tmp/dom" 2>/dev/null
-  check "(q) bare Must-fix and Should-fix items stay cards" grep -qF '<ol class="cards">' "$tmp/dom"
+  check "(q) bare Must-fix and Should-fix items stay cards" [ -n "$(grep -A1 -xF '<ol class="cards">' "$tmp/dom" | grep -F 'class="must"')" ]
   check "(q) Should-fix gets the amber pill" grep -qF 'pill amber">Should-fix</span>' "$tmp/dom"
 
   printf '# #13 x\n\n## Notes\n\na\n\n## Notes\n\nb\n\n## 🔒\n\nc\n' > "$tmp/review-guide/13.md"
