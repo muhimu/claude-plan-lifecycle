@@ -379,19 +379,20 @@ is already done.
    base rev for `review-package`). Keep the plan's workspace
    (`.superpowers/sdd/<plan basename>/`, as `sdd-workspace` resolves it) after the final review unless this is slice
    <M> of <M>; earlier slices' parked findings live there. Start every ledger line you
-   write for this slice with `PR <N> · ` (e.g. `PR <N> · Task 2.1: observation: …`),
-   and return only the Rulings and Follow-ups lines tagged `PR <N>`."
+   write for this slice, including on a re-run after a failed run, with `PR <N> · `
+   (e.g. `PR <N> · Task 2.1: observation: …`), and return only the rulings and
+   follow-up items from this slice's `PR <N>` lines."
    followed by `FINISH_INSTRUCTION`. `<BASE_N>` is `BRANCH[N-1]` for N > 1;
    for N = 1 it is the SHA printed by
    `git merge-base "origin/$DEFAULT_BRANCH" HEAD` — the local
    `$DEFAULT_BRANCH` may have moved past the branch's fork point, and
-   `review-package` rejects a base that is not an ancestor. The tag carries over a failed run of
-   the same slice. It is needed because on a resume an entry `/pr-fix` removed
-   from a done slice's body is still in the ledger. The skill returns every ruling and
-   follow-up in the shared ledger, including earlier slices'. Set
-   `RULINGS[N]` = returned rulings (tag dropped) minus every entry already in
-   `RULINGS[1..N-1]`, and `FOLLOWUPS[N]` likewise against
-   `FOLLOWUPS[1..N-1]`. `ADR_IMPACTS` for the S5 report and stub is the
+   `review-package` rejects a base that is not an ancestor. The tag is needed because on a
+   resume an entry `/pr-fix` removed from a done slice's body is still in the
+   ledger, so subtracting body entries alone would bring it back. The skill
+   returns the rulings and follow-ups tagged `PR <N>`; the subtraction below is
+   a backstop. Set `RULINGS[N]` = returned rulings, with the `PR <N> · ` tag
+   dropped, minus every entry already in `RULINGS[1..N-1]`, and `FOLLOWUPS[N]`
+   likewise against `FOLLOWUPS[1..N-1]`. `ADR_IMPACTS` for the S5 report and stub is the
    `ADR impact` entries of `RULINGS[1..M]`.
 3. **Verify** — identical to Step 4 (`$TEST_CMD`, `$LINT_CMD`, halt-on-red),
    capturing `TEST_TAIL[N]` / `LINT_TAIL[N]`. On red, stop: "Slice <N>
