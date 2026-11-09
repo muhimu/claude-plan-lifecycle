@@ -433,7 +433,6 @@ HTML
   // verdict (triage) or the summary (review guide). Other shapes stay put.
   var top = el('div', 'wrap');
   var lead = page.firstElementChild;
-  var quote = page.querySelector('blockquote');
   if (lead && lead.tagName === 'P' && /^Triage:/.test(lead.textContent)) {
     // Verdict line: "Triage: x · impact y · ..." becomes tiles.
     var badges = el('div', 'badges');
@@ -472,8 +471,8 @@ HTML
       lead.appendChild(el('span', 'sub', text.slice(cut + 3)));
     }
     top.appendChild(lead);
-    var line = page.firstElementChild;
-    if (line && line.tagName === 'P' && / · /.test(line.textContent) && quote && line.nextElementSibling === quote) {
+    var line = page.firstElementChild, quote = line && line.nextElementSibling;
+    if (line && line.tagName === 'P' && / · /.test(line.textContent) && quote && quote.tagName === 'BLOCKQUOTE') {
       line.className = 'meta';
       quote.classList.add('card');
       top.appendChild(line);
@@ -664,6 +663,7 @@ HTML
   // Section headings: an id and a contents link; "x — y" is a title and a
   // hint; the asks under "For a human" become callouts.
   var toc = el('nav', 'toc'), taken = Object.create(null);
+  taken.page = taken['help-panel'] = 1; // ids the page already uses
   all(page, 'h2').forEach(function (h2) {
     var label = h2.textContent.split(' — ')[0].trim();
     var base = slug(label) || 'section', id = base, k = 1;

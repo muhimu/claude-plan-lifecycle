@@ -238,7 +238,7 @@ if [ -x "$chrome" ]; then
   printf '# #12 x\n\n## Findings\n\n1. **Must-fix:** text\n2. **Must-fix: x.** y\n' > "$tmp/review-guide/12.md"
   "$root/bin/render-report" "$tmp/review-guide/12.md" >/dev/null
   "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/12.html" > "$tmp/dom" 2>/dev/null
-  check "(q) Must-fix gets the red pill" [ "$(grep -oF 'pill red">Must-fix</span>' "$tmp/dom" | wc -l | tr -d ' ')" = 2 ]
+  check "(q) Must-fix gets the red pill" [ "$(sed -n '/<main id="page"/,$p' "$tmp/dom" | grep -oF 'pill red">Must-fix</span>' | wc -l | tr -d ' ')" = 2 ]
   check "(q) a bare Must-fix leaves no empty strong" not grep -qF '<strong></strong>' "$tmp/dom"
   check "(q) a Must-fix with a bold lead keeps it" grep -qF '<strong>x.</strong>' "$tmp/dom"
 
@@ -248,7 +248,7 @@ if [ -x "$chrome" ]; then
   check "(q) bare Must-fix and Should-fix items stay cards" [ -n "$(grep -A1 -xF '<ol class="cards">' "$tmp/dom" | grep -F 'class="must"')" ]
   check "(q) Should-fix gets the amber pill" grep -qF 'pill amber">Should-fix</span>' "$tmp/dom"
 
-  printf '# #13 x\n\n## Notes\n\na\n\n## Notes\n\nb\n\n## 🔒\n\nc\n' > "$tmp/review-guide/13.md"
+  printf '# #13 x\n\n## Notes\n\na\n\n## Notes\n\nb\n\n## 🔒\n\nc\n\n## Page\n\nd\n' > "$tmp/review-guide/13.md"
   "$root/bin/render-report" "$tmp/review-guide/13.md" >/dev/null
   "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/13.html" > "$tmp/dom" 2>/dev/null
   check "(q) the first Notes id is notes" grep -qF '<h2 id="notes">' "$tmp/dom"
@@ -256,6 +256,7 @@ if [ -x "$chrome" ]; then
   check "(q) the toc links to both" grep -qF 'href="#notes-2"' "$tmp/dom"
   check "(q) an emoji-only heading gets id section" grep -qF '<h2 id="section">' "$tmp/dom"
   check "(q) no toc link is href=#" not grep -qF 'href="#"' "$tmp/dom"
+  check "(q) a Page heading does not reuse the page id" grep -qF '<h2 id="page-2">' "$tmp/dom"
 else
   echo "skip: (q) needs Chrome at \$CHROME"
 fi
