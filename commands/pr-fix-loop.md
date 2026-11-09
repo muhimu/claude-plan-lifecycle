@@ -38,7 +38,10 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   push. Also wait until every run of the review workflow in
   `gh run list -R OWNER/REPO --commit <head sha> -L 100 --json status,workflowName` has status
   `completed`, for each PR you pushed or restacked and each whose body Step 4d edited
-  (that edit can start a second review run on the same head); if one is still not completed 30 minutes after
+  (that edit can start a second review run on the same head). If the review workflow
+  also runs on an event that records another commit (`issue_comment`, `workflow_dispatch`),
+  wait as well on its runs created since the push
+  (`gh run list -R OWNER/REPO --workflow <its name> --created ">=<push time>" --json status`). If one is still not completed 30 minutes after
   the push, stop as for a missing review. Then take all feedback newer than the push
   as one round.
   Ignore every review and comment whose author is you
