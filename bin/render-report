@@ -663,11 +663,11 @@ HTML
   cat <<'HTML'
   // Section headings: an id and a contents link; "x — y" is a title and a
   // hint; the asks under "For a human" become callouts.
-  var toc = el('nav', 'toc'), taken = {};
+  var toc = el('nav', 'toc'), taken = Object.create(null);
   all(page, 'h2').forEach(function (h2) {
     var label = h2.textContent.split(' — ')[0].trim();
-    var id = slug(label) || 'section', n = 1;
-    while (taken[id]) id = (slug(label) || 'section') + '-' + (++n);
+    var base = slug(label) || 'section', id = base, k = 1;
+    while (taken[id]) id = base + '-' + (++k);
     taken[id] = 1;
     h2.id = id;
     var a = el('a', '', label);
