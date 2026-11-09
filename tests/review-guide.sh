@@ -20,10 +20,12 @@ check "(a) \$ARGUMENTS names --review" grep -qF '`$ARGUMENTS` is `<N> [<head-sha
 review="$(section Review)"
 check "(b) a ## Review section exists" [ -n "$review" ]
 for step in 'git worktree add --detach' 'EnterWorktree' 'ExitWorktree' 'git worktree remove' \
-  '`code-review`' '`plan-lifecycle:verify-findings`' '`plan-lifecycle:review-stack <top PR> <effort>`' 'Never pass `--comment`'; do
+  '`plan-lifecycle:review-stack <top PR> <effort>`' 'Never pass `--comment`'; do
   check "(b) Review names $step" grep -qF -- "$step" <<<"$review"
 done
 check "(b) a checkout already at the tip needs no worktree" grep -qF 'already at the tip' <<<"$review"
+check "(b) one PR goes through review-stack too" not grep -qE '`(code-review|plan-lifecycle:verify-findings)`' <<<"$review"
+check "(b) a pinned slice gets no review" grep -qF 'pinned by `<head-sha>` gets no review' <<<"$review"
 check "(b) no review call passes --comment" not grep -qE '(code-review|review-stack)[^`]*--comment' "$cmd"
 
 # (b) the stack call names a PR (a fallback stack's S is "of-<N>", which
@@ -186,7 +188,7 @@ check "(p) the older-head branch precedes plain new commits" order '**This guide
 check "(p) a same head precedes plain new commits" order '**Same head:**' '**Plain new commits:**'
 
 # (c) the page has a Review findings section in the template
-check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
+check "(c) template has Review findings" grep -qF '## Review findings — /review-stack (<effort>), verified' "$cmd"
 
 # (q) live-run fixes: the session's repo, an emoji Contact heading
 check "(q) Resolve sets no session requirement" not grep -qF 'EnterWorktree' <<<"$(section Resolve)"

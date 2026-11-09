@@ -262,14 +262,13 @@ and enter it with `EnterWorktree` (`path: <WT>`). `EnterWorktree` refuses
 (the session started in another repository) → `git worktree remove --force <WT>`
 and write the page as without `--review`. Then:
 
-- **One target** (a PR, or one slice pinned by `<head-sha>`): `Skill`
-  `code-review` with `<effort> https://github.com/<OWNER/REPO>/pull/<N>`;
-  once its result is in, `Skill` `plan-lifecycle:verify-findings` with no
-  arguments. The result comes either at once or, when the call says the
-  review runs in the background, by task notification: wait for it.
-- **A stack:** `Skill` `plan-lifecycle:review-stack <top PR> <effort>`, the
-  top PR being the last target's number (`S` may be `of-<N>`, which it does
-  not take).
+`Skill` `plan-lifecycle:review-stack <top PR> <effort>`, the top PR being
+the last target's number: for one PR, that PR, which it reviews as a
+one-slice stack (`S` may be `of-<N>`, which it does not take). The result
+comes either at once or, when the call says the review runs in the
+background, by task notification: wait for it. One slice
+pinned by `<head-sha>` gets no review: `/review-stack` reviews the whole
+stack from its top. Write its page as without `--review`; Finish says why.
 
 Never pass `--comment` or `--fix`: the guide posts nothing and edits
 nothing. Keep each finding's place, verdict and one-line summary, each
@@ -431,7 +430,7 @@ to the bug-hunting tools.
 - **Rule:** <source path> — "<short quote>" | base: <evidence>
 - **Ask the author:** <one question they can answer in the thread>
 
-## Review findings — <tool> (<effort>), verified
+## Review findings — /review-stack (<effort>), verified
 | # | Where | Verdict | Finding |
 |---|-------|---------|---------|
 | 1 | `<file:line>` | <confirmed|plausible> | <one-line summary> |
@@ -503,8 +502,7 @@ Unverified:
   the review did not run or its findings were left out.
 - **Review findings** only when the review ran or every target moved (then
   the section holds the "findings left out" lines alone); otherwise leave the section
-  and the summary's `<f> review findings` clause out. `<tool>` is
-  `/code-review` or `/review-stack`. Keep the tool's order and summaries;
+  and the summary's `<f> review findings` clause out. Keep the tool's order and summaries;
   leave out `Rejected:` and `Unverified:` when empty, and write "No findings." when nothing
   came back. `<f>` counts confirmed and plausible findings, `<c>` the
   confirmed ones. With more than 8 findings, list the first 8 and end the

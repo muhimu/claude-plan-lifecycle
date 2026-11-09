@@ -61,7 +61,7 @@ Sections with nothing in them are left out. Before you read appears only when yo
 - **Ask the author:** Keep the storage call in the cache? If so, why there and not in the service?
 
 ## Review findings
-- **You see:** with `--review`, the bugs `/code-review` (one PR) or `/plan-lifecycle:review-stack` (a stack) found, each checked by a verifier: where it is, its verdict and a one-line summary. Below the table, the findings the verifiers rejected, each with the reason.
+- **You see:** with `--review`, the bugs `/plan-lifecycle:review-stack` found, each checked by a verifier: where it is, its verdict and a one-line summary. Below the table, the findings the verifiers rejected, each with the reason.
 - **How to read it:** confirmed means the verifier reproduced the reasoning against the code; plausible means it could not rule it out. A finding rejected because the PR records it as a decision also shows under that Decision: the review and the author disagree, and that is yours to settle. A stack page has one block per slice. "Findings left out" means the PR moved after the review: run the guide again.
 - **Why:** the bugs and the design calls on one page, so nothing found is lost. Nothing is posted to the PR.
 
