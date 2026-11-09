@@ -36,9 +36,9 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   comment, not a review — poll `gh pr view <N> -R OWNER/REPO --json comments,reviews` (the pinned PR's repo) and only
   proceed once the workflow has posted something with a timestamp later than your
   push. Also wait until every run of the review workflow in
-  `gh run list -R OWNER/REPO --commit <head sha> --json status,workflowName` has status
-  `completed`, for each PR you pushed or restacked (Step 4d's body edit can start a
-  second review run on the same head); if one is still not completed 30 minutes after
+  `gh run list -R OWNER/REPO --commit <head sha> -L 100 --json status,workflowName` has status
+  `completed`, for each PR you pushed or restacked and each whose body Step 4d edited
+  (that edit can start a second review run on the same head); if one is still not completed 30 minutes after
   the push, stop as for a missing review. Then take all feedback newer than the push
   as one round.
   Ignore every review and comment whose author is you
@@ -58,7 +58,8 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   - a round produces no substantive actionable items (review is effectively
     clean — nit-only rounds count as clean), or
   - 5 rounds have completed, or
-  - no new review has appeared 30+ minutes after a push (workflow likely
+  - no new review has appeared, or a review run is still not completed, 30+
+    minutes after a push (workflow likely
     missing or stuck — report what you observed).
 ```
 
