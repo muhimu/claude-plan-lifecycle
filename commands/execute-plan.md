@@ -378,10 +378,16 @@ is already done.
    the final whole-branch review use `<BASE_N>` as MERGE_BASE (the single
    base rev for `review-package`). Keep the plan's workspace
    (`.superpowers/sdd/<plan basename>/`, as `sdd-workspace` resolves it) after the final review unless this is slice
-   <M> of <M>; earlier slices' parked findings live there. Start every ledger line you
-   write for this slice, except table rows, including on a re-run after a failed run, with `PR <N> · `
-   (e.g. `PR <N> · Task 2.1: observation: …`), and return only the rulings and
-   follow-up items from this slice's `PR <N>` lines."
+   <M> of <M>; earlier slices' parked findings live there. Start every `Ruling:`,
+   `observation`, `minor (deferred)` and `parked` line you ledger for this
+   slice, including on a re-run after a failed run, with `PR <N> · `
+   (e.g. `PR <N> · Task 2.1: observation: …`); write your skill's other lines,
+   such as the ledger's first line and `Task <N>: complete`, as your skill
+   says. A ruling recorded beside a table row also gets a tagged `Ruling:`
+   line of its own. Ledger the plan's own follow-ups or future-work list only
+   in slice 1; in a later slice, a `Plan: observation` comes only from a step
+   in this slice's tasks. Return only the rulings and follow-up items from
+   this slice's `PR <N>` lines."
    followed by `FINISH_INSTRUCTION`. `<BASE_N>` is `BRANCH[N-1]` for N > 1;
    for N = 1 it is the SHA printed by
    `git merge-base "origin/$DEFAULT_BRANCH" HEAD` — the local
