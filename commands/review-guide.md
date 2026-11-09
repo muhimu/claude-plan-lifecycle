@@ -19,7 +19,7 @@ for a stack one more, `local/review-guide/stack-<S>.md`, each rendered to an
 ## Rules
 
 - **Read-only.** `gh` GET calls, `git fetch`, `git show`, `git diff`,
-  `git grep`, `git log`, `git merge-base`, `git ls-tree` and file reads.
+  `git grep`, `git log`, `git merge-base`, `git ls-tree`, `git rev-parse`, `git range-diff` and file reads.
   No checkout, switch, worktree, build, test or script from the PR. No
   GitHub writes. One exception: `--review` runs the review tools at the tip
   (read-only without `--comment`, which is never passed): in your checkout
@@ -63,7 +63,7 @@ first), `STACKED` and `STACK_NUM`.
   first; merged and closed slices are skipped. `S` is `STACK_NUM`, or
   `of-<bottom PR>` for a stack without one. `<head-sha>` given with `N` a
   stack → stop: "A head sha pins one PR; pass a PR number, not a stack."
-  Resolve, Fetch, Dispatch, Compare and Check rulings run per target; Familiarity runs
+  Resolve, Fetch, Previous guide, Dispatch, Compare and Check rulings run per target; Familiarity runs
   once, over every target's files; Filter and Write cover the stack.
 
 ### Each PR
@@ -106,6 +106,49 @@ rm -rf <RUN>; mkdir -p <RUN>
 git diff <B> <H> > <RUN>/diff.patch
 git diff --name-status <B> <H> > <RUN>/files.txt
 ```
+
+## Previous guide
+
+Per target, if `<ROOT>/local/review-guide/<N>.md` exists from an earlier
+run, this run is a re-run. Its header line gives the old head and old base
+(its `head` and `base` fields, 8 characters each). Keep the old page's
+Decisions and Route headings to compare in Write; for a stack, also read
+`stack-<S>.md`. No old page → skip; the guide is written as on a first run.
+
+Expand each field to a commit. One gone from this clone (garbage-collected,
+or a fresh clone) may still be on GitHub:
+
+```bash
+git rev-parse --verify -q <8>^{commit}
+gh api repos/<OWNER/REPO>/commits/<8> -q .sha     # when the line above prints nothing
+git fetch origin <that sha>
+```
+
+Then pick the delta, first match wins:
+
+- **The old head does not resolve:** say "previous head no longer exists"
+  and compare the pages only.
+- **Same head:** the old head is `H`. Nothing moved: leave the section
+  out; the page is written again as it stands.
+- **This guide is older than the last one** (`<head-sha>` pins an earlier
+  commit): `git merge-base --is-ancestor <H> <old H>` succeeds and they
+  differ. Say "this guide is at an older head than the last one" and
+  compare the pages only; Resolved and New would be reversed.
+- **Plain new commits:** `git merge-base --is-ancestor <old H> <H>`
+  succeeds and the old base is `B` (or the old page has no `base` field):
+
+  ```bash
+  git log --format='%h %s' <old H>..<H>
+  git diff --stat <old H> <H>
+  ```
+
+- **Force-pushed or rebased:** with an old base,
+  `git range-diff <old B>..<old H> <B>..<H>`, so changes from a moved base
+  are not listed as the author's. With no `base` field on the old page,
+  say "previous base unknown" and compare the pages only.
+
+This is for the orchestrator only, never to the spot agent: it reviews
+`B..H` fresh.
 
 ## Profile
 
@@ -352,9 +395,16 @@ to the bug-hunting tools.
 ```markdown
 # #<N> <title>
 
-`<author>` · head `<H, 8 chars>` · base `<baseRefName>@<B, 8 chars>` · <date> · <MODE>: <why>
+`<author>` · head `<H, 8 chars>` · base `<baseRefName>@<B, 8 chars>` · <date> · <MODE>: <why> · updated from `<old head, 8 chars>`
 
 > **<d> decisions · <k> judgement calls · <s> to skip · <f> review findings (<c> confirmed).** <the biggest decision, one clause>
+
+## Since the last guide — <old head, 8 chars>
+- <n> commits: <subjects, one clause each> (or: rebased onto <base>@<8>; <what moved>; or: previous head no longer exists | this guide is at an older head than the last one | previous base unknown)
+- Resolved: <old stop or Decision> — <what changed, `file:line`>
+- Still open: <old stop or Decision> (now Route <k> / Decision <k>)
+- New: <stop or Decision> — <from which commit>
+- No longer ranked: <old Decision or stop> — still in the code, outranked
 
 ## Before you read
 - **Path:** <MAP>
@@ -408,6 +458,15 @@ Unverified:
 - `<short path or glob>` — <reason, a few words>
 ```
 
+- **Since the last guide** and `updated from` only on a re-run (Previous
+  guide). Match the old page's stops and Decisions to the new ones by file
+  and ruling: one that matches is Still open; a new one with no old match
+  is New. An old one with no match is Resolved only when the delta touches its file or ruling,
+  naming that change; otherwise it is No longer ranked (the caps pushed it
+  out). Never invent a change. Leave out empty bullets. List at most 8 items,
+  Resolved first, and end with "<n> more" when there are more, so the page
+  keeps its line cap. The new page
+  overwrites the old one.
 - **Before you read** only when `MODE` is `new`; **Hot files** only when it
   is `expert` and some file qualifies. `Precedent` only in `new` mode, and
   only when the agent found one.
@@ -473,9 +532,13 @@ order, with two more after the header:
 ```markdown
 # Stack #<S> · <bottom PR> → <top PR> · <what the stack adds, a few words>
 
-`<author>` · #<N> head `<8>` on `<base>@<8>` · … · <date> · <MODE>: <why>
+`<author>` · #<N> head `<8>` on `<base>@<8>` · … · <date> · <MODE>: <why> · updated from `<old head, 8 chars>`
 
 > **<d> decisions · <k> judgement calls · <f> review findings (<c> confirmed).** <the biggest decision, one clause>
+
+## Since the last guide — <old head, 8 chars>
+- Resolved: <old stop or Decision> (#<N>) — …
+- Merged: <old stop or Decision> (#<N>) — the slice merged since
 
 ## How the stack splits
 - **#<N>** <what this slice adds, one line>
@@ -510,6 +573,13 @@ order, with two more after the header:
   whole stack, each item tagged with its slice. In Ship or block the tag
   follows the item, never the call: `**Block:** <item> (#<N>) — …`.
 - Leave out "Resolved across the stack" when nothing is.
+- Since the last guide on the stack page merges the slices' own sections,
+  each item tagged with its slice; its heading carries the top slice's old
+  head, or the old stack page's top head when the top slice has no old page
+  (it was added since). An old stack page's item from a slice that merged
+  since is Merged, never Resolved; an item from a slice closed since is
+  matched on the slice its commits now belong to, never Resolved for that
+  alone.
 - Review findings has one sub-heading per slice, bottom first; `<h>` counts
   its confirmed and plausible findings. A slice page carries only its own.
 
@@ -531,5 +601,7 @@ review ran, add (the default `high` sticks too):
 "/code-review keeps that effort level for later runs; type another level to change it."
 For a stack, print it per target, then
 `<OWNER/REPO> stack #<S> (<MODE>): <d> decisions, <k> spots, <r> resolved across slices → <ROOT>/local/review-guide/stack-<S>.html`.
+On a re-run, add a line per page:
+`<res> resolved, <open> still open, <new> new since the last guide (<old head, 8 chars>)`.
 If `git -C <ROOT> check-ignore -q local/review-guide/<N>.md` fails, add: "local/ is not
 gitignored; add `local` to .gitignore to keep reports out of commits."

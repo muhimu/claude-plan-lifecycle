@@ -124,6 +124,23 @@ check "(n) rulings brief reads another repo's default branch" grep -qF 'its defa
 check "(k) the 5-stop cap applies after Filter, lens spots ranked in" grep -qF 'The cap applies after Filter' "$cmd"
 check "(k) history follows renames" grep -qF "git log -S'<removed line, trimmed>' --follow" "$brief"
 check "(k) lens heading is one level below Review lenses" grep -qF 'one heading level below `Review lenses`' "$root/references/pr-triage-brief.md"
+# (h) a re-run opens with what changed since the last guide
+prev="$(section 'Previous guide')"
+order="$(grep -nE '^## (Fetch|Previous guide|Profile)$' "$cmd" | cut -d: -f2 | tr '\n' ,)"
+check "(h) Previous guide sits right after Fetch" [ "$order" = "## Fetch,## Previous guide,## Profile," ]
+for step in 'git merge-base --is-ancestor <old H> <H>' "git log --format='%h %s' <old H>..<H>" 'git range-diff <old B>..<old H> <B>..<H>' 'previous head no longer exists' 'never to the spot agent'; do
+  check "(h) Previous guide names $step" grep -qF -- "$step" <<<"$prev"
+done
+check "(h) the section follows the summary line" grep -qx '## Since the last guide — <old head, 8 chars>' <<<"$(grep -A2 -F '> **<d> decisions · <k> judgement calls · <s> to skip' "$cmd")"
+check "(h) the stack page has it too" grep -qx '## Since the last guide — <old head, 8 chars>' <<<"$(grep -A2 -F '> **<d> decisions · <k> judgement calls · <f> review' "$cmd")"
+check "(h) Resolved only when the delta touches it" grep -qF 'Resolved only when the delta touches its file or ruling' "$cmd"
+check "(h) an item pushed out of the top is no longer ranked" grep -qF -- '- No longer ranked: ' "$cmd"
+check "(h) an item of a merged slice is merged" grep -qF 'Merged: <old stop or Decision> (#<N>)' "$cmd"
+check "(h) stack page merges the slice deltas" grep -qF "merges the slices' own sections" "$cmd"
+check "(h) Rules allow rev-parse and range-diff" grep -qF '`git rev-parse`, `git range-diff`' <<<"$(section Rules)"
+check "(h) Reading order names Since the last guide" grep -qF 'Since the last guide' <<<"$(awk '/^## Reading order$/{on=1;next} on&&/^## /{exit} on' "$root/references/review-guide-help.md")"
+check "(h) header says updated from" grep -qF 'updated from `<old head, 8 chars>`' "$cmd"
+check "(h) Finish counts resolved, still open and new" grep -qF '<res> resolved, <open> still open, <new> new since the last guide' <<<"$(section Finish)"
 
 # (o) review round 2: the allow-list covers long flags, write options and
 # chaining; git log on B or H stays with the orchestrator; an H-only check
@@ -141,6 +158,32 @@ check "(o) another branch of this repo can be a Rule" grep -qF '`<OWNER/REPO>@<b
 check "(o) history reads the old path on R" grep -qF "the old path when the PR renames it" "$brief"
 check "(o) history takes the newest adding commit" grep -qF -- "--format='%h %s' <R> -- <file> | head -1" "$brief"
 check "(o) a lens spot's Rule is the evidence it rests on" grep -qF 'its `Rule` is the evidence it rests on' <<<"$lenses"
+
+# (l) follow-ups: the old head is fetched from GitHub when it is gone locally;
+# a missing base and a guide older than the last are handled; the section has
+# a cap; the stack header says updated from
+check "(l) old head expanded and fetched from GitHub" grep -qF 'gh api repos/<OWNER/REPO>/commits/<8> -q .sha' <<<"$prev"
+check "(l) an old page without a base field" grep -qF 'no `base` field' <<<"$prev"
+check "(l) a guide older than the last one" grep -qF 'git merge-base --is-ancestor <H> <old H>' <<<"$prev"
+check "(l) plain new commits only after the ancestor test" grep -qF '**Plain new commits:**' <<<"$prev"
+check "(l) Since the last guide has a cap" grep -qF 'at most 8 items' "$cmd"
+check "(l) stack header says updated from" grep -qF '<date> · <MODE>: <why> · updated from `<old head, 8 chars>`' <<<"$(grep -F '#<N> head `<8>` on' "$cmd")"
+
+# (p) review round 2: the heading's head renders as a hint; a new top slice,
+# the page-only outcomes, a same head and a closed slice are handled; Finish
+# has its own placeholders; Previous guide runs per target; the delta order
+check "(p) the heading's head has no backticks" grep -qxF '## Since the last guide — <old head, 8 chars>' "$cmd"
+check "(p) no backticked head in a heading" not grep -qF '## Since the last guide — `' "$cmd"
+check "(p) a new top slice takes the old stack page's head" grep -qF "the old stack page's top head" "$cmd"
+check "(p) the page-only outcomes have a slot" grep -qF 'or: previous head no longer exists' "$cmd"
+check "(p) a same-head re-run leaves the section out" grep -qF '**Same head:**' <<<"$prev"
+check "(p) a closed slice's items follow its commits" grep -qF 'a slice closed since' "$cmd"
+check "(p) Finish has its own placeholders" grep -qF '<res> resolved, <open> still open, <new> new since the last guide' "$cmd"
+check "(p) Previous guide runs per target" grep -qF 'Resolve, Fetch, Previous guide, Dispatch' "$cmd"
+# shellcheck disable=SC2329  # runs through check
+order() { awk -v a="$1" -v b="$2" 'index($0,a)&&!x{x=NR} index($0,b)&&!y{y=NR} END{exit !(x&&y&&x<y)}' <<<"$prev"; }
+check "(p) the older-head branch precedes plain new commits" order '**This guide is older than the last one**' '**Plain new commits:**'
+check "(p) a same head precedes plain new commits" order '**Same head:**' '**Plain new commits:**'
 
 # (c) the page has a Review findings section in the template
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
