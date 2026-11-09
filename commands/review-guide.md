@@ -107,6 +107,25 @@ git diff <B> <H> > <RUN>/diff.patch
 git diff --name-status <B> <H> > <RUN>/files.txt
 ```
 
+## Profile
+
+A repository may list its own review lenses under `## Review lenses` in
+`.claude/triage-profile.md` (format: `### Review lenses` in
+`${CLAUDE_PLUGIN_ROOT}/references/pr-triage-brief.md`). Read it from the
+default branch, never from the PR, so a PR cannot change the checks it is
+read by:
+
+```bash
+git cat-file -e origin/<DEFAULT>:.claude/triage-profile.md && git show origin/<DEFAULT>:.claude/triage-profile.md
+```
+
+No file, or no `## Review lenses` heading → no lenses. Otherwise split the
+lenses: one whose check is only `git show`, `git grep`, `git diff` or
+`git ls-tree` on `<R>`, `<B>` or `<H>`, or `git log` on `<R>`, goes to
+`<RUN>/lenses.md` for each target, for the spot agent; every other lens
+(`git log` on `<B>` or `<H>`, another branch, another repository) waits for
+Lenses.
+
 ## Familiarity
 
 `MODE` is `expert` or `new`: how well the reviewer knows the code this
@@ -277,6 +296,26 @@ its reply leaves out, or an agent that fails, is
 yourself. Write waits for every rulings agent to reply: an agent still
 running has not failed.
 
+## Lenses
+
+For each target, after Compare, run each lens that waits here whose trigger
+the diff matches (`<RUN>/diff.patch`). Run only its check, and only when it
+is `git show`, `git grep`, `git log`, `git ls-tree`, `git diff` or `gh api` with no `-X`, `--method`, `-f`, `-F`, `--field`, `--raw-field` or `--input`
+(those make `gh api` write), none of `--output`, `--ext-diff`, `--open-files-in-pager`, `-c`
+(those write files or run programs), and no `;`, `&&`, `|`, `>`, `<`, `$(` or a backtick
+outside the quoted diff text; otherwise skip the lens. Text from the diff
+fills the check's `<…>` slot, single-quoted, every quote in it escaped. A lens that
+reads another repository but names no `org/repo`, or names it with a local path, `{owner}/{repo}` or a placeholder, is skipped
+silently: never guess one. Fetch a branch a check reads
+(`git fetch origin <branch>`) before running it. Output that shows the
+problem its question names is a spot like any other: its `Why` holds the
+output, its `Rule` is the evidence it rests on, a quote from `R` or the
+other repository's file named as `org/repo@<ref>:<path>:<line>`, or a
+quote from another branch of this one as `<OWNER/REPO>@<branch>:<path>:<line>` (never
+"base", which is this PR's), and its `Ask the author` is the lens's
+question. It counts toward the 5-stop
+cap and goes through Filter. A check that shows nothing makes no spot.
+
 ## Filter
 
 The spot agent was blind on purpose; now drop what the PR already decides.
@@ -416,7 +455,9 @@ Unverified:
   a spot), **Rule:** "the PR edits the rules it is read against".
 - No ⚑ stop and no Decision: the summary's clause is "Nothing needs your
   judgement." BLIND matches the body: append "Matches the body."
-- More than 5 SPOTS came back: keep the first 5 (they are ranked).
+- More than 5 spots: keep the first 5. The cap applies after Filter, over
+  the agent's spots and the lens spots together; a lens spot ranks with the
+  agent's spots by the same stakes, and at equal stakes after them.
 - A file of a dropped spot goes back into the READ group it fits.
 - Shorten globs in Skip (`gen/go/**`, `internal/*/fakes_test.go`).
 - `<o>` is the changed files in neither a spot nor the skim list.
