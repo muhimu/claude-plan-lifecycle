@@ -225,11 +225,19 @@ Only with `--review`; run it while the agents work. The review tools read
 the code around each hunk from the session's checkout, and
 `/plan-lifecycle:review-stack` stops unless that checkout is at the top of
 the stack, so they run at the tip: the last target's current head, in
-your checkout when it is already there, else in a worktree. `WT` is
-`<MAIN>/.claude/worktrees/review-guide-<N>`, `<MAIN>` being the main
-checkout (the parent of
-`git rev-parse --path-format=absolute --git-common-dir`), so a session that
-runs in a linked worktree does not nest one inside it.
+your checkout when it is already there, else in a worktree `WT`, the
+first that applies:
+
+- The worktree location your instructions declare (a CLAUDE.md naming a
+  worktree directory), with the worktree named `_claude-review-guide-<N>`.
+- `<MAIN>/.claude/worktrees/review-guide-<N>`, when
+  `git -C <MAIN> check-ignore -q .claude/worktrees/review-guide-<N>`
+  succeeds. `<MAIN>` is the main checkout (the parent of
+  `git rev-parse --path-format=absolute --git-common-dir`), so a session
+  that runs in a linked worktree does not nest one inside it.
+- `<MAIN>-review-guide-<N>`, beside the main checkout: an unignored
+  worktree inside it would show in its `git status`, and the guide never
+  edits the repo's `.gitignore`.
 
 First read each target's current head, `n` being its PR number:
 
