@@ -224,4 +224,34 @@ else
 fi
 check "(p) a page with no type has no pictures" not grep -qF '<template id="help-pic-' "$tmp/notes.html"
 
+# (q) header quote, Findings pill and heading ids in a real browser
+if [ -x "$chrome" ]; then
+  printf '# #10 x\n\nauthor · base\n\n> **1 decision.** Summary.\n\n## Notes\n\ntext\n' > "$tmp/review-guide/10.md"
+  "$root/bin/render-report" "$tmp/review-guide/10.md" >/dev/null
+  "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/10.html" > "$tmp/dom" 2>/dev/null
+  check "(q) the summary quote is a card" grep -qF '<blockquote class="card">' "$tmp/dom"
+  printf '# #11 x\n\n## Notes\n\n> a quote far down\n' > "$tmp/review-guide/11.md"
+  "$root/bin/render-report" "$tmp/review-guide/11.md" >/dev/null
+  "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/11.html" > "$tmp/dom" 2>/dev/null
+  check "(q) a quote further down is not a card" not grep -qF 'class="card"' "$tmp/dom"
+
+  printf '# #12 x\n\n## Findings\n\n1. **Must-fix:** text\n2. **Must-fix: x.** y\n' > "$tmp/review-guide/12.md"
+  "$root/bin/render-report" "$tmp/review-guide/12.md" >/dev/null
+  "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/12.html" > "$tmp/dom" 2>/dev/null
+  check "(q) Must-fix gets the red pill" [ "$(grep -oF 'pill red">Must-fix</span>' "$tmp/dom" | wc -l | tr -d ' ')" = 2 ]
+  check "(q) a bare Must-fix leaves no empty strong" not grep -qF '<strong></strong>' "$tmp/dom"
+  check "(q) a Must-fix with a bold lead keeps it" grep -qF '<strong>x.</strong>' "$tmp/dom"
+
+  printf '# #13 x\n\n## Notes\n\na\n\n## Notes\n\nb\n\n## 🔒\n\nc\n' > "$tmp/review-guide/13.md"
+  "$root/bin/render-report" "$tmp/review-guide/13.md" >/dev/null
+  "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/13.html" > "$tmp/dom" 2>/dev/null
+  check "(q) the first Notes id is notes" grep -qF '<h2 id="notes">' "$tmp/dom"
+  check "(q) the second Notes id is notes-2" grep -qF '<h2 id="notes-2">' "$tmp/dom"
+  check "(q) the toc links to both" grep -qF 'href="#notes-2"' "$tmp/dom"
+  check "(q) an emoji-only heading gets id section" grep -qF '<h2 id="section">' "$tmp/dom"
+  check "(q) no toc link is href=#" not grep -qF 'href="#"' "$tmp/dom"
+else
+  echo "skip: (q) needs Chrome at \$CHROME"
+fi
+
 exit "$fail"

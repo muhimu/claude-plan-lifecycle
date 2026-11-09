@@ -434,7 +434,6 @@ HTML
   var top = el('div', 'wrap');
   var lead = page.firstElementChild;
   var quote = page.querySelector('blockquote');
-  if (quote) quote.classList.add('card');
   if (lead && lead.tagName === 'P' && /^Triage:/.test(lead.textContent)) {
     // Verdict line: "Triage: x · impact y · ..." becomes tiles.
     var badges = el('div', 'badges');
@@ -476,6 +475,7 @@ HTML
     var line = page.firstElementChild;
     if (line && line.tagName === 'P' && / · /.test(line.textContent) && quote && line.nextElementSibling === quote) {
       line.className = 'meta';
+      quote.classList.add('card');
       top.appendChild(line);
       top.appendChild(quote);
     }
@@ -524,7 +524,13 @@ HTML
       var t = s.firstChild;
       if (t.nodeType === 3 && t.nodeValue.indexOf(m[0]) === 0) {
         t.nodeValue = t.nodeValue.slice(m[0].length);
-        s.parentNode.insertBefore(el('span', 'pill ' + (m[1] === 'Must' ? 'red' : 'amber'), m[1] + '-fix'), s);
+        var pill = el('span', 'pill ' + (m[1] === 'Must' ? 'red' : 'amber'), m[1] + '-fix');
+        s.parentNode.insertBefore(pill, s);
+        if (!s.textContent.trim()) {
+          var after = s.nextSibling;
+          if (after && after.nodeType === 3) after.nodeValue = after.nodeValue.replace(/^\s+/, '');
+          s.remove();
+        }
       }
     });
 
@@ -657,10 +663,13 @@ HTML
   cat <<'HTML'
   // Section headings: an id and a contents link; "x — y" is a title and a
   // hint; the asks under "For a human" become callouts.
-  var toc = el('nav', 'toc');
+  var toc = el('nav', 'toc'), taken = {};
   all(page, 'h2').forEach(function (h2) {
     var label = h2.textContent.split(' — ')[0].trim();
-    h2.id = slug(label);
+    var id = slug(label) || 'section', n = 1;
+    while (taken[id]) id = (slug(label) || 'section') + '-' + (++n);
+    taken[id] = 1;
+    h2.id = id;
     var a = el('a', '', label);
     a.href = '#' + h2.id;
     toc.appendChild(a);
