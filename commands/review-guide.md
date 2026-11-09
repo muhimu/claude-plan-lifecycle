@@ -225,10 +225,14 @@ Only with `--review`; run it while the agents work. The review tools read
 the code around each hunk from the session's checkout, and
 `/plan-lifecycle:review-stack` stops unless that checkout is at the top of
 the stack, so they run at the tip: the last target's current head, in
-your checkout when it is already there, else in a worktree `WT`: where
-your instructions put worktrees, named as they say. With no such
-instructions, `WT` is `<MAIN>/.claude/worktrees/review-guide-<N>` if
-`git -C <MAIN> check-ignore -q` passes on it, else `<MAIN>-review-guide-<N>`.
+your checkout when it is already there, else in a worktree `WT`, the
+first that applies:
+
+- where your instructions put worktrees, named as they say;
+- `<MAIN>/.claude/worktrees/review-guide-<N>`, if
+  `git -C <MAIN> check-ignore -q` passes on it;
+- `<MAIN>-review-guide-<N>`.
+
 `<MAIN>` is the main checkout, the parent of
 `git rev-parse --path-format=absolute --git-common-dir`.
 
