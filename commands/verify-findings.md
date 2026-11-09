@@ -83,8 +83,9 @@ to values first, and leave `<path>` for the verifier.
   stack #<S>), the ADRs and CLAUDE.md files are read at `<top sha>`, and
   `<base sha>` is the head sha of the open slice below — as **PR** for the
   lowest open slice. `<DECISIONS>` also has the `## Follow-ups` sections of
-  the other open slices' bodies (`gh pr view <number> --json body`, that
-  section only: another slice's `## Rulings` are not decisions for this PR).
+  the other open slices' bodies, and only that section, since another
+  slice's `## Rulings` are not decisions for this PR:
+  `gh pr view <number> --json body -q .body | awk '/^## /{p=($0=="## Follow-ups")} p'`.
 
 Lines marked `(stack)` go in only for a stacked PR, and lines marked
 `(comments)` only when the findings are a PR's review comments; both without
