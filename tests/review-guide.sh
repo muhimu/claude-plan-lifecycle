@@ -192,8 +192,7 @@ check "(c) template has Review findings" grep -qF '## Review findings — <tool>
 check "(q) Resolve says --review needs a session started in the PR's checkout" grep -qF 'EnterWorktree` takes only worktrees of the session' <<<"$(section Resolve)"
 check "(q) a Contact heading may carry an emoji" grep -qF 'a heading that contains' <<<"$(section Familiarity)"
 check "(q) the Contact rule no longer needs the heading to start with it" not grep -qF 'a heading that starts with' <<<"$(section Familiarity)"
-check "(q) WT follows a worktree location the instructions declare" grep -qF 'worktree location your instructions declare' <<<"$review"
-check "(q) a declared location names the worktree _claude-review-guide-<N>" grep -qF '_claude-review-guide-<N>' <<<"$review"
-check "(q) the .claude/worktrees default must be gitignored" grep -qF 'check-ignore -q .claude/worktrees/review-guide-<N>' <<<"$review"
+check "(q) WT goes where the instructions put worktrees" grep -qF 'your instructions put worktrees, named as they say' <<<"$review"
+check "(q) the .claude/worktrees default must be gitignored" grep -qF 'check-ignore -q` passes on it' <<<"$review"
 
 exit "$fail"
