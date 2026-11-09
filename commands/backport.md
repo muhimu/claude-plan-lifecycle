@@ -131,9 +131,11 @@ For any hits, run `git -C "$WT" rm -q -- <hits>` and
 generated paths. On a conflict, take each file of
 `git -C "$WT" diff --name-only --diff-filter=U`:
 
-- **Ignored on the target**
-  (`git -C "$WT" check-ignore -q --no-index -- "$F"` succeeds): the default
-  branch commits it, the release branch generates it.
+- **Generated on the target:** ignored there
+  (`git -C "$WT" check-ignore -q --no-index -- "$F"` succeeds) and not
+  tracked there (`git -C "$WT" cat-file -e "HEAD:${F}"` fails): the default
+  branch commits it, the release branch generates it. A file the release
+  branch tracks is merged even when a pattern matches it.
   `git -C "$WT" rm -q -- "$F"`, recorded as a dropped generated path.
 - **Otherwise trace both sides, on the conflicting lines only.** A whole-file
   history would ask about unrelated PRs.
@@ -143,8 +145,10 @@ generated paths. On a conflict, take each file of
     `git -C "$WT" blame -s -L "a,+b" "$SHA^" -- "$F"`. Keep each commit
     `c` for which `git -C "$WT" merge-base --is-ancestor "$c" HEAD` fails.
     Map it to its PR by the `(#M)` at the end of its subject, and drop
-    every `#M` that Step 1's signals find on `HEAD`. The remaining PRs are
-    the **prerequisites** → Step 4a.
+    every `#M` that Step 1's signals find on `HEAD`. A commit with no
+    `(#M)` (pushed to the default branch directly) stays as itself,
+    `<sha> <subject>`. The remaining PRs and commits are the
+    **prerequisites** → Step 4a.
   - **Release side (later backports).** Take each hunk of
     `git -C "$WT" diff -U0 "$SHA^" HEAD -- "$F"` whose `-a,b` range
     overlaps a source hunk's, and blame its `+c,d` lines on the release
@@ -170,7 +174,9 @@ the recommended option first and labelled "(Recommended)". More than four
 → a second call for the rest. Record every answer for the PR body.
 
 **4a. One question per prerequisite #M.** State #M's title, its size
-(`gh pr view <M> -R OWNER/REPO --json title,files,additions,deletions`),
+(`gh pr view <M> -R OWNER/REPO --json title,files,additions,deletions,mergeCommit`;
+`MSHA` = `.mergeCommit.oid`; for a bare commit, the commit itself and
+`git -C "$WT" show --stat`),
 whether it applies cleanly
 (`git -C "$WT" merge-tree --write-tree --name-only --merge-base "$MSHA^" HEAD "$MSHA"`
 exits 0, else the files it lists) and what it brings beyond the lines the
@@ -208,7 +214,22 @@ Name the backports across all its files, and their main PRs.
 4. Replay the reverted backports' main originals in `mergedAt` order:
    `git -C "$WT" cherry-pick -x <C>`, with Step 3's handling.
 
-## Step 5 — Regenerate and verify with the release branch's tooling
+## Step 5 — Pins
+
+- **Manifest conflicts** (lock files, `go.mod`, `pyproject.toml`, image
+  tags): keep the release branch's pins.
+- **The fix needs a newer dependency on this line:** stop, naming it. That
+  dependency needs its own backport and release first.
+- **Never bump by hand a pin a workflow bumps.** For each pin the fix
+  touches, read the hits of
+  `git -C "$ROOT" grep -l -i -E 'repository_dispatch|workflow_dispatch|bump' "${REF}" -- .github/workflows`
+  for `REF` = `origin/${DEFAULT}` and `origin/${TARGET}`. Name the
+  workflow that bumps it on release branches under Pins, and leave the pin
+  to it.
+
+Pins come before verification, so the tree that is verified is the tree that is pushed.
+
+## Step 6 — Regenerate and verify with the release branch's tooling
 
 - **Where:** each directory whose Makefile owns files changed in
   `git -C "$WT" diff --name-only "origin/${TARGET}" HEAD`.
@@ -234,25 +255,12 @@ Name the backports across all its files, and their main PRs.
   `git -C "$ROOT" worktree remove --force "$TMP"`.
   - **Red there too:** pre-existing. List it under Test plan; carry on.
   - **Red only here, on a missing symbol:** find the commit that brought
-    it, `git -C "$WT" log -S<symbol> --format='%h %s' "HEAD..$SHA"`, and
+    it, `git -C "$WT" log -S<symbol> --format='%h %s' "HEAD..origin/${DEFAULT}"`, and
     ask as in Step 4a.
   - **Red only here, in code a resolution or rewrite touched** (lint
     included): fix it and record it under Applied by hand.
   - **Anything else:** stop before pushing, with the failure and `WT`. No
     PR is opened unverified.
-
-## Step 6 — Pins
-
-- **Manifest conflicts** (lock files, `go.mod`, `pyproject.toml`, image
-  tags): keep the release branch's pins.
-- **The fix needs a newer dependency on this line:** stop, naming it. That
-  dependency needs its own backport and release first.
-- **Never bump by hand a pin a workflow bumps.** For each pin the fix
-  touches, read the hits of
-  `git -C "$ROOT" grep -l -i -E 'repository_dispatch|workflow_dispatch|bump' "${REF}" -- .github/workflows`
-  for `REF` = `origin/${DEFAULT}` and `origin/${TARGET}`. Name the
-  workflow that bumps it on release branches under Pins, and leave the pin
-  to it.
 
 ## Step 7 — Compare with the source
 
@@ -284,8 +292,11 @@ cd "$WT" && gh pr create -R OWNER/REPO --draft --base "$TARGET" --head "$BRANCH"
 The title is fetched, never pasted: a title with backticks or `$` would
 run inside double quotes. It keeps the source's conventional prefix, so
 it passes a semantic PR-title check; a `[release/X.Y]` prefix fails it.
-Write `BODY="$(mktemp)"` with the Write tool or a quoted `<<'EOF'`
-heredoc, leaving out empty sections:
+Create the body file with `BODY="$(mktemp)" && printf 'BODY=%s\n' "$BODY"`
+and copy the printed path, as with `WT`. Write the body to it with the Write
+tool or a quoted `<<'EOF'` heredoc, leaving out empty sections. In the
+block above, every variable is written out as its value: shell variables
+don't survive between calls.
 
 ```markdown
 Backport of #A, #B and #C to `release/X.Y`.
@@ -319,7 +330,7 @@ report: the PR URL, `WT`, the compare table, and anything left out.
 
 - **Directories.** Every git command is `git -C "$WT" …` (or
   `git -C "$ROOT" …` for reads and worktree adds). Every other command is
-  `cd "$WT" && …` (Step 5's throwaway: `cd "$TMP" && …`) in the same call:
+  `cd "$WT" && …` (Step 6's throwaway: `cd "$TMP" && …`) in the same call:
   never a bare `cd`, never `;` after one. Every
   subagent prompt starts with "Work in `<WT>`: run every shell command as
   `cd <WT> && …`."

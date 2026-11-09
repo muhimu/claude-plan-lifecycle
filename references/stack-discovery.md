@@ -1,7 +1,7 @@
 # Stack discovery
 
 Shared by `/restack`, `/pr-fix`, `/review-stack`, `/pr-triage`,
-`/review-guide` and `/verify-findings`. It turns the command's target into the ordered list of a
+`/review-guide`, `/verify-findings` and `/backport`. It turns the command's target into the ordered list of a
 stack's slices. Live truth is GitHub's native stack object; a stack opened
 without one (`/execute-plan` falls back to a `## Stack` table when
 `gh stack link` is unavailable) is still found.
