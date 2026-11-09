@@ -35,7 +35,16 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   to post NEW feedback before starting the next round. It may arrive as a plain PR
   comment, not a review — poll `gh pr view <N> -R OWNER/REPO --json comments,reviews` (the pinned PR's repo) and only
   proceed once the workflow has posted something with a timestamp later than your
-  push. Ignore every review and comment whose author is you
+  push. Also wait until every run of the review workflow in
+  `gh run list -R OWNER/REPO --commit <head sha> -L 100 --json status,workflowName` has status
+  `completed`, for each PR you pushed or restacked and each whose body Step 4d edited
+  (that edit can start a second review run on the same head). If the review workflow
+  also runs on an event that records another commit (`issue_comment`, `workflow_dispatch`),
+  wait as well on its runs created since the push
+  (`gh run list -R OWNER/REPO --workflow <its name> --created ">=<push time>" --json status`). If one is still not completed 30 minutes after
+  the push, stop as for a missing review. Then take all feedback newer than the push
+  as one round.
+  Ignore every review and comment whose author is you
   (`gh api user --jq .login`): your Step 4c replies show up under `reviews`
   too, as COMMENTED reviews dated after the push. In stack mode, wait on EVERY PR whose branch was pushed or restacked this
   round — a restack retriggers CI and review on the slices above. Never re-process
@@ -52,7 +61,8 @@ Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-pac
   - a round produces no substantive actionable items (review is effectively
     clean — nit-only rounds count as clean), or
   - 5 rounds have completed, or
-  - no new review has appeared 30+ minutes after a push (workflow likely
+  - no new review has appeared, or a review run is still not completed, 30+
+    minutes after a push (workflow likely
     missing or stuck — report what you observed).
 ```
 

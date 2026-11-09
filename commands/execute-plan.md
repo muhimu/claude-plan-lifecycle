@@ -133,7 +133,7 @@ Print one line naming the choice. Then **invoke the chosen skill** via the `Skil
 > Ledger discovered work this run will not do, as you meet it — whoever finds it:
 >
 > - an implementer's `DONE_WITH_CONCERNS` observation you do not act on, or something you notice yourself (including work in other repos): `Task <N>: observation: <one-liner>`
-> - follow-on work the plan itself defers (a "follow-ups" / "future work" list, or a step telling you to record follow-ups in the plan file — the plan file must not be edited, so ledger them instead): `Plan: observation: <one-liner>`
+> - follow-on work the plan itself defers (a "follow-ups" / "future work" list, or a step telling you to record follow-ups in the plan file — the plan file must not be edited, so ledger them instead): `Plan: observation: <one-liner>`. In a stacked slice after the first, ledger only such a step in this slice's tasks: slice 1 ledgered the plan's own list
 > - a Minor finding from the final whole-branch review that is not fixed: `Final: minor (deferred): <one-liner>`
 >
 > Your human partner has decided how minors go: a Minor finding on code this branch changes, from a task review or the final review, enters the final review's fix pass with the Critical and Important ones, verified as your skill verifies those fixes (wording, docs and behaviour-preserving cleanups need only the green suite). Ledger it as `Final: minor (deferred)` only when it cannot be fixed here: the work is in another repo, the plan defers it, the code is not changed by this branch, or its fix did not go green. Fix minors last in the pass, one commit each, and revert a minor's commit that does not go green. Observations stay for your partner to read unless your skill confirms one as a real gap.
@@ -378,16 +378,26 @@ is already done.
    the final whole-branch review use `<BASE_N>` as MERGE_BASE (the single
    base rev for `review-package`). Keep the plan's workspace
    (`.superpowers/sdd/<plan basename>/`, as `sdd-workspace` resolves it) after the final review unless this is slice
-   <M> of <M>; earlier slices' parked findings live there."
+   <M> of <M>; earlier slices' parked findings live there. Start every `Ruling:`,
+   `observation`, `minor (deferred)` and `parked` line you ledger for this
+   slice, including on a re-run after a failed run, with `PR <N> · `
+   (e.g. `PR <N> · Task 2.1: observation: …`); write your skill's other lines,
+   such as the ledger's first line and `Task <N>: complete`, as your skill
+   says. A ruling recorded beside a table row also gets a tagged `Ruling:`
+   line of its own. Return the lists with their tags."
    followed by `FINISH_INSTRUCTION`. `<BASE_N>` is `BRANCH[N-1]` for N > 1;
    for N = 1 it is the SHA printed by
    `git merge-base "origin/$DEFAULT_BRANCH" HEAD` — the local
    `$DEFAULT_BRANCH` may have moved past the branch's fork point, and
-   `review-package` rejects a base that is not an ancestor. The skill returns every ruling and
-   follow-up in the shared ledger, including earlier slices'. Set
-   `RULINGS[N]` = returned rulings minus every entry already in
-   `RULINGS[1..N-1]`, and `FOLLOWUPS[N]` likewise against
-   `FOLLOWUPS[1..N-1]`. `ADR_IMPACTS` for the S5 report and stub is the
+   `review-package` rejects a base that is not an ancestor. The tag is needed because on a
+   resume an entry `/pr-fix` removed from a done slice's body is still in the
+   ledger, so subtracting body entries alone would bring it back. The skill
+   may return every slice's lines (its own lists are exhaustive), so keep only
+   the returned entries that carry the `PR <N> · ` tag, and remove that tag
+   wherever it appears; the subtraction below is a backstop. Set
+   `RULINGS[N]` = the kept rulings, tags removed, minus every entry
+   already in `RULINGS[1..N-1]`, and `FOLLOWUPS[N]` = the kept follow-ups, tags
+   removed, minus every entry already in `FOLLOWUPS[1..N-1]`. `ADR_IMPACTS` for the S5 report and stub is the
    `ADR impact` entries of `RULINGS[1..M]`.
 3. **Verify** — identical to Step 4 (`$TEST_CMD`, `$LINT_CMD`, halt-on-red),
    capturing `TEST_TAIL[N]` / `LINT_TAIL[N]`. On red, stop: "Slice <N>
