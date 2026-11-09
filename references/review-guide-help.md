@@ -1,9 +1,9 @@
 This page points you at the parts of a colleague's PR that need a human's judgement, and tells you what you can skip. It does not hunt bugs: `/code-review` and `/plan-lifecycle:review-stack` do that. It is shared with the PR's author, so everything on it is phrased as a question they can answer.
 
 ## Reading order
-- **First:** the summary line under the title, then Decisions, then Route.
+- **First:** the summary line under the title, then Decisions, then Route, then Review findings when the guide ran the review.
 - **Then:** Permanent after merge, Ship or block, Who must act after merge.
-- **Last, or never:** Riskiest code (hand it to a bug-hunting tool) and Skip.
+- **Last, or never:** Riskiest code (hand it to a bug-hunting tool) and Skip. Riskiest code appears only for a PR whose findings are not on the page: where they are, the tool already looked.
 
 Sections with nothing in them are left out. Before you read appears only when you know little of this code (`new` mode); Hot files only when you know it well (`expert` mode). A stack page adds How the stack splits and Resolved across the stack.
 
@@ -47,6 +47,20 @@ Sections with nothing in them are left out. Before you read appears only when yo
 - **Why:** on the base the cache knows nothing of storage; now it does.
 - **Rule:** base: `internal/cache` imports no storage package.
 - **Ask the author:** Keep the storage call in the cache? If so, why there and not in the service?
+
+## Review findings
+- **You see:** with `--review`, the bugs `/code-review` (one PR) or `/plan-lifecycle:review-stack` (a stack) found, each checked by a verifier: where it is, its verdict and a one-line summary. Below the table, the findings the verifiers rejected, each with the reason.
+- **How to read it:** confirmed means the verifier reproduced the reasoning against the code; plausible means it could not rule it out. A finding rejected because the PR records it as a decision also shows under that Decision: the review and the author disagree, and that is yours to settle. A stack page has one block per slice. "Findings left out" means the PR moved after the review: run the guide again.
+- **Why:** the bugs and the design calls on one page, so nothing found is lost. Nothing is posted to the PR.
+
+**Example**
+
+| # | Where | Verdict | Finding |
+|---|-------|---------|---------|
+| 1 | `internal/cache/store.go:58` | confirmed | an expired entry is returned once before eviction |
+
+Rejected:
+- `internal/cache/store.go:90` lock held across the network call — the body records this as a decision
 
 ## Resolved across the stack
 - **You see:** stops in a lower slice that a slice above fixes.
