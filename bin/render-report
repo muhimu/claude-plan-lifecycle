@@ -433,8 +433,6 @@ HTML
   // verdict (triage) or the summary (review guide). Other shapes stay put.
   var top = el('div', 'wrap');
   var lead = page.firstElementChild;
-  var quote = page.querySelector('blockquote');
-  if (quote) quote.classList.add('card');
   if (lead && lead.tagName === 'P' && /^Triage:/.test(lead.textContent)) {
     // Verdict line: "Triage: x · impact y · ..." becomes tiles.
     var badges = el('div', 'badges');
@@ -473,9 +471,10 @@ HTML
       lead.appendChild(el('span', 'sub', text.slice(cut + 3)));
     }
     top.appendChild(lead);
-    var line = page.firstElementChild;
-    if (line && line.tagName === 'P' && / · /.test(line.textContent) && quote && line.nextElementSibling === quote) {
+    var line = page.firstElementChild, quote = line && line.nextElementSibling;
+    if (line && line.tagName === 'P' && / · /.test(line.textContent) && quote && quote.tagName === 'BLOCKQUOTE') {
       line.className = 'meta';
+      quote.classList.add('card');
       top.appendChild(line);
       top.appendChild(quote);
     }
@@ -515,6 +514,13 @@ HTML
   function dress(root) {
     marks(root);
 
+    // Put a pill in place of a bold label, dropping the space after it.
+    function swap(s, pill) {
+      var t = s.nextSibling;
+      if (t && t.nodeType === 3) t.nodeValue = t.nodeValue.replace(/^\s+/, '');
+      s.replaceWith(pill);
+    }
+
     // Findings: a Must-fix or Should-fix item gets a stripe and a pill.
     all(root, 'li').forEach(function (li) {
       var s = first(li);
@@ -524,7 +530,9 @@ HTML
       var t = s.firstChild;
       if (t.nodeType === 3 && t.nodeValue.indexOf(m[0]) === 0) {
         t.nodeValue = t.nodeValue.slice(m[0].length);
-        s.parentNode.insertBefore(el('span', 'pill ' + (m[1] === 'Must' ? 'red' : 'amber'), m[1] + '-fix'), s);
+        var pill = el('span', 'pill ' + (m[1] === 'Must' ? 'red' : 'amber'), m[1] + '-fix');
+        if (s.textContent.trim()) s.parentNode.insertBefore(pill, s);
+        else swap(s, pill);
       }
     });
 
@@ -537,9 +545,8 @@ HTML
         if (n.tagName === 'UL') Array.prototype.forEach.call(n.children, function (li) {
           var s = first(li), m = s && s.nodeName === 'STRONG' && /^(Block|Ship unless|After merge|Ship):\s*$/.exec(s.textContent);
           if (!m) return;
-          var t = s.nextSibling, p = s.parentNode;
-          if (t && t.nodeType === 3) t.nodeValue = t.nodeValue.replace(/^\s+/, '');
-          s.replaceWith(el('span', 'pill ' + calls[m[1]], m[1]));
+          var p = s.parentNode;
+          swap(s, el('span', 'pill ' + calls[m[1]], m[1]));
           if (p.nodeName === 'P' && li.children.length === 1) {
             while (p.firstChild) li.insertBefore(p.firstChild, p);
             p.remove();
@@ -557,7 +564,7 @@ HTML
       var labels = items.map(function (li) {
         var n = first(li);
         if (n && n.nodeName === 'STRONG') return /\S:$/.test(n.textContent.trim()) ? n : null;
-        return nested && n && n.nodeType === 3 && /^\s*[A-Z][\w-]*( [\w-]+){0,2}: /.test(n.nodeValue) ? n : null;
+        return nested && !li.matches('.must, .should') && n && n.nodeType === 3 && /^\s*[A-Z][\w-]*( [\w-]+){0,2}: /.test(n.nodeValue) ? n : null;
       });
       if (!items.length || labels.indexOf(null) >= 0) return;
       var dl = el('dl', 'fields');
@@ -597,7 +604,7 @@ HTML
     // A numbered list whose items open in bold is a list of cards.
     all(root, 'ol').forEach(function (ol) {
       var items = Array.prototype.slice.call(ol.children);
-      if (items.length && items.every(function (li) { var n = first(li); return n && n.nodeName === 'STRONG'; })) {
+      if (items.length && items.every(function (li) { return li.matches('.must, .should') || (first(li) || {}).nodeName === 'STRONG'; })) {
         ol.classList.add('cards');
       }
     });
@@ -657,10 +664,14 @@ HTML
   cat <<'HTML'
   // Section headings: an id and a contents link; "x — y" is a title and a
   // hint; the asks under "For a human" become callouts.
-  var toc = el('nav', 'toc');
+  var toc = el('nav', 'toc'), taken = Object.create(null);
+  taken['help-panel'] = 1; // added to the page after this loop
   all(page, 'h2').forEach(function (h2) {
     var label = h2.textContent.split(' — ')[0].trim();
-    h2.id = slug(label);
+    var base = slug(label) || 'section', id = base, k = 1;
+    while (taken[id] || document.getElementById(id)) id = base + '-' + (++k);
+    taken[id] = 1;
+    h2.id = id;
     var a = el('a', '', label);
     a.href = '#' + h2.id;
     toc.appendChild(a);
