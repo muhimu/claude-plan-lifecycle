@@ -378,12 +378,16 @@ is already done.
    the final whole-branch review use `<BASE_N>` as MERGE_BASE (the single
    base rev for `review-package`). Keep the plan's workspace
    (`.superpowers/sdd/<plan basename>/`, as `sdd-workspace` resolves it) after the final review unless this is slice
-   <M> of <M>; earlier slices' parked findings live there."
+   <M> of <M>; earlier slices' parked findings live there. Start every ledger line you
+   write for this slice with `PR <N> · ` (e.g. `PR <N> · Task 2.1: observation: …`),
+   and return only the Rulings and Follow-ups lines tagged `PR <N>`."
    followed by `FINISH_INSTRUCTION`. `<BASE_N>` is `BRANCH[N-1]` for N > 1;
    for N = 1 it is the SHA printed by
    `git merge-base "origin/$DEFAULT_BRANCH" HEAD` — the local
    `$DEFAULT_BRANCH` may have moved past the branch's fork point, and
-   `review-package` rejects a base that is not an ancestor. The skill returns every ruling and
+   `review-package` rejects a base that is not an ancestor. The tag carries over a failed run of
+   the same slice. It is needed because on a resume an entry `/pr-fix` removed
+   from a done slice's body is still in the ledger. The skill returns every ruling and
    follow-up in the shared ledger, including earlier slices'. Set
    `RULINGS[N]` = returned rulings minus every entry already in
    `RULINGS[1..N-1]`, and `FOLLOWUPS[N]` likewise against
