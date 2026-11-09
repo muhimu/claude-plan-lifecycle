@@ -41,10 +41,7 @@ gh repo view --json nameWithOwner,defaultBranchRef -q '.nameWithOwner+" "+.defau
 ```
 
 That gives `OWNER/REPO` and `DEFAULT`. Not in a repository → stop: "Run this
-from a checkout of the PR's repository." With `--review`, the session must
-also have started in that checkout: `EnterWorktree` takes only worktrees of the session's
-own repository, so a session started elsewhere cannot enter the review
-worktree.
+from a checkout of the PR's repository."
 
 `$ARGUMENTS` is `<N> [<head-sha>] [--expert | --new] [--review [<effort>]]`.
 `<effort>` is `low`, `medium`, `high`, `xhigh` or `max`, the token right after
@@ -196,8 +193,8 @@ counting. 5 or more → `expert`; fewer → `new`. Say which in the page header 
   paths, leaving out the PR's author and bots —
   `tr '\n' '\0' < <RUN>/paths.txt | xargs -0 -r git log <R> --since=1.year --format=%an -- | sort | uniq -c | sort -rn`
   — and ask the agent for orientation (its `MAP`, `TERMS`, `RULES` blocks).
-  A README on `R` with a Contact section (a heading that contains
-  "Contact", such as `## ✉️ Contact`, in `git show <R>:README.md`) names who owns the repo: put
+  A README on `R` with a Contact section (a heading that contains "Contact" in any case,
+  such as `## ✉️ Contact`, in `git show <R>:README.md`) names who owns the repo: put
   them first under Ask, before the commit owners, unless it is the PR's
   author. A README contact who is the PR's author counts as none. Nobody
   left, with no README contact either: the author is the
@@ -228,7 +225,7 @@ the stack, so they run at the tip: the last target's current head, in
 your checkout when it is already there, else in a worktree `WT`, the
 first that applies:
 
-- where your instructions put worktrees, named as they say;
+- where your instructions put worktrees, named `review-guide-<N>` with any prefix they use;
 - `<MAIN>/.claude/worktrees/review-guide-<N>`, if
   `git -C <MAIN> check-ignore -q` passes on it;
 - `<MAIN>-review-guide-<N>`.
@@ -261,7 +258,9 @@ git worktree prune
 git worktree add --detach <WT> <the last target's current head>
 ```
 
-and enter it with `EnterWorktree` (`path: <WT>`). Then:
+and enter it with `EnterWorktree` (`path: <WT>`). `EnterWorktree` refuses
+(the session started in another repository) → `git worktree remove --force <WT>`
+and write the page as without `--review`. Then:
 
 - **One target** (a PR, or one slice pinned by `<head-sha>`): `Skill`
   `code-review` with `<effort> https://github.com/<OWNER/REPO>/pull/<N>`;
@@ -604,7 +603,9 @@ Print one line:
 With `--review`, add `, <f> review findings (<c> confirmed)` before the
 arrow, or, when the review did not run, a second line:
 "--review skipped: <the tool's stop message>", or
-"--review skipped: every PR moved since Fetch" when no tool ran. When the
+"--review skipped: every PR moved since Fetch" when no tool ran, or
+"--review skipped: start the session in a checkout of <OWNER/REPO>" when
+`EnterWorktree` refused. When the
 review ran, add (the default `high` sticks too):
 "/code-review keeps that effort level for later runs; type another level to change it."
 For a stack, print it per target, then

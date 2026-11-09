@@ -62,7 +62,7 @@ check "(m) the worktree is at the top's current head" grep -qF "the last target'
 check "(m) Finish notes the sticky effort whenever the review ran" grep -qF 'review ran, add (the default `high` sticks too)' <<<"$(section Finish)"
 check "(m) Finish says when every PR moved" grep -qF -- '--review skipped: every PR moved since Fetch' <<<"$(section Finish)"
 check "(m) a background review is waited for" grep -qF 'by task notification' <<<"$review"
-check "(m) WT is under the main checkout" grep -qF 'git rev-parse --path-format=absolute --git-common-dir' <<<"$review"
+check "(m) MAIN comes from git-common-dir" grep -qF 'git rev-parse --path-format=absolute --git-common-dir' <<<"$review"
 check "(m) a locked WT is unlocked and pruned" grep -qF 'git worktree unlock <WT>' <<<"$review"
 check "(m) a removed WT is pruned" grep -qF 'git worktree prune' <<<"$review"
 check "(m) the stack summary counts findings" grep -qF '> **<d> decisions · <k> judgement calls · <f> review findings (<c> confirmed).**' "$cmd"
@@ -189,10 +189,12 @@ check "(p) a same head precedes plain new commits" order '**Same head:**' '**Pla
 check "(c) template has Review findings" grep -qF '## Review findings — <tool> (<effort>), verified' "$cmd"
 
 # (q) live-run fixes: the session's repo, an emoji Contact heading
-check "(q) Resolve says --review needs a session started in the PR's checkout" grep -qF 'EnterWorktree` takes only worktrees of the session' <<<"$(section Resolve)"
-check "(q) a Contact heading may carry an emoji" grep -qF 'a heading that contains' <<<"$(section Familiarity)"
+check "(q) Resolve sets no session requirement" not grep -qF 'EnterWorktree' <<<"$(section Resolve)"
+check "(q) an EnterWorktree refusal removes WT and skips the review" grep -qF '`EnterWorktree` refuses' <<<"$review"
+check "(q) Finish names the checkout to start the session in" grep -qF 'start the session in a checkout of' "$cmd"
+check "(q) a Contact heading may carry an emoji, in any case" grep -qF 'a heading that contains "Contact" in any case' <<<"$(section Familiarity)"
 check "(q) the Contact rule no longer needs the heading to start with it" not grep -qF 'a heading that starts with' <<<"$(section Familiarity)"
-check "(q) WT goes where the instructions put worktrees" grep -qF 'your instructions put worktrees, named as they say' <<<"$review"
+check "(q) WT goes where the instructions put worktrees, one name per PR" grep -qF 'named `review-guide-<N>` with any prefix they use' <<<"$review"
 check "(q) the .claude/worktrees default must be gitignored" grep -qF 'check-ignore -q` passes on it' <<<"$review"
 
 exit "$fail"
