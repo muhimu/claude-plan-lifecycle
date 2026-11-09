@@ -603,7 +603,7 @@ HTML
     // A numbered list whose items open in bold is a list of cards.
     all(root, 'ol').forEach(function (ol) {
       var items = Array.prototype.slice.call(ol.children);
-      if (items.length && items.every(function (li) { var n = first(li); return n && n.nodeName === 'STRONG'; })) {
+      if (items.length && items.every(function (li) { var n = first(li); return li.matches('.must, .should') || (n && n.nodeName === 'STRONG'); })) {
         ol.classList.add('cards');
       }
     });

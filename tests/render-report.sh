@@ -242,6 +242,12 @@ if [ -x "$chrome" ]; then
   check "(q) a bare Must-fix leaves no empty strong" not grep -qF '<strong></strong>' "$tmp/dom"
   check "(q) a Must-fix with a bold lead keeps it" grep -qF '<strong>x.</strong>' "$tmp/dom"
 
+  printf '# #14 x\n\n## Findings\n\n1. **Must-fix:** a\n2. **Should-fix:** b\n' > "$tmp/review-guide/14.md"
+  "$root/bin/render-report" "$tmp/review-guide/14.md" >/dev/null
+  "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/14.html" > "$tmp/dom" 2>/dev/null
+  check "(q) bare Must-fix and Should-fix items stay cards" grep -qF '<ol class="cards">' "$tmp/dom"
+  check "(q) Should-fix gets the amber pill" grep -qF 'pill amber">Should-fix</span>' "$tmp/dom"
+
   printf '# #13 x\n\n## Notes\n\na\n\n## Notes\n\nb\n\n## 🔒\n\nc\n' > "$tmp/review-guide/13.md"
   "$root/bin/render-report" "$tmp/review-guide/13.md" >/dev/null
   "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/13.html" > "$tmp/dom" 2>/dev/null
