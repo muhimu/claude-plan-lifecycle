@@ -9,9 +9,9 @@ Point the reviewer at the decisions in a colleague's PR that only a human can
 make — the PR's own rulings, what becomes permanent on merge, which deferred
 work may wait, and the few places where the change departs from the system's
 shape — and tell them what they can skip. Correctness is the review stack's
-job (`/code-review`, `/plan-lifecycle:review-stack`); this command does not hunt
-bugs, and the risky-code list it ends with is a pointer for those tools.
-With `--review`, it runs those tools itself and puts their verified findings
+job (`/plan-lifecycle:review-stack`, which runs `/code-review`); this command
+does not hunt bugs, and the risky-code list it ends with is a pointer for it.
+With `--review`, it runs `/plan-lifecycle:review-stack` itself and puts its verified findings
 on the page instead. It writes one page per PR to `local/review-guide/<N>.md`, and
 for a stack one more, `local/review-guide/stack-<S>.md`, each rendered to an
 `.html` page beside it.
@@ -221,7 +221,7 @@ ROOT=<ROOT>  B=<B>  R=<R>  H=<H>  RUN=<RUN>  DEFAULT=<DEFAULT>  MODE=<MODE>
 Only with `--review`; run it while the agents work. The review tools read
 the code around each hunk from the session's checkout, and
 `/plan-lifecycle:review-stack` stops unless that checkout is at the top of
-the stack, so they run at the tip: the last target's current head, in
+the stack, so they run at the tip: the **top**'s current head, in
 your checkout when it is already there, else in a worktree `WT`, the
 first that applies:
 
@@ -233,7 +233,12 @@ first that applies:
 `<MAIN>` is the main checkout, the parent of
 `git rev-parse --path-format=absolute --git-common-dir`.
 
-First read each target's current head, `n` being its PR number:
+The **top** is the last target, except for a PR pinned by `<head-sha>`
+that is a slice of a stack: then the top is the last open PR in `SLICES`.
+The review covers the whole stack, and the page keeps only the pinned PR's
+findings.
+
+First read each target's current head, and the top's, `n` being its PR number:
 
 ```bash
 gh pr view <n> -R <OWNER/REPO> --json headRefOid -q .headRefOid
@@ -247,7 +252,7 @@ moved top does not stop the others: the tools run at its current head, and
 only the moved targets' findings are left out.
 
 A checkout already at the tip needs no worktree: when `git rev-parse HEAD`
-is the last target's current head and `git status --porcelain` lists only `??`
+is the top's current head and `git status --porcelain` lists only `??`
 lines, run the tools below right here. Otherwise make one:
 
 ```bash
@@ -255,20 +260,19 @@ git worktree unlock <WT> 2>/dev/null             # left over from an earlier run
 git worktree remove --force <WT> 2>/dev/null
 rm -rf <WT>
 git worktree prune
-git worktree add --detach <WT> <the last target's current head>
+git worktree add --detach <WT> <the top's current head>
 ```
 
 and enter it with `EnterWorktree` (`path: <WT>`). `EnterWorktree` refuses
 (the session started in another repository) → `git worktree remove --force <WT>`
 and write the page as without `--review`. Then:
 
-`Skill` `plan-lifecycle:review-stack <top PR> <effort>`, the top PR being
-the last target's number: for one PR, that PR, which it reviews as a
-one-slice stack (`S` may be `of-<N>`, which it does not take). The result
+`Skill` `plan-lifecycle:review-stack <top PR> <effort>`, passing the top's
+PR number, never `S` (it may be `of-<N>`, which `/review-stack` does not
+take). A PR outside a stack is reviewed as a one-slice stack. The result
 comes either at once or, when the call says the review runs in the
-background, by task notification: wait for it. One slice
-pinned by `<head-sha>` gets no review: `/review-stack` reviews the whole
-stack from its top. Write its page as without `--review`; Finish says why.
+background, by task notification: wait for it. Keep the blocks of the
+targets only: for a pinned slice, its own block, never another slice's.
 
 Never pass `--comment` or `--fix`: the guide posts nothing and edits
 nothing. Keep each finding's place, verdict and one-line summary, each

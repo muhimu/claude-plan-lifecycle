@@ -25,11 +25,12 @@ for step in 'git worktree add --detach' 'EnterWorktree' 'ExitWorktree' 'git work
 done
 check "(b) a checkout already at the tip needs no worktree" grep -qF 'already at the tip' <<<"$review"
 check "(b) one PR goes through review-stack too" not grep -qE '`(code-review|plan-lifecycle:verify-findings)`' <<<"$review"
-check "(b) a pinned slice gets no review" grep -qF 'pinned by `<head-sha>` gets no review' <<<"$review"
+check "(b) a pinned slice is reviewed from the stack's top" grep -qF 'the top is the last open PR in `SLICES`' <<<"$review"
+check "(b) a pinned slice keeps only its own findings" grep -qF 'for a pinned slice, its own block, never another slice' <<<"$review"
 check "(b) no review call passes --comment" not grep -qE '(code-review|review-stack)[^`]*--comment' "$cmd"
 
 # (b) the stack call names a PR (a fallback stack's S is "of-<N>", which
-# /review-stack does not take); one pinned slice is one target, not a stack
+# /review-stack does not take); a pinned slice is one target, reviewed from the stack's top
 check "(b) review-stack is never given S" not grep -qF 'review-stack <S>' "$cmd"
 check "(b) Review branches on targets, not STACKED" not grep -qF 'STACKED' <<<"$review"
 check "(b) Review reads each head just before the review" grep -qF 'gh pr view <n> -R <OWNER/REPO> --json headRefOid -q .headRefOid' <<<"$review"
@@ -60,7 +61,7 @@ done
 # (m) review round 2: the tip is the top's current head; the default effort
 # sticks too; a background review is waited for; WT lives under the main
 # checkout and survives a lock; the stack summary and the help agree
-check "(m) the worktree is at the top's current head" grep -qF "the last target's current head" <<<"$review"
+check "(m) the worktree is at the top's current head" grep -qF "git worktree add --detach <WT> <the top's current head>" <<<"$review"
 check "(m) Finish notes the sticky effort whenever the review ran" grep -qF 'review ran, add (the default `high` sticks too)' <<<"$(section Finish)"
 check "(m) Finish says when every PR moved" grep -qF -- '--review skipped: every PR moved since Fetch' <<<"$(section Finish)"
 check "(m) a background review is waited for" grep -qF 'by task notification' <<<"$review"
