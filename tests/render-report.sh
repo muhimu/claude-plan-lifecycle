@@ -361,6 +361,7 @@ if [ -x "$chrome" ]; then
     check "(s) heading ids are prefixed per tab" grep -qF 'id="42-findings"' "$tmp/dom"
     check "(s) ids stay unique across tabs" grep -qF 'id="41-findings"' "$tmp/dom"
     check "(s) slice tab keeps its Must-fix pill" grep -qF 'pill red">Must-fix</span>' "$tmp/dom"
+    check "(s) a Stack-wide slice list is a chip" grep -qF '<span class="chip">#41, #42</span>' "$tmp/dom"
     check "(s) a row links to its tab" grep -qF 'href="#42">#42</a>' "$tmp/dom"
     check "(t) a linked PR number links to GitHub" grep -qF '<a class="num" href="https://github.com/o/r/pull/41">#41</a>' "$tmp/dom"
     check "(t) a linked PR header still gets its title" grep -qF '</a> a</h1>' "$tmp/dom"
@@ -372,6 +373,8 @@ if [ -x "$chrome" ]; then
   "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/16.html" > "$tmp/dom" 2>/dev/null
   if grep -qF '<h1' "$tmp/dom"; then
     check "(t) review guide #N links to GitHub" grep -qF '<a class="num" href="https://github.com/o/r/pull/16">#16</a> x</h1>' "$tmp/dom"
+  else
+    echo "skip: (t) needs marked.js from the network"
   fi
 else
   echo "skip: (s) needs Chrome at \$CHROME"

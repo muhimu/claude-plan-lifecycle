@@ -579,9 +579,10 @@ HTML
     return top;
   }
 
-  // ⚑ and 🔒 become tags, a slice reference, "(#12)" or "(#12, used by
-  // #13)", a chip, and a decision's "Agree, or push back on:" starts a line.
-  var mark = /(⚑|🔒|\(#\d+(?:, used by #\d+)?\)|Agree, or push back on:)/;
+  // ⚑ and 🔒 become tags, a slice reference, "(#12)", "(#12, used by
+  // #13)" or "(#12, #13)", a chip, and a decision's "Agree, or push back
+  // on:" starts a line.
+  var mark = /(⚑|🔒|\(#\d+(?:, used by #\d+|(?:, #\d+)+)?\)|Agree, or push back on:)/;
   function marks(root) {
     var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     var texts = [];
@@ -958,11 +959,12 @@ HTML
         t.panel.hidden = t.panel !== shown;
         t.link.setAttribute('aria-selected', String(t.panel === shown));
       });
-      if (target === shown) window.scrollTo(0, 0);
-      else if (target && shown.contains(target)) target.scrollIntoView();
     }
+    // A hash change scrolls before the tab shows, so scroll again here.
     var box = target && target.closest('details');
-    if (box) { box.open = true; target.scrollIntoView(); }
+    if (box) box.open = true;
+    if (!single && target === shown) window.scrollTo(0, 0);
+    else if (box || (!single && target)) target.scrollIntoView();
   }
   window.addEventListener('hashchange', openHash);
   openHash();

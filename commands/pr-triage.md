@@ -154,7 +154,8 @@ behaviour,
 
 ## Stack page
 
-Only when `STACKED`, for one target too. Write `local/triage/stack-<S>.md`
+Only when `STACKED` (for one target too) and at least one open slice has a
+report; that sets `STACK_PAGE`. Write `local/triage/stack-<S>.md`
 (no native number: `stack-<bottom PR>.md`), rebuilt from scratch on every
 run from the current `local/triage/<N>.md` of every open slice in `SLICES`,
 including reports of earlier runs. It is the first tab of the stack's page;
@@ -167,9 +168,9 @@ Stack #<S>, <n> open PRs, #<bottom> → #<top>, top head <TOP, 8 chars>, base <D
 
 ## Slices
 
-| PR | Triage | Ledger | Findings |
-|---|---|---|---|
-| [#<N>](#<N>) <a few words of its title> | <its verdict line after "Triage: "> | <its Totals, short: "15 reproduced, 1 failed"> | <count> |
+| PR | Triage | Ledger | Findings | Triaged |
+|---|---|---|---|---|
+| [#<N>](#<N>) <a few words of its title> | <its verdict line after "Triage: "> | <its Totals, short: "15 reproduced, 1 failed"> | <count> | <its Triaged date> at <its head, 8 chars> |
 
 ## Across slices
 
@@ -187,7 +188,9 @@ Stack #<S>, <n> open PRs, #<bottom> → #<top>, top head <TOP, 8 chars>, base <D
 - Outcome order: `needs-changes` > `needs-human` > `ready`; impact and risk:
   high > medium > low; a slice with no report counts for none of them.
 - **Slices:** one row per open slice, bottom first. A slice with no report
-  gets `not triaged` in the Triage cell and empty cells after it.
+  gets `not triaged` in the Triage cell and empty cells after it. A report
+  this run did not write adds `, earlier run` to its Triaged cell, and
+  `, head moved` when its head is not the slice's `sha` in `SLICES`.
 - **Across slices:** read each report's Findings, Checked / Not checked and
   For a human. One issue reported in parts on two slices (a lower slice sets
   something an upper slice relies on, and neither tests it) is one item here,
@@ -270,7 +273,7 @@ A new `/pr-triage` run rewrites the report, and the section with it.
 
 Run `"${CLAUDE_PLUGIN_ROOT}/bin/render-report"` on every slice report that
 exists, after Handed-up deferrals (that step reads the `.md`) and, with
-`QUIZ`, after Owner check. When `STACKED`, then build the stack's page from
+`QUIZ`, after Owner check. With `STACK_PAGE`, then build the stack's page from
 the Stack page and every open slice's report that exists, bottom first:
 
 ```bash
@@ -280,10 +283,10 @@ the Stack page and every open slice's report that exists, bottom first:
 Open one page with
 `open` on macOS (`uname` is `Darwin`), else `xdg-open`; skip this when that
 command is not on PATH (on Linux, `open` can be the console tool `openvt`).
-When `STACKED`, open `local/triage/stack-<S>.html`; else that PR's page. The
-Report column shows each slice's `.html` path; everything else keeps reading
-the `.md`. When `STACKED`, add `Stack page: local/triage/stack-<S>.html`
-after the table.
+With `STACK_PAGE`, open `local/triage/stack-<S>.html`; else that PR's page,
+when it has a report. The Report column shows each slice's `.html` path;
+everything else keeps reading the `.md`. With `STACK_PAGE`, add
+`Stack page: local/triage/stack-<S>.html` after the table.
 
 ```
 Stack #<S> — triaged <K> open PRs
