@@ -1,6 +1,6 @@
 ---
 description: Read a colleague's PR or PR stack without running it and write a local guide — where the code differs from the PR body, at most 5 spots that need design judgement, and what is safe to skim.
-argument-hint: [PR or stack number — optional, defaults to the current branch's PR] [head sha] [--expert | --new] [--review [effort]]
+argument-hint: "[PR or stack number — optional, defaults to the current branch's PR] [head sha] [--expert | --new] [--review [effort]]"
 ---
 
 # Review guide

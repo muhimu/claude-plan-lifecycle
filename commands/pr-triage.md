@@ -1,6 +1,6 @@
 ---
 description: Re-prove a PR's or a stack's claims by running them, and write a one-page local report per PR. Never posts to GitHub.
-argument-hint: [--quiz] [stack or PR number — optional, defaults to the current branch's PR or this session's PRs]
+argument-hint: "[--quiz] [stack or PR number — optional, defaults to the current branch's PR or this session's PRs]"
 ---
 
 # PR Triage

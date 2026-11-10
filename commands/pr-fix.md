@@ -1,6 +1,6 @@
 ---
 description: Address PR review feedback — fetch comments, plan fixes, implement, push, reply in bot and your own review threads, remove the fixed entries from the PR body's Follow-ups, then summarize with replies to other reviewers drafted for your approval. Accepts a PR number or a GitHub stack number; on a stacked PR it fixes each comment in the slice that owns the code and restacks the branches above.
-argument-hint: [PR or stack number — optional, auto-detects from the current branch or this session's PRs] [free-text guidance for the fixes]
+argument-hint: "[PR or stack number — optional, auto-detects from the current branch or this session's PRs] [free-text guidance for the fixes]"
 ---
 
 # PR Fix
