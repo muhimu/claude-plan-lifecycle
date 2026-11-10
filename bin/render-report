@@ -536,14 +536,20 @@ HTML
       }
     });
 
-    // Ship or block: an item that opens with a bold call gets a pill instead.
-    // A loose item's <p> is unwrapped, so it still lays out as a row.
-    var calls = { 'Block': 'red', 'Ship unless': 'amber', 'After merge': 'amber', 'Ship': 'green' };
+    // Ship or block, and a triage's Owner check: an item that opens with a
+    // bold call gets a pill instead. A loose item's <p> is unwrapped, so it
+    // still lays out as a row.
+    var sections = {
+      'Ship or block': { 'Block': 'red', 'Ship unless': 'amber', 'After merge': 'amber', 'Ship': 'green' },
+      'Owner check': { 'Understood': 'green', 'Gap': 'amber' }
+    };
     all(root, 'h2').forEach(function (h2) {
-      if (h2.textContent.split(' — ')[0].trim() !== 'Ship or block') return;
+      var calls = sections[h2.textContent.split(' — ')[0].trim()];
+      if (!calls) return;
+      var re = new RegExp('^(' + Object.keys(calls).join('|') + '):\\s*$');
       for (var n = h2.nextElementSibling; n && n.tagName !== 'H2'; n = n.nextElementSibling) {
-        if (n.tagName === 'UL') Array.prototype.forEach.call(n.children, function (li) {
-          var s = first(li), m = s && s.nodeName === 'STRONG' && /^(Block|Ship unless|After merge|Ship):\s*$/.exec(s.textContent);
+        if (n.tagName === 'UL' || n.tagName === 'OL') Array.prototype.forEach.call(n.children, function (li) {
+          var s = first(li), m = s && s.nodeName === 'STRONG' && re.exec(s.textContent);
           if (!m) return;
           var p = s.parentNode;
           swap(s, el('span', 'pill ' + calls[m[1]], m[1]));

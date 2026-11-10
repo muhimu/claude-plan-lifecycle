@@ -255,6 +255,14 @@ if [ -x "$chrome" ]; then
     check "(q) a nested bare Must-fix is not a label/value row" not grep -qF '<dt>Trigger</dt>' "$tmp/main"
     check "(q) Should-fix gets the amber pill" grep -qF 'pill amber">Should-fix</span>' "$tmp/main"
 
+    mkdir -p "$tmp/q/triage"
+    printf '# x\n\n## Owner check\n\n1. **Understood:** q1\n   - Answer: a\n2. **Gap:** q2\n   - Answer: handed back\n\n## Notes\n\n- **Gap:** not here\n' > "$tmp/q/triage/15.md"
+    "$root/bin/render-report" "$tmp/q/triage/15.md" >/dev/null
+    "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/q/triage/15.html" > "$tmp/dom" 2>/dev/null
+    sed -n '/<main id="page"/,$p' "$tmp/dom" > "$tmp/main"
+    check "(q) Owner check Understood gets the green pill" grep -qF 'pill green">Understood</span>' "$tmp/main"
+    check "(q) Owner check Gap gets the amber pill" [ "$(grep -oF 'pill amber">Gap</span>' "$tmp/main" | wc -l | tr -d ' ')" = 1 ]
+
     printf '# #13 x\n\n## Notes\n\na\n\n## Notes\n\nb\n\n## 🔒\n\nc\n\n## Page\n\nd\n\n## Md\n\ne\n' > "$tmp/review-guide/13.md"
     "$root/bin/render-report" "$tmp/review-guide/13.md" >/dev/null
     "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/13.html" > "$tmp/dom" 2>/dev/null
