@@ -49,6 +49,19 @@ Triage: needs-changes · impact medium · risk high · decisions none
 - **How to read it:** a decision is a choice that is expensive to undo, not every change in that area.
 - **Why:** the tool proves claims; it does not make these calls for you.
 
+## Owner check
+- **You see:** only after a run with `--quiz`: the questions you were asked about this PR, each marked Understood or Gap, with your answer in a line.
+- **How to read it:** the questions come from the decisions, the findings and the weakest claims above. A gap names the `file:line` to read; an answer handed back ("you decide") counts as a gap. It changes nothing else on the page.
+- **Why:** you stand behind a PR you could not test; this shows where your own picture of it is thin.
+
+**Example**
+
+1. **Understood:** What happens when the retry budget runs out?
+   - Answer: the job fails and the error is returned to the caller
+2. **Gap:** Why is the lock released before the event is sent?
+   - Answer: handed back
+   - Read: `queue/worker.go:88` — the send can block on a slow listener
+
 ## Checked / Not checked
 - **You see:** Checked lists what was verified and produced no finding, such as earlier review threads, problems that are also on the base, and findings fixed higher in a stack. Not checked lists what could not be proven here, each with the next step to prove it.
 - **How to read it:** Not checked is as important as the findings: it is what nobody has proven yet.

@@ -126,13 +126,13 @@ check "(k) linked script embeds the help" grep -qF 'id="help"' "$tmp/review-guid
 # up to the next heading of START's level, without a " — hint".
 headings() {
   awk -v start="$2" '
-    index($0, start) == 1 { on = 1; lvl = index($0, " "); next }
+    !on && index($0, start) == 1 { on = 1; lvl = index($0, " "); next }
     on && /^#+ / && index($0, " ") <= lvl && !fence { exit }
     on && /^```/ { fence = !fence; next }
     on && fence && /^## / { sub(/^## /, ""); sub(/ — .*/, ""); print }
   ' "$1" | sort -u
 }
-for pair in "commands/review-guide.md:## Write:review-guide" "references/pr-triage-brief.md:### 6. Write the report:pr-triage"; do
+for pair in "commands/review-guide.md:## Write:review-guide" "references/pr-triage-brief.md:### 6. Write the report:pr-triage" "commands/pr-triage.md:## Owner check:pr-triage"; do
   file="${pair%%:*}"; rest="${pair#*:}"; start="${rest%:*}"; kind="${rest##*:}"
   want="$(headings "$root/$file" "$start")"
   check "(l) $file has template headings" [ -n "$want" ]
