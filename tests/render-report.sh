@@ -126,13 +126,13 @@ check "(k) linked script embeds the help" grep -qF 'id="help"' "$tmp/review-guid
 # up to the next heading of START's level, without a " — hint".
 headings() {
   awk -v start="$2" '
-    index($0, start) == 1 { on = 1; lvl = index($0, " "); next }
+    !on && index($0, start) == 1 { on = 1; lvl = index($0, " "); next }
     on && /^#+ / && index($0, " ") <= lvl && !fence { exit }
     on && /^```/ { fence = !fence; next }
     on && fence && /^## / { sub(/^## /, ""); sub(/ — .*/, ""); print }
   ' "$1" | sort -u
 }
-for pair in "commands/review-guide.md:## Write:review-guide" "references/pr-triage-brief.md:### 6. Write the report:pr-triage"; do
+for pair in "commands/review-guide.md:## Write:review-guide" "references/pr-triage-brief.md:### 6. Write the report:pr-triage" "commands/pr-triage.md:## Owner check:pr-triage"; do
   file="${pair%%:*}"; rest="${pair#*:}"; start="${rest%:*}"; kind="${rest##*:}"
   want="$(headings "$root/$file" "$start")"
   check "(l) $file has template headings" [ -n "$want" ]
@@ -254,6 +254,15 @@ if [ -x "$chrome" ]; then
     check "(q) bare Must-fix and Should-fix items stay cards" [ -n "$(grep -A1 -xF '<ol class="cards">' "$tmp/main" | grep -F 'class="must"')" ]
     check "(q) a nested bare Must-fix is not a label/value row" not grep -qF '<dt>Trigger</dt>' "$tmp/main"
     check "(q) Should-fix gets the amber pill" grep -qF 'pill amber">Should-fix</span>' "$tmp/main"
+
+    mkdir -p "$tmp/q/triage"
+    printf '# x\n\n## Owner check\n\n1. **Understood:** q1\n   - Answer: a\n2. **Gap:** q2\n   - Answer: handed back\n\n## Notes\n\n- **Gap:** not here\n' > "$tmp/q/triage/15.md"
+    "$root/bin/render-report" "$tmp/q/triage/15.md" >/dev/null
+    "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/q/triage/15.html" > "$tmp/dom" 2>/dev/null
+    sed -n '/<main id="page"/,$p' "$tmp/dom" > "$tmp/main"
+    check "(q) Owner check Understood gets the green pill" grep -qF 'pill green">Understood</span>' "$tmp/main"
+    check "(q) Owner check Gap gets the amber pill" [ "$(grep -oF 'pill amber">Gap</span>' "$tmp/main" | wc -l | tr -d ' ')" = 1 ]
+    check "(q) Owner check items are cards" grep -qF '<ol class="cards">' "$tmp/main"
 
     printf '# #13 x\n\n## Notes\n\na\n\n## Notes\n\nb\n\n## 🔒\n\nc\n\n## Page\n\nd\n\n## Md\n\ne\n' > "$tmp/review-guide/13.md"
     "$root/bin/render-report" "$tmp/review-guide/13.md" >/dev/null
