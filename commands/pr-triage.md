@@ -159,10 +159,69 @@ git worktree prune
 rm -rf "$RUN"
 ```
 
+## Owner check
+
+Only with `QUIZ`, after Clean up and before the Summary, in this session: it
+is a conversation. Can the person who will stand behind the PR explain its
+crucial parts? Not a gate: nothing waits on it, and the outcome line never
+changes. Until it ends, print no verdict, table or report text and open no
+page: the report holds the answers.
+
+`Q` = the targets with a report, bottom first; `K` here is their count. The
+worktrees are gone: read code with
+`git -C <ROOT> show <headRefOid>:<path>`.
+
+**Pick at most 3 questions per PR**, in this order, from its report:
+
+1. each decision under `## For a human`;
+2. each Must-fix or Should-fix finding;
+3. a ledger row that `failed`, or is `reproduced; wiring untested`;
+4. fewer than 2 so far: one on the core behaviour change in the Summary.
+
+Read the code behind each first. Ask about behaviour, edge cases, failure
+modes or why ("what happens when the queue is empty?", "why is the lock
+released before the signal?"), never something found by matching names in
+the diff.
+
+**Ask.** One message per PR: `Owner check — PR #<N> (<k> of <K>)`, the files
+and functions to look at (`file:line` at the head), then the numbered
+questions. Explain nothing before the questions: that gives the answers
+away. Answers are free text, in one reply. A reply of `stop` ends the check:
+that PR and the ones after it get no section.
+
+**Judge** each answer against the code, on substance, not wording:
+
+- **Understood:** the answer is right on what matters.
+- **Gap:** it is wrong, misses the point, or hands the question back ("you
+  decide", "not sure", empty). Record a hand-back as `handed back`; carry
+  on.
+
+Reply with one line per question. For a gap, explain the point in a sentence
+or two and give the `file:line` to read. Do not ask again.
+
+**Write** the section into `local/triage/<N>.md`, right before
+`## Checked / Not checked` (at the end when there is none). Change no other
+line. The Summary renders it with the rest.
+
+```markdown
+## Owner check
+
+Asked <date> at head <headRefOid, 8 chars>: <u> understood, <g> gaps.
+
+1. **Understood:** <question>
+   - Answer: <one-line paraphrase>
+2. **Gap:** <question>
+   - Answer: <one-line paraphrase, or "handed back">
+   - Read: `<file:line>` — <what it shows>
+```
+
+A new `/pr-triage` run rewrites the report, and the section with it.
+
 ## Summary
 
 Run `"${CLAUDE_PLUGIN_ROOT}/bin/render-report"` on every report that exists,
-after Handed-up deferrals (that step reads the `.md`). Open one page with
+after Handed-up deferrals (that step reads the `.md`) and, with `QUIZ`,
+after Owner check. Open one page with
 `open` on macOS (`uname` is `Darwin`), else `xdg-open`; skip this when that
 command is not on PATH (on Linux, `open` can be the console tool `openvt`).
 For one PR, open that PR's
@@ -189,58 +248,3 @@ its header as the first line and drop the last one. If
 `git check-ignore -q local/triage/<N>.md` fails, add: "local/triage/ is not
 gitignored; add `local` (no trailing slash, so a `local` symlink matches too)
 to .gitignore to keep reports out of commits."
-
-## Owner check
-
-Only with `QUIZ`, after the Summary, in this session: it is a conversation.
-Can the person who will stand behind the PR explain its crucial parts? Not a
-gate: nothing waits on it, and the outcome line never changes.
-
-Take the targets with a report, bottom first. The worktrees are gone: read
-code with `git -C <ROOT> show <headRefOid>:<path>`.
-
-**Pick at most 3 questions per PR**, in this order, from its report:
-
-1. each decision under `## For a human`;
-2. each Must-fix or Should-fix finding;
-3. a ledger row that `failed`, or is `reproduced; wiring untested`;
-4. fewer than 2 so far: one on the core behaviour change in the Summary.
-
-Read the code behind each first. Ask about behaviour, edge cases, failure
-modes or why ("what happens when the queue is empty?", "why is the lock
-released before the signal?"), never something found by matching names in
-the diff.
-
-**Ask.** One message per PR: `Owner check — PR #<N> (<k> of <K>)`, the files
-and functions to look at (`file:line` at the head), then the numbered
-questions. Explain nothing before the questions: that gives the answers
-away. Answers are free text, in one reply; `stop` ends the check, and the PRs
-not reached get no section.
-
-**Judge** each answer against the code, on substance, not wording:
-
-- **Understood:** the answer is right on what matters.
-- **Gap:** it is wrong, misses the point, or hands the question back ("you
-  decide", "not sure", empty). Record a hand-back as `handed back`; carry
-  on.
-
-Reply with one line per question. For a gap, explain the point in a sentence
-or two and give the `file:line` to read. Do not ask again.
-
-**Write** the section into `local/triage/<N>.md`, right before
-`## Checked / Not checked` (at the end when there is none). Change no other
-line. Then run `render-report` on that file and say to reload the page.
-
-```markdown
-## Owner check
-
-Asked <date> at head <headRefOid, 8 chars>: <u> understood, <g> gaps.
-
-1. **Understood:** <question>
-   - Answer: <one-line paraphrase>
-2. **Gap:** <question>
-   - Answer: <one-line paraphrase, or "handed back">
-   - Read: `<file:line>` — <what it shows>
-```
-
-A new `/pr-triage` run rewrites the report, and the section with it.

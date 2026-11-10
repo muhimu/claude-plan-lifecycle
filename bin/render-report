@@ -546,12 +546,12 @@ HTML
     all(root, 'h2').forEach(function (h2) {
       var calls = sections[h2.textContent.split(' — ')[0].trim()];
       if (!calls) return;
-      var re = new RegExp('^(' + Object.keys(calls).join('|') + '):\\s*$');
       for (var n = h2.nextElementSibling; n && n.tagName !== 'H2'; n = n.nextElementSibling) {
         if (n.tagName === 'UL' || n.tagName === 'OL') Array.prototype.forEach.call(n.children, function (li) {
-          var s = first(li), m = s && s.nodeName === 'STRONG' && re.exec(s.textContent);
-          if (!m) return;
+          var s = first(li), m = s && s.nodeName === 'STRONG' && /^(.+?):\s*$/.exec(s.textContent);
+          if (!m || !Object.prototype.hasOwnProperty.call(calls, m[1])) return;
           var p = s.parentNode;
+          li.classList.add('call');
           swap(s, el('span', 'pill ' + calls[m[1]], m[1]));
           if (p.nodeName === 'P' && li.children.length === 1) {
             while (p.firstChild) li.insertBefore(p.firstChild, p);
@@ -607,10 +607,11 @@ HTML
       card.appendChild(dl);
     });
 
-    // A numbered list whose items open in bold is a list of cards.
+    // A numbered list whose items open in bold, or with a call's pill, is a
+    // list of cards.
     all(root, 'ol').forEach(function (ol) {
       var items = Array.prototype.slice.call(ol.children);
-      if (items.length && items.every(function (li) { return li.matches('.must, .should') || (first(li) || {}).nodeName === 'STRONG'; })) {
+      if (items.length && items.every(function (li) { return li.matches('.must, .should, .call') || (first(li) || {}).nodeName === 'STRONG'; })) {
         ol.classList.add('cards');
       }
     });

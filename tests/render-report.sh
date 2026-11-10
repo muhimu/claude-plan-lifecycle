@@ -262,6 +262,7 @@ if [ -x "$chrome" ]; then
     sed -n '/<main id="page"/,$p' "$tmp/dom" > "$tmp/main"
     check "(q) Owner check Understood gets the green pill" grep -qF 'pill green">Understood</span>' "$tmp/main"
     check "(q) Owner check Gap gets the amber pill" [ "$(grep -oF 'pill amber">Gap</span>' "$tmp/main" | wc -l | tr -d ' ')" = 1 ]
+    check "(q) Owner check items are cards" grep -qF '<ol class="cards">' "$tmp/main"
 
     printf '# #13 x\n\n## Notes\n\na\n\n## Notes\n\nb\n\n## 🔒\n\nc\n\n## Page\n\nd\n\n## Md\n\ne\n' > "$tmp/review-guide/13.md"
     "$root/bin/render-report" "$tmp/review-guide/13.md" >/dev/null
