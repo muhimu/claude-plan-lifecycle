@@ -16,8 +16,8 @@
 #
 # With --stack, it writes one page for a stack instead: the first file is the
 # Stack tab, each other file a slice tab in the order given, and the page is
-# the first file's .html. A tab's id is its file name, so #62 opens 62.md's
-# tab and #62-findings its Findings. The type and Help come from the first
+# the first file's .html. A tab's id is its file name, so #12 opens 12.md's
+# tab and #12-findings its Findings. The type and Help come from the first
 # file's folder. Nothing is written when any input is bad.
 #
 # Usage:
