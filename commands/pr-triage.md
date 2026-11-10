@@ -10,7 +10,10 @@ test themselves. For each PR this command writes one page to
 `local/triage/<N>.md`, and renders it to `local/triage/<N>.html` beside it: what the change does, how costly it is if wrong and how
 likely it is to break, every claim with how it was re-proved and the result,
 at most five proven findings, the decisions a human has to make, and what was
-and was not checked.
+and was not checked. For a stack it also writes `local/triage/stack-<S>.md`
+and opens one page for the stack: a Stack tab (each slice's verdict, issues
+that span slices, facts true of the whole stack said once), then a tab per
+slice's report.
 
 - **Local only.** It never writes to GitHub — no comments, reviews, labels,
   edits or pushes — and never posts a report or calls anything verified
@@ -149,6 +152,52 @@ that name another PR of the stack. For each, read that PR's report:
 behaviour,
 **not covered** if not, or "#M not triaged in this run".
 
+## Stack page
+
+Only when `STACKED`, for one target too. Write `local/triage/stack-<S>.md`
+(no native number: `stack-<bottom PR>.md`), rebuilt from scratch on every
+run from the current `local/triage/<N>.md` of every open slice in `SLICES`,
+including reports of earlier runs. It is the first tab of the stack's page;
+each slice's report is a tab after it, unchanged. Change no slice report.
+
+```markdown
+Triage: <worst outcome> · impact <highest> · risk <highest> · findings <total>
+
+Stack #<S>, <n> open PRs, #<bottom> → #<top>, top head <TOP, 8 chars>, base <DEFAULT>. Triaged <date>.
+
+## Slices
+
+| PR | Triage | Ledger | Findings |
+|---|---|---|---|
+| [#<N>](#<N>) <a few words of its title> | <its verdict line after "Triage: "> | <its Totals, short: "15 reproduced, 1 failed"> | <count> |
+
+## Across slices
+
+1. **<one issue that spans slices>** (#<N>, used by #<M>) — <evidence from each slice's report>. Fix in #<K>: <what>.
+
+## Stack-wide
+
+1. <a fact that holds on two or more slices: a CI gap, a flake, an environment Not checked item> (#<N>, #<M>) — <next step, when it is Not checked>
+
+## Handed up
+
+- #<a> → #<b>: <the item> — <covered | not covered | #b not triaged in this run>
+```
+
+- Outcome order: `needs-changes` > `needs-human` > `ready`; impact and risk:
+  high > medium > low; a slice with no report counts for none of them.
+- **Slices:** one row per open slice, bottom first. A slice with no report
+  gets `not triaged` in the Triage cell and empty cells after it.
+- **Across slices:** read each report's Findings, Checked / Not checked and
+  For a human. One issue reported in parts on two slices (a lower slice sets
+  something an upper slice relies on, and neither tests it) is one item here,
+  naming both. A Finding stays on its slice's tab; an item here may point at it.
+- **Stack-wide:** the same fact in two or more reports, written once with
+  the slices it came from.
+- **Handed up:** the Handed-up deferrals results of this run.
+- Leave out a section with nothing in it. Never merge the slices' For a human
+  or Owner check sections here: they stay on the slice tabs.
+
 ## Clean up
 
 Always, including after a failed agent:
@@ -219,15 +268,22 @@ A new `/pr-triage` run rewrites the report, and the section with it.
 
 ## Summary
 
-Run `"${CLAUDE_PLUGIN_ROOT}/bin/render-report"` on every report that exists,
-after Handed-up deferrals (that step reads the `.md`) and, with `QUIZ`,
-after Owner check. Open one page with
+Run `"${CLAUDE_PLUGIN_ROOT}/bin/render-report"` on every slice report that
+exists, after Handed-up deferrals (that step reads the `.md`) and, with
+`QUIZ`, after Owner check. When `STACKED`, then build the stack's page from
+the Stack page and every open slice's report that exists, bottom first:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/bin/render-report" --stack local/triage/stack-<S>.md local/triage/<a>.md local/triage/<b>.md …
+```
+
+Open one page with
 `open` on macOS (`uname` is `Darwin`), else `xdg-open`; skip this when that
 command is not on PATH (on Linux, `open` can be the console tool `openvt`).
-For one PR, open that PR's
-page. For a stack, open the first report with a failed claim or a finding,
-else the bottom slice's. The Report column shows the `.html` path; everything
-else keeps reading the `.md`.
+When `STACKED`, open `local/triage/stack-<S>.html`; else that PR's page. The
+Report column shows each slice's `.html` path; everything else keeps reading
+the `.md`. When `STACKED`, add `Stack page: local/triage/stack-<S>.html`
+after the table.
 
 ```
 Stack #<S> — triaged <K> open PRs
@@ -236,6 +292,8 @@ Stack #<S> — triaged <K> open PRs
 |----|--------|--------|----------|--------|
 | #<a> | needs-changes · impact medium · risk medium · decisions none | 11 reproduced, 1 failed, 1 not reproducible here | 1 | local/triage/<a>.html |
 | #<b> | failed: <reason> | | | |
+
+Stack page: local/triage/stack-<S>.html
 
 Handed up:
 - #<a> → #<b>: <the item> — not covered

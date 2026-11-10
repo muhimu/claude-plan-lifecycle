@@ -6,8 +6,8 @@ This page proves what a PR claims by running it, so you can trust a PR you canno
 - **Last:** the Claim ledger, when you want the evidence behind a verdict.
 
 ## The header
-- **You see:** tiles for the outcome, impact, risk and decisions, then the PR, its place in a stack, and the head and base commits.
-- **How to read it:** the outcome is `needs-changes` (a finding is open), `needs-human` (nothing for the author, but a decision is yours) or `ready`. Impact is what it costs if the change is wrong after merge; risk is the chance it breaks. Both are low, medium or high, by the repository's triage profile when it has one.
+- **You see:** tiles for the outcome, impact, risk and decisions, then the PR (its number links to it on GitHub), its place in a stack, and the head and base commits.
+- **How to read it:** the outcome is `needs-changes` (a finding is open), `needs-human` (nothing for the author, but a decision is yours) or `ready`. Impact is what it costs if the change is wrong after merge; risk is the chance it breaks. Both are low, medium or high, by the repository's triage profile when it has one. A stack's page opens on a Stack tab: the worst outcome, impact and risk of its slices and their findings count, a row per slice (its number opens that slice's tab), issues that span slices, facts true of the whole stack (a CI gap, a flake) said once, and checks a slice handed up to another. The slice tabs still repeat those facts.
 - **Why:** one line tells you whether to merge, decide or send it back.
 
 **Example**

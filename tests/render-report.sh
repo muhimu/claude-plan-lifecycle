@@ -341,6 +341,11 @@ check "(r) stderr names the missing slice" grep -qF '99.md: no such file' "$tmp/
 check "(r) --stack writes nothing on error" [ ! -e "$sp" ]
 check "(r) usage shows --stack" grep -qF 'render-report --stack <overview.md> <slice.md>...' <("$root/bin/render-report" --help)
 
+check "(r) pr-triage builds the stack page" grep -qF 'render-report" --stack local/triage/stack-<S>.md' "$root/commands/pr-triage.md"
+check "(r) review-guide builds the stack page" grep -qF 'render-report" --stack <ROOT>/local/review-guide/stack-<S>.md' "$root/commands/review-guide.md"
+check "(t) the triage header links the PR" grep -qF 'PR [#<N>](<url>) "<title>"' "$root/references/pr-triage-brief.md"
+check "(t) the review guide header links the PR" grep -qxF '# [#<N>](<url>) <title>' "$root/commands/review-guide.md"
+
 # (s) tabs and PR links in a real browser
 if [ -x "$chrome" ]; then
   "$root/bin/render-report" --stack "$sd/stack-65.md" "$sd/62.md" "$sd/63.md" >/dev/null
