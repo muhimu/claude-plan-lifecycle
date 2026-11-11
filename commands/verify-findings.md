@@ -179,7 +179,9 @@ same way; each says when it launches a target's groups.
 | # | Where | Verdict | Finding |
 |---|-------|---------|---------|
 | 1 | `path/to/file.go:123` | confirmed | <one-line summary> |
-| 2 | `path/to/file.go:140` | plausible, nit | <one-line summary> |
+| 2 | `path/to/file.go:140` | plausible | <one-line summary> |
+
+Nits: <n> not listed — ask for them to see them
 
 Rejected:
 - `path/to/file.go:88` <one-line summary> — <the verifier's reason, e.g. fixed in #M, or the ADR that records it>
@@ -193,13 +195,16 @@ Unverified:
 
 For a local target the heading is `## Changes on <branch>`, with no
 `<base> ← <head>` line. For PR comments, each `Finding` starts with
-`@<author>` and its one-line summary is yours, from the comment's body. Leave
-out `Rejected:`, `Not claims:` and `Unverified:` when empty; unverified
-findings are not table rows. Keep the findings' order and
+`@<author>` and its one-line summary is yours, from the comment's body. The
+table has the confirmed and plausible findings that are not nits; those of
+kind `nit` are one count, and listed the same way when the user asks. Leave
+out the table, `Nits:`, `Rejected:`, `Not claims:` and `Unverified:` when
+empty; unverified findings are not table rows. Keep the findings' order and
 their one-line summaries; the full failure scenarios and evidence stay in the
 verifier's result, so do not repeat them unless the user asks.
 
 End with one line: `<X> of <T> findings hold up, <R> rejected by verification`,
-counting confirmed and plausible findings in `<X>` and leaving NOT_A_CLAIM
+counting confirmed and plausible findings, nits included, in `<X>` (when
+there are nits add `, <N> of them nits`) and leaving NOT_A_CLAIM
 out of `<T>`; for PR comments add `, <Q> not claims`; when any are
 unverified add `, <U> unverified`, counted in `<T>`.
