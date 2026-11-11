@@ -59,9 +59,12 @@ the turn.
 
 1. **Anchor.** Take `--no-trunk` out of `$ARGUMENTS` first; what's left
    (possibly empty) is `ANCHOR`.
-2. **Find the stack** per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`.
-   `STACKED` false → stop: "PR #<N> is not part of a stack." `SLICES` is the
-   stack, bottom first; record `STACK_NUM` for the report.
+2. **Find the stack:** `"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" stack <ANCHOR>` prints JSON
+   (`status` `stop` → stop with its `message`). `stacked` false → stop:
+   "PR #<N> is not part of a stack." Its `slices` — each with `number`,
+   `state` (`open` / `closed` / `merged`), `title`, `head`, `base`, `sha` —
+   is `SLICES`, the stack, bottom first; record `stack_num` as `STACK_NUM`
+   for the report (null: write `stack of #<bottom>`).
 3. **Partition.** Walk bottom-up: merged PRs form the bottom prefix;
    everything after the first non-merged PR must be open — if a merged PR
    appears *above* an open one, stop: "Stack merged out of order (#<N> merged

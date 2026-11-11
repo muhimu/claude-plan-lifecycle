@@ -30,21 +30,29 @@ and was not checked.
 ## Resolving the target
 
 `$ARGUMENTS` may hold `--quiz` anywhere: set `QUIZ` and drop it. What is
-left is empty or one target (a number, PR URL or `OWNER/REPO#N` — the anchor forms in `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`). Run
-`${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first (all of it when
-empty, its step 3 otherwise): this command does not push, takes **any**
-checkout of the PR's repo, and may move.
+left is empty or one target (a number, PR URL or `OWNER/REPO#N`). Resolve it:
 
-Resolve once:
+```bash
+"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" target --command pr-triage --needs any --moves -- '<target>'
+```
 
-- `OWNER/REPO`: as `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`'s **Input** resolves it
+With no target in `$ARGUMENTS`, add one `--candidate OWNER/REPO#N` for each
+PR this conversation opened or worked on, in any repo, most recent first,
+and `--checkout <path>` for a checkout of another repo the session used. The
+script prints JSON; on `stop` or `ask` do what its `message` says, and on
+`ok` print and follow its `notes`.
+
+`repo` is `OWNER/REPO`; `slices` (bottom first, each with `number`,
+`state`, `title`, `head`, `base`, `sha`), `stacked`, `stack_num`,
+`anchor_pr` and `position`/`size` are `SLICES`, `STACKED`, `STACK_NUM`,
+`ANCHOR_PR` and `POSITION/SIZE` below. Resolve once:
+
 - `ROOT`: `git rev-parse --show-toplevel`
 - `DEFAULT`: `gh repo view --json defaultBranchRef -q .defaultBranchRef.name`
 
-Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-with `ANCHOR` = the target (the one `session-pr.md` yielded).
+Then:
 
-- **The number was a stack** → `TARGETS` = every open PR in `SLICES`, bottom
+- **The number was a stack** (`anchor_pr` is null) → `TARGETS` = every open PR in `SLICES`, bottom
   first. None open → stop.
 - **Otherwise** `TARGETS` = the anchor PR alone. When `STACKED`, the rest of
   its stack is context.

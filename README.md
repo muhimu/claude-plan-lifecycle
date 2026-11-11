@@ -54,6 +54,7 @@ every time a PR opens and ends with a hint when plans can be reaped.
 | `/bug-hunt` | command | Autonomous red-green-refactor bug hunter with a reviewer-subagent gate |
 | `bin/stamp-plans` | script | Stamps `pr: <N>` into every plan file sharing a slug, then prints a hint when `reap-plans -n` finds plans to archive |
 | `bin/reap-plans` | script | Archives merged and abandoned plan groups into `<plans-dir>/done/`, naming each follow-ups stub it moves |
+| `bin/resolve-target` | script | Turns a command's target into JSON: the PR (from the arguments, the current branch or the session's PRs), its stack's slices bottom first (native stack, `## Stack` table or base-branch chain) and the worktree to work in. `/pr-fix`, `/pr-fix-loop`, `/review-stack`, `/pr-triage`, `/restack`, `/backport`, `/verify-findings` and `/review-guide` call it from the plugin; it needs no install. Read-only |
 | `bin/link-plans` | script | Shares a gitignored plans dir into a worktree — run manually or as a post-worktree-creation hook |
 | `bin/render-report` | script | Writes a styled, self-contained `.html` beside a report's `.md`, laid out for its reader: a triage page (verdict tiles, a ledger filter) or a review guide (stops, a Copy button on each question for the author). Each has a Help panel from `references/<type>-help.md`. Local only |
 | `extras/bin-wrapper` | script | Installed under each script's name on your PATH; runs the installed plugin's copy, so updates need no reinstall |
@@ -148,6 +149,7 @@ becomes a Route stop, under the same five-stop cap.
 ## Requirements & assumptions
 
 - **`gh`** authenticated (PR creation, merge-state checks).
+- **`jq`** for `bin/resolve-target`, which the PR and stack commands call.
 - **[`gh stack`](https://github.com/github/gh-stack)** extension (optional) — `/execute-plan` links stacked PRs into a GitHub native stack with `gh stack link`; without it (or without native stacks enabled) stacks fall back to hand-kept `## Stack` tables.
 - **git ≥ 2.40** for `/backport`, which probes picks with `git merge-tree --write-tree --merge-base`.
 - **bash ≥ 4** for `bin/reap-plans` (macOS ships 3.2 — `brew install bash`; the script exits with a

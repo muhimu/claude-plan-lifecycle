@@ -1,0 +1,320 @@
+#!/usr/bin/env bash
+#
+# resolve-target — turn a command's target into a PR, its stack and the
+# checkout to work in, as JSON. The commands call it instead of walking the
+# same gh calls by hand on every run. Read-only: gh GET calls and git reads.
+#
+# Usage:
+#   resolve-target stack [ANCHOR]
+#       ANCHOR is a stack or PR number, OWNER/REPO#N, a PR URL, a branch
+#       name, or empty (the current branch's PR).
+#   resolve-target target --command NAME --needs head|top|any [--pushes]
+#                         [--moves] [--checkout DIR]... [--candidate OWNER/REPO#N]...
+#                         [--] [FIRST_WORD]
+#       FIRST_WORD is the first word of the command's arguments. When it is
+#       a number, OWNER/REPO#N or a PR URL it is the target ("given": true).
+#       Otherwise the target is the current branch's open PR, or else one of
+#       the --candidate PRs (the PRs the session worked on, most recent
+#       first; with --pushes only the user's own).
+#       --needs     the branch the command needs checked out: any branch of
+#                   the stack (head), the stack's top open branch (top; for
+#                   an unstacked PR both mean its head), or any checkout of
+#                   the repo (any)
+#       --moves     the command may work in another worktree of the repo
+#       --checkout  a checkout the session used, to find the worktrees of a
+#                   repo the current directory is not a checkout of
+#
+# Output, one JSON object on stdout:
+#   {"status":"ok", "repo":"OWNER/REPO", "target":"OWNER/REPO#N",
+#    "given":bool,            target mode only
+#    "anchor_pr":N|null,      null when the number was a stack
+#    "stack_num":N|null,      the native stack number; null for a stack found
+#                             from a "## Stack" table or the base-branch chain
+#    "stacked":bool, "size":K, "position":P|null, "label":"stack #N"|"stack of #N"|null,
+#    "slices":[{number,state,merged_at,title,head,base,sha}],   bottom first;
+#                             state is open, closed or merged
+#    "dir":PATH|null,         target mode: the worktree to work in; null = stay
+#    "notes":[...]}           lines to print or follow
+#   {"status":"ask", "candidates":[...], "message":...}   exit 0
+#   {"status":"stop", "message":...}                      exit 1
+#
+# Needs gh and jq.
+
+set -euo pipefail
+
+command -v jq >/dev/null 2>&1 || {
+  echo '{"status":"stop","message":"resolve-target needs jq on PATH."}'
+  exit 1
+}
+
+errf="$(mktemp)"
+trap 'rm -f "$errf"' EXIT
+
+stop() { jq -n --arg m "$1" '{status:"stop",message:$m}'; exit 1; }
+# ghx ARGS... — run gh; stdout in $out, stderr in $errf.
+ghx() { out="$(gh "$@" 2>"$errf")"; }
+# must ARGS... — ghx, stopping with gh's own error when it fails.
+must() { ghx "$@" || stop "\`gh $*\` failed: $(cat "$errf")"; }
+
+# parse_anchor TOKEN — sets kind (empty|number|qualified|url|other), repo, num.
+parse_anchor() {
+  local q='^([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)#([0-9]+)$'
+  local u='^https?://[^/]+/([^/]+/[^/]+)/pull/([0-9]+)'
+  kind=other repo="" num=""
+  if [ -z "$1" ]; then kind=empty
+  elif [[ "$1" =~ ^[0-9]+$ ]]; then kind=number num="$1"
+  elif [[ "$1" =~ $q ]]; then kind=qualified repo="${BASH_REMATCH[1]}" num="${BASH_REMATCH[2]}"
+  elif [[ "$1" =~ $u ]]; then kind=url repo="${BASH_REMATCH[1]}" num="${BASH_REMATCH[2]}"
+  fi
+}
+
+# here_repo — OWNER/REPO of the current directory's checkout, or empty.
+here_repo() {
+  if ghx repo view --json nameWithOwner; then jq -r .nameWithOwner <<<"$out"; fi
+}
+
+# pr_slice N — sets slice to PR N in the shape of a slices entry.
+pr_slice() {
+  must pr view "$1" -R "$repo" --json number,state,mergedAt,title,headRefName,baseRefName,headRefOid
+  slice="$(jq -c '{number, state: (.state | ascii_downcase), merged_at: .mergedAt, title,
+    head: .headRefName, base: .baseRefName, sha: .headRefOid}' <<<"$out")"
+}
+
+# chain — sets nums to the PR numbers of the anchor's base-branch chain,
+# bottom first.
+chain() {
+  local default b h cnt i=0
+  must repo view "$repo" --json defaultBranchRef
+  default="$(jq -r .defaultBranchRef.name <<<"$out")"
+  pr_slice "$anchor_pr"
+  b="$(jq -r .base <<<"$slice")" h="$(jq -r .head <<<"$slice")"
+  nums="$anchor_pr"
+  while [ "$b" != "$default" ] && [ "$i" -lt 50 ]; do
+    must pr list -R "$repo" --head "$b" --state all --json number,baseRefName
+    cnt="$(jq length <<<"$out")"
+    [ "$cnt" -le 1 ] || stop "Cannot reconstruct a linear stack for \`$shown\` — resolve manually."
+    [ "$cnt" -eq 1 ] || break
+    nums="$(jq -r '.[0].number' <<<"$out")"$'\n'"$nums"
+    b="$(jq -r '.[0].baseRefName' <<<"$out")" i=$((i + 1))
+  done
+  while [ "$i" -lt 50 ]; do
+    must pr list -R "$repo" --base "$h" --state open --json number,headRefName
+    cnt="$(jq length <<<"$out")"
+    [ "$cnt" -le 1 ] || stop "Cannot reconstruct a linear stack for \`$shown\` — resolve manually."
+    [ "$cnt" -eq 1 ] || break
+    nums="$nums"$'\n'"$(jq -r '.[0].number' <<<"$out")"
+    h="$(jq -r '.[0].headRefName' <<<"$out")" i=$((i + 1))
+  done
+}
+
+# discover — from kind/repo/num/token, sets repo, anchor_pr, stack_num, slices.
+discover() {
+  local n
+  stack_num="" anchor_pr="" slices=""
+  if [ -z "$repo" ]; then
+    must repo view --json nameWithOwner
+    repo="$(jq -r .nameWithOwner <<<"$out")"
+  fi
+  case "$kind" in
+    number | qualified)
+      # Stacks share the number sequence of issues and PRs: a number is a
+      # stack or a PR, never both.
+      if ghx api "repos/$repo/stacks/$num"; then stack_num="$num"
+      elif grep -q 'HTTP 404' "$errf"; then anchor_pr="$num"
+      else stop "\`gh api repos/$repo/stacks/$num\` failed: $(cat "$errf")"; fi
+      ;;
+    url) anchor_pr="$num" ;;
+    empty)
+      ghx pr view --json number || stop "No PR for the current branch: $(cat "$errf")"
+      anchor_pr="$(jq -r .number <<<"$out")"
+      ;;
+    other)
+      must pr list -R "$repo" --head "$token" --state all --json number
+      anchor_pr="$(jq -r '.[0].number // empty' <<<"$out")"
+      [ -n "$anchor_pr" ] || stop "No PR for \`$token\`."
+      ;;
+  esac
+  shown="${token:-#$anchor_pr}"
+
+  if [ -z "$stack_num" ]; then
+    must api "repos/$repo/pulls/$anchor_pr"
+    stack_num="$(jq -r 'if (.stack.size // 0) > 1 then .stack.number else empty end' <<<"$out")"
+    [ -z "$stack_num" ] || must api "repos/$repo/stacks/$stack_num"
+  fi
+  if [ -n "$stack_num" ]; then
+    # The API reports a merged PR as closed.
+    slices="$(jq -c '[.pull_requests[] | {number, state: (if .merged_at then "merged" else .state end),
+      merged_at, title, head: .head.ref, base: .base.ref, sha: .head.sha}]' <<<"$out")"
+    return
+  fi
+
+  # No native stack: the "## Stack" table of the anchor's body, then the
+  # base-branch chain; the first that has the anchor and another PR.
+  must pr view "$anchor_pr" -R "$repo" --json body
+  nums="$(jq -r .body <<<"$out" | tr -d '\r' | awk '
+    /^## / { p = ($0 == "## Stack") }
+    p && /^\| *#[0-9]+/ { match($0, /#[0-9]+/); print substr($0, RSTART + 1, RLENGTH - 1) }')"
+  if [ "$(grep -c . <<<"$nums")" -lt 2 ] || ! grep -qx "$anchor_pr" <<<"$nums"; then chain; fi
+  slices='[]'
+  for n in $nums; do
+    pr_slice "$n"
+    slices="$(jq -c --argjson s "$slice" '. + [$s]' <<<"$slices")"
+  done
+}
+
+# session_target — no target was given: the current branch's open PR, else
+# the one usable candidate. Sets kind/repo/num, or stops or asks.
+session_target() {
+  local c me="" kept='[]' dropped="" state
+  if ghx pr view --json number,state,url; then
+    if [ "$(jq -r .state <<<"$out")" = OPEN ]; then
+      parse_anchor "$(jq -r .url <<<"$out")"
+      return
+    fi
+  elif ! grep -qiE 'no pull requests? found|not on any branch|not a git repository' "$errf"; then
+    # Never read a failed lookup as "no PR": that would pick an unrelated PR.
+    stop "\`gh pr view\` failed: $(cat "$errf")"
+  fi
+  for c in ${candidates[@]+"${candidates[@]}"}; do
+    parse_anchor "$c"
+    [ "$kind" = qualified ] || stop "--candidate takes OWNER/REPO#N, got \`$c\`."
+    must pr view "$num" -R "$repo" --json state,author
+    state="$(jq -r '.state | ascii_downcase' <<<"$out")"
+    if [ "$state" != open ]; then dropped="$dropped, $c ($state)"; continue; fi
+    if [ "$pushes" = 1 ]; then
+      c_author="$(jq -r .author.login <<<"$out")"
+      [ -n "$me" ] || { must api user; me="$(jq -r .login <<<"$out")"; }
+      if [ "$c_author" != "$me" ]; then dropped="$dropped, $c (not yours)"; continue; fi
+    fi
+    kept="$(jq -c --arg c "$c" '. + [$c]' <<<"$kept")"
+  done
+  case "$(jq length <<<"$kept")" in
+    0) stop "No PR for the current branch${dropped:+ (left out: ${dropped#, })}." ;;
+    1)
+      parse_anchor "$(jq -r '.[0]' <<<"$kept")"
+      kind=url # a PR, never a stack
+      notes+=("No PR for the current branch — using \`$repo#$num\` from this session.")
+      ;;
+    *)
+      jq -n --argjson c "$kept" '{status: "ask", candidates: $c, message:
+        "No PR for the current branch, and more than one from this session. Ask with AskUserQuestion: the first four candidates as options, the first marked Recommended, the others named in the question. Never pick one silently. Match an Other answer against the candidates by repo name and number (a short REPO#N or #N); no match, or more than one, ask again. Then run this again with the chosen OWNER/REPO#N as the first word."}'
+      exit 0
+      ;;
+  esac
+}
+
+# checkout — sets dir to the worktree the command must work in (empty: the
+# current checkout is usable), or stops.
+checkout() {
+  local wanted here base="" d branch head path="" first="" found="" hint=""
+  dir=""
+  if [ "$(jq length <<<"$slices")" -gt 1 ] && [ "$needs" = top ]; then
+    wanted="$(jq -r '[.[] | select(.state == "open")] | last | .head // empty' <<<"$slices")"
+    [ -n "$wanted" ] || return 0 # no open slice: the command says so
+  elif [ "$(jq length <<<"$slices")" -gt 1 ]; then
+    wanted="$(jq -r '.[].head' <<<"$slices")"
+  else
+    wanted="$(jq -r --argjson n "$anchor_pr" '.[] | select(.number == $n) | .head' <<<"$slices")"
+  fi
+
+  here="$(here_repo)"
+  if [ "$here" = "$repo" ]; then
+    [ "$needs" != any ] || return 0
+    branch="$(git branch --show-current 2>/dev/null || true)"
+    if [ -n "$branch" ]; then
+      ! grep -qxF "$branch" <<<"$wanted" || return 0
+    elif [ "$pushes" = 0 ]; then
+      # A detached HEAD at a wanted branch's head serves a command that does
+      # not push (review tools run in such a worktree).
+      head="$(git rev-parse HEAD 2>/dev/null || true)"
+      while IFS= read -r d; do
+        [ "$head" != "$(jq -r --arg h "$d" '.[] | select(.head == $h) | .sha' <<<"$slices")" ] || return 0
+      done <<<"$wanted"
+    fi
+    base=.
+  else
+    for d in ${checkouts[@]+"${checkouts[@]}"}; do
+      if [ "$(cd "$d" 2>/dev/null && here_repo)" = "$repo" ]; then base="$d"; break; fi
+    done
+  fi
+
+  if [ -n "$base" ]; then
+    while IFS= read -r d; do
+      case "$d" in
+        "worktree "*) path="${d#worktree }"; [ -n "$first" ] || first="$path" ;;
+        "branch refs/heads/"*)
+          if [ -z "$found" ] && grep -qxF "${d#branch refs/heads/}" <<<"$wanted"; then found="$path"; fi
+          ;;
+      esac
+    done < <(git -C "$base" worktree list --porcelain)
+    [ "$needs" != any ] || found="$first"
+  fi
+
+  # shellcheck disable=SC2016  # the backticks are text
+  [ "$needs" = any ] || hint=" on \`$(paste -sd'|' - <<<"$wanted" | sed 's/|/` or `/g')\`"
+  [ -n "$found" ] || stop "Re-run \`/plan-lifecycle:$command $repo#$num <the rest of its arguments>\` from a checkout of \`$repo\`$hint."
+  [ "$moves" = 1 ] || stop "Re-run \`/plan-lifecycle:$command $repo#$num <the rest of its arguments>\` from \`$found\`."
+  dir="$found"
+  notes+=("Working in \`$dir\` (\`$repo#$num\`).")
+  notes+=("Run every shell command as \`cd $dir && …\`, also in a command this one hands off to, and start every subagent prompt with: Work in \`$dir\`: run every shell command as \`cd $dir && …\`.")
+}
+
+emit() {
+  jq -n --arg repo "$repo" --arg num "$num" --arg anchor "$anchor_pr" --arg stack "$stack_num" \
+    --arg dir "${dir:-}" --arg mode "$mode" --arg given "${given:-}" --argjson slices "$slices" \
+    '($slices | length) as $size
+     | {status: "ok", repo: $repo, target: "\($repo)#\(if $num != "" then $num else $anchor end)"}
+     + (if $mode == "target" then {given: ($given == "1")} else {} end)
+     + {anchor_pr: (if $anchor == "" then null else ($anchor | tonumber) end),
+        stack_num: (if $stack == "" then null else ($stack | tonumber) end),
+        stacked: ($size > 1), size: $size,
+        position: (if $anchor == "" then null
+                   else (($slices | map(.number) | index($anchor | tonumber)) as $i | if $i == null then null else $i + 1 end) end),
+        label: (if $size < 2 then null elif $stack != "" then "stack #\($stack)" else "stack of #\($slices[0].number)" end),
+        slices: $slices}
+     + (if $mode == "target" then {dir: (if $dir == "" then null else $dir end)} else {} end)
+     + {notes: $ARGS.positional}' --args ${notes[@]+"${notes[@]}"}
+}
+
+usage() { sed -n '3,41p' "$0" | sed 's/^# \{0,1\}//'; }
+
+mode="${1:-}"
+[ $# -eq 0 ] || shift
+notes=()
+case "$mode" in
+  stack)
+    [ $# -le 1 ] || stop "resolve-target stack takes one anchor."
+    token="${1:-}"
+    parse_anchor "$token"
+    discover
+    emit
+    ;;
+  target)
+    command="" needs="" pushes=0 moves=0 checkouts=() candidates=() token=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --command) command="$2"; shift 2 ;;
+        --needs) needs="$2"; shift 2 ;;
+        --pushes) pushes=1; shift ;;
+        --moves) moves=1; shift ;;
+        --checkout) checkouts+=("$2"); shift 2 ;;
+        --candidate) candidates+=("$2"); shift 2 ;;
+        --) shift; token="${1:-}"; break ;;
+        *) token="$1"; shift ;;
+      esac
+    done
+    case "$needs" in head | top | any) ;; *) stop "--needs takes head, top or any." ;; esac
+    [ -n "$command" ] || stop "--command is required."
+    parse_anchor "$token"
+    case "$kind" in
+      number | qualified | url) given=1 ;;
+      *) given=0 token=""; session_target ;;
+    esac
+    discover
+    [ -n "$num" ] || num="$anchor_pr"
+    checkout
+    emit
+    ;;
+  -h | --help) usage ;;
+  *) usage >&2; exit 2 ;;
+esac

@@ -31,9 +31,12 @@ command makes lands on the release branch as it is.
    target." `git -C "$ROOT" rev-parse -q --verify "refs/remotes/origin/${TARGET}"`
    fails → stop: "`<TARGET>` does not exist on origin." `X.Y` is `TARGET`
    without `release/`.
-3. **Sources.** Resolve `ANCHOR` per
-   `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`, then pick:
-   - **Stack number** (`ANCHOR_PR` empty): every merged slice. Print the
+3. **Sources.** Resolve `ANCHOR` with
+   `"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" stack <ANCHOR>` (run in `ROOT`), which
+   prints JSON (`status` `stop` → stop with its `message`): `slices`, bottom
+   first with each PR's `number` and `state`, `anchor_pr`, `stack_num` and
+   `position` are `SLICES`, `ANCHOR_PR`, `STACK_NUM` and `POSITION`. Then pick:
+   - **Stack number** (`anchor_pr` null): every merged slice. Print the
      others as "#M not merged — left out."
    - **PR inside a stack:** that slice and every slice below it
      (`SLICES[1..POSITION]`). Slices above it are left out.
