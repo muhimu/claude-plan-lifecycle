@@ -19,11 +19,14 @@ Resolve the target with the first word of `$ARGUMENTS` (never create a PR):
 "${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" target --command pr-fix --needs head --pushes --moves -- '<first word>'
 ```
 
-With no target in `$ARGUMENTS`, add one `--candidate OWNER/REPO#N` for each
-PR this conversation opened or worked on, in any repo, most recent first,
-and `--checkout <path>` for a checkout of another repo the session used. The
-script prints JSON; on `stop` or `ask` do what its `message` says, and on
-`ok` print and follow its `notes`.
+Options go before the `--`; nothing may follow the first word. With no
+target in `$ARGUMENTS`, add one `--candidate OWNER/REPO#N` for each PR this
+conversation opened or worked on, in any repo, most recent first. With or
+without a target, add `--checkout <path>` for each checkout of another repo
+the session used: the script needs it to find the worktrees of a target in
+a repo the current directory is not a checkout of. The script prints JSON;
+on `stop` or `ask` do what its `message` says, and on `ok` print and follow
+its `notes`.
 
 `given` true → the first word was the target and the rest of `$ARGUMENTS`
 is `GUIDANCE`; false → all of it is. `GUIDANCE` is the user's pre-brief,

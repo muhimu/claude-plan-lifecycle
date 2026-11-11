@@ -7,7 +7,7 @@ argument-hint: "[PR or stack number — optional, auto-detects from the current 
 
 Drive `/plan-lifecycle:pr-fix` rounds autonomously until the PR review is clean. This command only sets up the loop — do not run pr-fix directly from here.
 
-If the first token of `$ARGUMENTS` is not a PR target (a number, PR URL or `OWNER/REPO#N`), resolve one now with the `"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" target …` call in `/plan-lifecycle:pr-fix`'s "Resolving the target", and put its `target` (`OWNER/REPO#N`) in front of `$ARGUMENTS` — whether it came from the current branch or the session — so every round targets the same PR: a stack round can leave a different branch checked out, and later rounds never ask again.
+If the first token of `$ARGUMENTS` is not a PR target (a number, PR URL or `OWNER/REPO#N`), resolve one now with `"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" target --command pr-fix-loop --needs head --pushes --moves -- '<first token>'` — adding, before the `--`, one `--candidate OWNER/REPO#N` for each PR this conversation opened or worked on, in any repo, most recent first, and `--checkout <path>` for each checkout of another repo the session used; on `stop` or `ask` do what the JSON's `message` says — and put its `target` (`OWNER/REPO#N`) in front of `$ARGUMENTS` — whether it came from the current branch or the session — so every round targets the same PR: a stack round can leave a different branch checked out, and later rounds never ask again.
 
 Invoke the `loop` skill via the `Skill` tool now, with **no interval** (self-paced), passing exactly this prompt as its args (with `$ARGUMENTS` substituted):
 
