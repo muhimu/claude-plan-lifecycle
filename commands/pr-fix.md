@@ -6,8 +6,9 @@ argument-hint: [PR or stack number — optional, auto-detects from the current b
 # PR Fix
 
 Address review feedback on a pull request, or on every open PR of a stack.
-You handle code changes, pushing commits, and replies in the threads of bot
-reviewers and of the user's own comments. A reply to anyone else is a draft
+You handle code changes, pushing commits, replies in the threads of bot
+reviewers and of the user's own comments, and keeping the description of the
+user's own PR true to the code. A reply to anyone else is a draft
 the user approves before it is posted; thread resolution stays with the user.
 
 ## Resolving the target
@@ -145,7 +146,13 @@ Severity prefixes from automated reviewers (`**blocking**:`, `nit:`,
 `blocking` is Actionable unless you find it wrong (then Pushback, with the
 evidence); `nit` is Nit.
 
-**Before classifying, invoke the `superpowers:receiving-code-review` skill via the `Skill` tool.** The verifier's verdict is the verification of each claim it judged; the skill owns YAGNI checks, pushback patterns, and the verify-before-implementing discipline for the comments the verifier did not judge (NOT_A_CLAIM, `unverified`) — do not re-derive them here. Posting is governed by the hard rules below, not by that skill's "GitHub Thread Replies" section. If the skill is not available (superpowers plugin not installed), proceed without it and apply the same discipline yourself: verify each claim against the code before implementing, and push back with technical reasoning instead of performative agreement.
+A comment the verifier did not judge (NOT_A_CLAIM, `unverified`) gets the
+same care: check what it says against the code before planning a change, and
+when it is wrong or asks for something the codebase does not need, push back
+with the technical reason rather than agree.
+
+A comment saying the PR description is wrong or out of date is Actionable;
+its action is a body edit (Step 4d), not a code change.
 
 **Stack mode — which slice owns the fix.** Default: the PR the comment sits
 on. Move a code change *down* the stack when the commented code was
@@ -240,8 +247,10 @@ their parent's tip. Invoke the `plan-lifecycle:restack` command via the
 native number: the fixed PR's number instead of `<STACK_NUM>`) — `--no-trunk`
 keeps it from rebasing the bottom slice onto trunk, which would rewrite a
 slice below the fix. It owns the cascade rebase, the
-tip verification, the force-with-lease push gate, and the `## Stack` table
-housekeeping — do not reimplement any of it here. If it stops (genuine
+tip verification, the force-with-lease push, and the `## Stack` table
+housekeeping — do not reimplement any of it here. It pushes a clean replay
+without asking and asks only when the rebase was not clean (its Step 5.2);
+do not put a question of your own before or after it. If it stops (genuine
 conflict, red tip, lease failure), stop too and relay its message; do not
 continue to the next slice.
 
@@ -266,26 +275,34 @@ reply. Replies never @-mention anyone: `@claude` in a reply starts the repo's
 Claude workflow, and any mention notifies a person. Replies to human
 reviewers are not posted here.
 
-### Step 4d — Remove fixed follow-ups from the PR body
+### Step 4d — Keep the PR body current
 
-A `## Follow-ups` entry this run fixed is stale and misleads the next
-review. If this run pushed any fix, then after the last push and restack,
-for each PR whose body has a `## Follow-ups` section (in stack mode every
-open PR in `SLICES`: an entry may sit on a slice that was only restacked):
+A PR body that no longer matches the code misleads the next review. After
+the last push and restack, bring the body of each PR the user authored
+(`author.login` is `gh api user --jq .login`; in stack mode every open PR in
+`SLICES`, since a fix or an entry may sit on a slice that was only
+restacked) up to date, without asking:
 
-1. Read the body as it is now (after `/restack`, which may have edited its
-   `## Stack` section): `gh pr view <PR> --json body -q .body >
-   <scratchpad>/pr-fix-body-<PR>.md`.
-2. Remove each entry that describes a defect this run fixed, wherever the
-   fix landed; then any group label left with no entries, and the heading
-   when the section is empty. Change nothing else. Write the result to
-   `<scratchpad>/pr-fix-body-<PR>.new.md`.
-3. If anything was removed, `diff --strip-trailing-cr` the two files (a body
-   edited on GitHub's web page comes back with CRLF). If lines outside
-   `## Follow-ups` differ, skip the edit and note `failed: diff outside
-   Follow-ups`. Otherwise
-   `gh pr edit <PR> --body-file <scratchpad>/pr-fix-body-<PR>.new.md`; if
-   that fails, note `failed: <error>`.
+- remove each `## Follow-ups` entry that describes a defect this run fixed,
+  wherever the fix landed; then any group label left with no entries, and
+  the heading when the section is empty;
+- rewrite the statements a pushed fix made false (behaviour, names, counts,
+  test evidence), and make the edit an approved row about the description
+  asks for.
+
+Change nothing else: the rest of the text stays as written, and the
+`## Stack` section is `/restack`'s. Someone else's PR body is never edited;
+note what is stale in the summary instead.
+
+Read the body as it is now (after `/restack`, which may have edited its
+`## Stack` section) with `gh pr view <PR> --json body -q .body >
+<scratchpad>/pr-fix-body-<PR>.md`, write the result to
+`<scratchpad>/pr-fix-body-<PR>.new.md`, and `diff --strip-trailing-cr` the
+two (a body edited on GitHub's web page comes back with CRLF). If the diff
+shows a line you did not mean to change, skip the edit and note `failed:
+unintended diff`. Otherwise
+`gh pr edit <PR> --body-file <scratchpad>/pr-fix-body-<PR>.new.md`; if that
+fails, note `failed: <error>`.
 
 ## Step 5 — Summarize for the user
 
@@ -323,6 +340,10 @@ Format (one block per PR in stack mode, bottom-up):
 ### Restack
 - <branch> <old-short> → <new-short>  (or: not needed — tip)
 
+### Description
+- <what changed in the body, one line>   (or: unchanged; or: failed: <error>;
+  or, on someone else's PR: stale: <what>)
+
 ### Follow-ups
 - removed: <entry>   (from #<M> when it sat in another slice's body; or: none;
   or: failed: <error>)
@@ -335,13 +356,13 @@ Format (one block per PR in stack mode, bottom-up):
 
 To have an open entry fixed, name it in the guidance of the next `/pr-fix`.
 
-When there are `draft` replies, end by asking the user to approve, edit or skip each one, then post the approved ones as Step 4c does. Keep every reply factual and short — no "thanks", no "great catch", no performative agreement (`receiving-code-review` already covers this).
+When there are `draft` replies, end by asking the user to approve, edit or skip each one, then post the approved ones as Step 4c does. Keep every reply factual and short — no "thanks", no "great catch", no performative agreement.
 
 ## Hard rules
 
-- **No GitHub mutations from this command except thread replies and Step 4d's body edit.** The only posts are Step 4c's replies and the human-reviewer replies the user approved, each inside its comment's thread (`gh api repos/OWNER/REPO/pulls/<PR>/comments/<id>/replies -f body=…`), never as a top-level PR comment. The only body edit is Step 4d's `gh pr edit --body-file`, which removes fixed `## Follow-ups` entries and changes nothing else. No other mutating `gh api` calls (read-only calls are fine, including Step 1's GraphQL query), no `gh pr review`, no `gh pr comment`, no thread resolution, no `gh pr merge`. The only other sanctioned mutations happen inside `/restack` (its own gated lease-push and `## Stack` table edits), never here.
+- **No GitHub mutations from this command except thread replies and Step 4d's body edit.** The only posts are Step 4c's replies and the human-reviewer replies the user approved, each inside its comment's thread (`gh api repos/OWNER/REPO/pulls/<PR>/comments/<id>/replies -f body=…`), never as a top-level PR comment. The only body edit is Step 4d's `gh pr edit --body-file` on the user's own PR, which removes fixed `## Follow-ups` entries, corrects what a fix made false or an approved row asks for, and changes nothing else. No other mutating `gh api` calls (read-only calls are fine, including Step 1's GraphQL query), no `gh pr review`, no `gh pr comment`, no thread resolution, no `gh pr merge`. The only other sanctioned mutations happen inside `/restack` (its own lease-push and `## Stack` table edits), never here.
 - **A reply to a human reviewer is posted only after the user approves its text.** Bot and own threads get theirs without asking (Step 4c).
-- **No force push from this command.** Plain `git push` on the fixed branch. If rejected, stop. Rewriting branches *above* the fixed one is `/restack`'s job, behind its gate.
+- **No force push from this command.** Plain `git push` on the fixed branch. If rejected, stop. Rewriting branches *above* the fixed one is `/restack`'s job; it asks first only when the rebase was not clean.
 - **Never touch branches below the fixed slice.** A fix moves down only by being committed on the owning slice's branch in the bottom-up loop.
 - **No auto-merge.** Even if the PR is now green, do not merge it.
 - **One-at-a-time verification.** After each logical commit, run relevant tests. Batching everything then running tests once at the end hides which change broke what. Lint is the exception: it runs once per branch, before the push (Step 3).

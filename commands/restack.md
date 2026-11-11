@@ -190,7 +190,7 @@ If no verify commands resolve (no CLAUDE.md declaration, no make targets),
 stop: "No verify commands found. Verify manually, then push by hand per the plan-frontmatter
 recipe."
 
-## Step 5 — Confirm, then push
+## Step 5 — Push
 
 1. **Summary.** For each rebased `B[i]` print: `OLD_HEAD[i]` → `NEW_HEAD[i]` (short
    SHAs), commit count `git rev-list --count "<new-base>..B[i]"`, and a
@@ -205,8 +205,9 @@ recipe."
    - `RESOLVED` is not empty — a conflict was resolved or a commit skipped;
    - a range-diff shows an added or dropped commit, or could not be run.
 
-   A clean replay leaves each lower branch's patches as they were; Step 4
-   tested only the tip. When one holds, ask via `AskUserQuestion` (header
+   A clean replay leaves each lower branch's patches as they were, and
+   Step 4 passed at the tip: there is nothing to confirm, so no question,
+   whoever invoked this command. When one holds, ask via `AskUserQuestion` (header
    "Push", multi-select disabled): "Force-with-lease push <S> rebased
    branch(es)? <which of the above, and the branches or commits concerned>"
    Options: "Push all (Recommended)" / "Abort (keep local rebase)". Anything
@@ -257,8 +258,8 @@ recipe."
 ## Hard rules
 
 - **Worktree only; never on the default branch; clean tree required.**
-- **`--force-with-lease` only** — never bare `--force`; only after the Step 5
-  gate; only on the stack's own branches. A lease failure is a full
+- **`--force-with-lease` only** — never bare `--force`; only in Step 5;
+  only on the stack's own branches. A lease failure is a full
   stop, never a retry. Step 5.2 says when the gate asks.
 - **Nothing remote changes before Step 5.** Steps 1–4 are read-only towards
   origin and GitHub.
