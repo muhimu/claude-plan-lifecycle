@@ -12,7 +12,8 @@
 #                         [--moves] [--checkout DIR]... [--candidate OWNER/REPO#N]...
 #                         [--] [FIRST_WORD]
 #       FIRST_WORD is the first word of the command's arguments. When it is
-#       a number, OWNER/REPO#N or a PR URL it is the target ("given": true).
+#       a number, #N, OWNER/REPO#N or a PR URL it is the target ("given":
+#       true). Nothing may follow it: the options go before "--".
 #       Otherwise the target is the current branch's open PR, or else one of
 #       the --candidate PRs (the PRs the session worked on, most recent
 #       first; with --pushes only the user's own).
@@ -62,7 +63,7 @@ parse_anchor() {
   local u='^https?://[^/]+/([^/]+/[^/]+)/pull/([0-9]+)'
   kind=other repo="" num=""
   if [ -z "$1" ]; then kind=empty
-  elif [[ "$1" =~ ^[0-9]+$ ]]; then kind=number num="$1"
+  elif [[ "$1" =~ ^#?([0-9]+)$ ]]; then kind=number num="${BASH_REMATCH[1]}"
   elif [[ "$1" =~ $q ]]; then kind=qualified repo="${BASH_REMATCH[1]}" num="${BASH_REMATCH[2]}"
   elif [[ "$1" =~ $u ]]; then kind=url repo="${BASH_REMATCH[1]}" num="${BASH_REMATCH[2]}"
   fi
@@ -90,14 +91,19 @@ chain() {
   b="$(jq -r .base <<<"$slice")" h="$(jq -r .head <<<"$slice")"
   nums="$anchor_pr"
   while [ "$b" != "$default" ] && [ "$i" -lt 50 ]; do
-    must pr list -R "$repo" --head "$b" --state all --json number,baseRefName
+    must pr list -R "$repo" --head "$b" --state all --json number,baseRefName,state
+    # A branch that was the head of several PRs: follow the open one. With
+    # none open it is a long-lived branch, not a slice, and the chain ends.
+    [ "$(jq length <<<"$out")" -le 1 ] || out="$(jq -c 'map(select(.state == "OPEN"))' <<<"$out")"
     cnt="$(jq length <<<"$out")"
     [ "$cnt" -le 1 ] || stop "Cannot reconstruct a linear stack for \`$shown\` — resolve manually."
     [ "$cnt" -eq 1 ] || break
     nums="$(jq -r '.[0].number' <<<"$out")"$'\n'"$nums"
     b="$(jq -r '.[0].baseRefName' <<<"$out")" i=$((i + 1))
   done
-  while [ "$i" -lt 50 ]; do
+  # A head named like the default branch is a fork's: the PRs on that base
+  # are not stacked on it.
+  while [ "$h" != "$default" ] && [ "$i" -lt 50 ]; do
     must pr list -R "$repo" --base "$h" --state open --json number,headRefName
     cnt="$(jq length <<<"$out")"
     [ "$cnt" -le 1 ] || stop "Cannot reconstruct a linear stack for \`$shown\` — resolve manually."
@@ -111,10 +117,11 @@ chain() {
 discover() {
   local n
   stack_num="" anchor_pr="" slices=""
-  if [ -z "$repo" ]; then
-    must repo view --json nameWithOwner
-    repo="$(jq -r .nameWithOwner <<<"$out")"
-  fi
+  # A typed repo may differ in case or be a renamed repo's old name: take
+  # the name gh reports, as here_repo does.
+  if [ -z "$repo" ]; then must repo view --json nameWithOwner
+  else must repo view "$repo" --json nameWithOwner; fi
+  repo="$(jq -r .nameWithOwner <<<"$out")"
   case "$kind" in
     number | qualified)
       # Stacks share the number sequence of issues and PRs: a number is a
@@ -152,7 +159,7 @@ discover() {
   # base-branch chain; the first that has the anchor and another PR.
   must pr view "$anchor_pr" -R "$repo" --json body
   nums="$(jq -r .body <<<"$out" | tr -d '\r' | awk '
-    /^## / { p = ($0 == "## Stack") }
+    /^## / { p = ($0 ~ /^## Stack( \(.*\))?$/) }
     p && /^\| *#[0-9]+/ { match($0, /#[0-9]+/); print substr($0, RSTART + 1, RLENGTH - 1) }')"
   if [ "$(grep -c . <<<"$nums")" -lt 2 ] || ! grep -qx "$anchor_pr" <<<"$nums"; then chain; fi
   slices='[]'
@@ -197,7 +204,7 @@ session_target() {
       ;;
     *)
       jq -n --argjson c "$kept" '{status: "ask", candidates: $c, message:
-        "No PR for the current branch, and more than one from this session. Ask with AskUserQuestion: the first four candidates as options, the first marked Recommended, the others named in the question. Never pick one silently. Match an Other answer against the candidates by repo name and number (a short REPO#N or #N); no match, or more than one, ask again. Then run this again with the chosen OWNER/REPO#N as the first word."}'
+        "No PR for the current branch, and more than one from this session. Ask with AskUserQuestion: the first four candidates as options, the first marked Recommended, the others named in the question. Never pick one silently. Match an Other answer against the candidates by repo name and number (a short REPO#N or #N); no match, or more than one, ask again. Then run this again with the chosen OWNER/REPO#N as the only --candidate and the same first word."}'
       exit 0
       ;;
   esac
@@ -211,10 +218,8 @@ checkout() {
   if [ "$(jq length <<<"$slices")" -gt 1 ] && [ "$needs" = top ]; then
     wanted="$(jq -r '[.[] | select(.state == "open")] | last | .head // empty' <<<"$slices")"
     [ -n "$wanted" ] || return 0 # no open slice: the command says so
-  elif [ "$(jq length <<<"$slices")" -gt 1 ]; then
-    wanted="$(jq -r '.[].head' <<<"$slices")"
   else
-    wanted="$(jq -r --argjson n "$anchor_pr" '.[] | select(.number == $n) | .head' <<<"$slices")"
+    wanted="$(jq -r '.[].head' <<<"$slices")"
   fi
 
   here="$(here_repo)"
@@ -293,19 +298,32 @@ case "$mode" in
     command="" needs="" pushes=0 moves=0 checkouts=() candidates=() token=""
     while [ $# -gt 0 ]; do
       case "$1" in
+        --command | --needs | --checkout | --candidate) [ $# -ge 2 ] || stop "$1 needs a value." ;;
+      esac
+      case "$1" in
         --command) command="$2"; shift 2 ;;
         --needs) needs="$2"; shift 2 ;;
         --pushes) pushes=1; shift ;;
         --moves) moves=1; shift ;;
         --checkout) checkouts+=("$2"); shift 2 ;;
         --candidate) candidates+=("$2"); shift 2 ;;
-        --) shift; token="${1:-}"; break ;;
+        --)
+          shift
+          [ $# -le 1 ] || stop "Nothing may follow the first word: put --candidate and --checkout before \`--\`."
+          token="${1:-}"
+          break
+          ;;
+        -*) stop "Unknown option \`$1\`." ;;
         *) token="$1"; shift ;;
       esac
     done
     case "$needs" in head | top | any) ;; *) stop "--needs takes head, top or any." ;; esac
     [ -n "$command" ] || stop "--command is required."
     parse_anchor "$token"
+    # A PR written in a form parse_anchor does not know must not fall through
+    # to the current branch's PR.
+    [[ ! "$token" =~ ^[A-Za-z0-9_.-]+#[0-9]+$ ]] ||
+      stop "\`$token\` is not a target: write it as N, OWNER/REPO#N or a PR URL."
     case "$kind" in
       number | qualified | url) given=1 ;;
       *) given=0 token=""; session_target ;;
