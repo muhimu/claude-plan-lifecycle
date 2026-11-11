@@ -16,7 +16,11 @@ as one group), checks each group's `pr:` merge state via `gh`, and for MERGED
 groups stamps `status: merged` into every member and moves them to
 `<plans-dir>/done/`. Groups with any `status: abandoned` member also move to
 `done/` (no PR check; status stays `abandoned`). Groups with no resolvable PR
-are left untouched.
+are left untouched. A `-followups.md` stub shares its parent's slug and PR,
+so it moves with the parent; the output names it on a `follow-ups` line.
+
+Nothing runs the script on a schedule. `stamp-plans` runs its dry run each
+time a PR opens and prints a `hint:` line when plans can be archived.
 
 ## How to run
 
@@ -34,7 +38,9 @@ in git, commit the moves it makes.
 
 Read the dry-run output before the real run. Flag anything odd to the user:
 `UNKNOWN` states (a PR number the script couldn't resolve), conflicting-PR
-warnings, or a plan you expected to reap sitting in "no PR".
+warnings, or a plan you expected to reap sitting in "no PR". Show the user
+every `follow-ups` line: that stub lists work nobody did, and the PR body's
+Follow-ups section says which items are still open.
 
 ## Conventions the script depends on
 
@@ -43,7 +49,7 @@ the `plan-frontmatter` skill — **REQUIRED BACKGROUND:** read it for the full
 field spec. What matters for reaping:
 
 - **`pr:`** must resolve to a real PR. Empty (`pr:`) = no PR yet = work-in-progress, never reaped.
-- **`status: merged` is script-owned.** Never hand-write it — the script sets it from GitHub merge state so it can't drift. You set `draft`/`in-progress`/`abandoned` only.
+- **`status: merged` is script-owned.** Never hand-write it — the script sets it from GitHub merge state so it can't drift. You set `draft`/`abandoned` only.
 - **`slug:`** groups a design + its impl plan so they reap together.
 
 ## Do not

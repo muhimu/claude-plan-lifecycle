@@ -23,7 +23,7 @@ To make that safe, every plan carries YAML frontmatter that links it to its PR:
 title: Split state enum
 slug: split-state-enum   # shared by a design doc and its implementation plan
 issue: 3178              # root issue; the PR that ships the plan carries `Closes #3178`
-status: draft            # draft → in-progress → merged (or abandoned)
+status: draft            # draft until reap-plans sets merged (or you set abandoned)
 pr:                      # stamped when the PR opens; the join key for reaping
 ---
 ```
@@ -31,7 +31,8 @@ pr:                      # stamped when the PR opens; the join key for reaping
 `reap-plans` checks each plan group's `pr:` against GitHub: merged → stamp `status: merged`
 and move the whole group to `<plans-dir>/done/`. Any member marked `status: abandoned` → the
 group moves to `done/` as-is, with no PR check. No PR yet → never touched. So you can be
-aggressive about writing plans without accumulating a graveyard.
+aggressive about writing plans without accumulating a graveyard. `stamp-plans` runs
+every time a PR opens and ends with a hint when plans can be reaped.
 
 ## Components
 
@@ -40,7 +41,7 @@ aggressive about writing plans without accumulating a graveyard.
 | `plan-frontmatter` | skill | Frontmatter spec, status ownership, and the stacked-PR slicing convention (`## PR N:` headings) |
 | `reap-plans` | skill | Wraps `bin/reap-plans` with run order and conventions |
 | `handoff-prompt` | skill | Generates a self-contained prompt to continue work in a fresh session |
-| `/execute-plan` | command | Drives a plan end-to-end in a worktree: execution skill → test/lint verify → draft PR → stamp. Decisions made during the run — the execution skill's and yours, when it asks — land in the PR's Rulings section; a ruling that changes an ADR this plan writes amends it in the same PR, and one touching any other ADR is flagged as `ADR impact`. Minor review findings on the branch's code are fixed in the execution skill's final fix pass; what is left lands in the PR body's Follow-ups, grouped for you to read (needs a look, needs a live test, other repo, deferred by the plan), and in a `<date>-<slug>-followups.md` stub. Plans with `## PR N:` slice headings become a stacked-PR chain, linked as a GitHub native stack via `gh stack link` when available |
+| `/execute-plan` | command | Drives a plan end-to-end in a worktree: execution skill → test/lint verify → draft PR → stamp. Decisions made during the run — the execution skill's and yours, when it asks — land in the PR's Rulings section; a ruling that changes an ADR this plan writes amends it in the same PR, and one touching any other ADR is flagged as `ADR impact`. Minor review findings on the branch's code are fixed in the execution skill's final fix pass; what is left lands in the PR body's Follow-ups, grouped for you to read (needs a look, needs a live test, other repo, deferred by the plan), and in a `<date>-<slug>-followups.md` stub that carries the plan's slug, issue and PR, so it is reaped with the plan. Plans with `## PR N:` slice headings become a stacked-PR chain, linked as a GitHub native stack via `gh stack link` when available |
 | `/execute-epic` | command | Takes an epic issue and groups its child issues into independent chains — issues that build on each other share a chain and become one stacked plan — reserving ADR, migration and proto numbers per chain so parallel chains cannot collide. After you approve the layout it creates a worktree per chain and writes every chain's plan in parallel; each plan comes to you as it lands, and once you approve it, that chain runs `/execute-plan` unattended (executors take the recommended default and record it as a ruling) while the other plans are still being written or read. Ends with one table of chains, PRs and test/lint results |
 | `/restack` | command | After a stack's bottom PR squash-merges, after a lower slice gained commits, or when the bottom PR conflicts with or is behind trunk: cascade-rebase every branch whose parent moved, verify the tip, force-with-lease push (asking first only when the rebase was not clean or rebased the bottom onto a moved trunk), retarget the new bottom PR. Discovers the stack from GitHub's native stack object, falling back to the PRs' `## Stack` table or base-branch chain; accepts a stack number |
 | `/backport` | command | Backport a merged PR, or a stack's merged slices (a stack number takes every merged slice; a PR inside a stack takes it and the slices below), to one release branch — the newest `release/<n>.<n>` by default. First checks the fix isn't there already: `-x` trailers, `(#N)` subjects, "backport #N" messages, `git cherry` and PRs based on the release branch. Picks with `-x` in a fresh worktree, running every command as `git -C <worktree>` and never writing to the checkout it started from. On a conflict it traces the conflicting lines: main PRs the fix needs become include-or-rewrite questions, and earlier backports of later main PRs become a revert-and-replay question, each with a recommendation. Regenerates and verifies with the release branch's own Makefiles, CLAUDE.md and pinned tool versions, leaves workflow-bumped pins alone, compares each file with the source, and opens a draft PR titled `<source title> (backport #N to release/X.Y)` |
@@ -51,8 +52,8 @@ aggressive about writing plans without accumulating a graveyard.
 | `/review-guide` | command | Read a colleague's PR or stack without running it and write a local guide that points at the decisions only a human can make: the PR's own rulings, what becomes permanent on merge, which deferred work may wait, and at most five spots where the change departs from the system's shape, each naming the ADR, doc or base evidence it rests on. Also lists what is safe to skim and the riskiest code to hand to `/review-stack`; with `--review [effort]` it runs `/review-stack` at the tip (in a temporary worktree when your checkout is elsewhere) and puts the verified findings on the page, never posting them. Unlike `/pr-triage` it is read-only and runs nothing from the PR: no build or test. Writes one page per PR to `local/review-guide/<N>.md`, plus `stack-<S>.md` for a stack |
 | `/pr-fix-loop` | command | Loop `/pr-fix` autonomously: fix → push → wait for the automated review workflow's next review → repeat, until the review is clean or 5 rounds have run. A finding that restates a PR body Follow-ups entry is held, not fixed, and listed for you at the end |
 | `/bug-hunt` | command | Autonomous red-green-refactor bug hunter with a reviewer-subagent gate |
-| `bin/stamp-plans` | script | Stamps `pr: <N>` into every plan file sharing a slug |
-| `bin/reap-plans` | script | Archives merged and abandoned plan groups into `<plans-dir>/done/` |
+| `bin/stamp-plans` | script | Stamps `pr: <N>` into every plan file sharing a slug, then prints a hint when `reap-plans -n` finds plans to archive |
+| `bin/reap-plans` | script | Archives merged and abandoned plan groups into `<plans-dir>/done/`, naming each follow-ups stub it moves |
 | `bin/link-plans` | script | Shares a gitignored plans dir into a worktree — run manually or as a post-worktree-creation hook |
 | `bin/render-report` | script | Writes a styled, self-contained `.html` beside a report's `.md`, laid out for its reader: a triage page (verdict tiles, a ledger filter) or a review guide (stops, a Copy button on each question for the author). Each has a Help panel from `references/<type>-help.md`. Local only |
 | `extras/bin-wrapper` | script | Installed under each script's name on your PATH; runs the installed plugin's copy, so updates need no reinstall |
