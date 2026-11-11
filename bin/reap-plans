@@ -11,6 +11,8 @@
 # plan-frontmatter skill to make them reapable). Groups with no PR are
 # work-in-progress, never reaped. A group with any `status: abandoned` member
 # moves to <plans-dir>/done/ as-is (no PR check, status left `abandoned`).
+# A `-followups.md` stub shares its parent plan's slug and moves with it; the
+# output names it on a `follow-ups` line so its open items get a look.
 #
 # Usage:
 #   reap-plans            # run from a repo root (uses the repo's plans dir)
@@ -36,7 +38,7 @@ while getopts "nd:h" opt; do
     n) dry_run=1 ;;
     d) plans_dir="$OPTARG" ;;
     h)
-      sed -n '3,22p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,24p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) echo "reap-plans: unknown option" >&2; exit 2 ;;
@@ -77,34 +79,59 @@ has_frontmatter() {
   ' "$1"
 }
 
-# fm_field FILE KEY — echo the value of KEY from the YAML frontmatter block
-# (the lines between the first '---' and the next '---'). Empty if absent or no
-# frontmatter. Trims surrounding whitespace and a matching pair of surrounding
-# quotes (so `pr: "2405"` yields 2405, matching how YAML would parse it); for
-# the `pr` key only, additionally strips a leading '#' so `pr: 2346`,
-# `pr: "2346"`, and `pr: #2346` all yield `2346`.
-fm_field() {
-  local file="$1" key="$2"
-  has_frontmatter "$file" || return 0
-  awk -v key="$key" '
-    NR==1 && $0=="---" { infm=1; next }
-    infm && $0=="---"  { exit }
-    infm {
-      if (match($0, "^[[:space:]]*" key "[[:space:]]*:[[:space:]]*")) {
-        v = substr($0, RLENGTH+1)
-        gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
-        # Strip a matching pair of surrounding quotes (YAML-quoted scalar).
-        if (v ~ /^".*"$/ || v ~ /^'"'"'.*'"'"'$/) v = substr(v, 2, length(v)-2)
-        if (key == "pr") sub(/^#/, "", v)
-        print v
-        exit
-      }
+# read_frontmatter FILE... — for each FILE with a closed frontmatter block,
+# print FILE, slug, status and pr separated by the unit separator (\037), in
+# one awk pass over all files (one process per field per file took seconds
+# on a few dozen plans). The first line of each key wins. Values are trimmed
+# and lose a matching pair of surrounding quotes (so `pr: "2405"` yields 2405,
+# as YAML would parse it); `pr` also loses a leading '#', so `pr: 2346`,
+# `pr: "2346"` and `pr: #2346` all yield `2346`.
+read_frontmatter() {
+  awk '
+    FNR==1 { infm = ($0 == "---"); delete v; next }
+    !infm  { next }
+    $0 == "---" { printf "%s\037%s\037%s\037%s\n", FILENAME, v["slug"], v["status"], v["pr"]; infm=0; next }
+    match($0, /^[[:space:]]*(slug|status|pr)[[:space:]]*:[[:space:]]*/) {
+      key = $0; sub(/^[[:space:]]*/, "", key); sub(/[[:space:]]*:.*/, "", key)
+      if (key in v) next
+      val = substr($0, RLENGTH+1)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", val)
+      if (val ~ /^".*"$/ || val ~ /^'"'"'.*'"'"'$/) val = substr(val, 2, length(val)-2)
+      if (key == "pr") sub(/^#/, "", val)
+      v[key] = val
     }
-  ' "$file"
+  ' "$@"
+}
+
+# fetch_pr_states PR... — fill pr_states[PR] for every numeric PR with one
+# GraphQL call (a `gh pr view` per PR costs about a second each). A number
+# the call does not return is no PR: UNKNOWN. If the call itself fails,
+# pr_states stays empty and pr_state looks each PR up on its own.
+declare -A pr_states
+fetch_pr_states() {
+  local q="" n num state resp
+  local -a nums=()
+  for n in "$@"; do
+    [[ "$n" =~ ^[0-9]+$ ]] || continue
+    nums+=("$n")
+    q+=" p$n:pullRequest(number:$n){state}"
+  done
+  [[ -n "$q" ]] || return 0
+  resp="$(gh api graphql -F owner='{owner}' -F name='{repo}' -f query="query(\$owner:String!,\$name:String!){repository(owner:\$owner,name:\$name){$q}}" 2>/dev/null || true)"
+  [[ "$resp" == *'"repository":{'* ]] || return 0
+  for n in "${nums[@]}"; do pr_states["$n"]="UNKNOWN"; done
+  while IFS=' ' read -r num state; do
+    pr_states["$num"]="$state"
+  done < <(grep -o '"p[0-9]*":{"state":"[A-Z]*"}' <<<"$resp" |
+    sed 's/"p\([0-9]*\)":{"state":"\([A-Z]*\)"}/\1 \2/' || true)
 }
 
 # pr_state PR — echo the GitHub state of PR (MERGED/OPEN/CLOSED), or UNKNOWN.
 pr_state() {
+  if [[ -n "${pr_states[$1]:-}" ]]; then
+    echo "${pr_states[$1]}"
+    return
+  fi
   gh pr view "$1" --json state --jq .state 2>/dev/null || echo "UNKNOWN"
 }
 
@@ -121,17 +148,19 @@ declare -A file_group
 declare -A group_pr
 declare -A group_abandoned
 
+# Frontmatter is authoritative. An empty `pr:` means "no PR yet" — there is no
+# fallback to a body `PR:` line (prose may quote example PR numbers).
+declare -A fm_slug fm_status fm_pr
+while IFS=$'\037' read -r plan slug status pr; do
+  fm_slug["$plan"]="$slug"
+  fm_status["$plan"]="$status"
+  fm_pr["$plan"]="$pr"
+done < <(read_frontmatter "${plans[@]}")
+
 for plan in "${plans[@]}"; do
-  slug=""
-  status=""
-  pr=""
-  if has_frontmatter "$plan"; then
-    # Frontmatter is authoritative. An empty `pr:` means "no PR yet" — do NOT
-    # fall back to a body `PR:` line (prose may quote example PR numbers).
-    slug="$(fm_field "$plan" slug)"
-    status="$(fm_field "$plan" status)"
-    pr="$(fm_field "$plan" pr)"
-  fi
+  slug="${fm_slug[$plan]:-}"
+  status="${fm_status[$plan]:-}"
+  pr="${fm_pr[$plan]:-}"
 
   if [[ -n "$slug" ]]; then
     group_key="$slug"
@@ -160,6 +189,9 @@ skipped_open=0
 
 mapfile -t group_keys < <(printf '%s\n' "${file_group[@]}" | sort -u)
 
+mapfile -t prs < <(for gk in "${group_keys[@]}"; do echo "${group_pr[$gk]:-}"; done | sort -u)
+fetch_pr_states "${prs[@]}"
+
 declare -a reap_groups=()
 declare -A group_reason
 
@@ -169,7 +201,7 @@ for gk in "${group_keys[@]}"; do
     [[ "${file_group[$p]}" == "$gk" ]] && members+=("$p")
   done
   label=""
-  for m in "${members[@]}"; do label+="$(basename "$m") "; done
+  for m in "${members[@]}"; do label+="${m##*/} "; done
   label="${label% }"
 
   if [[ -n "${group_abandoned[$gk]:-}" ]]; then
@@ -223,11 +255,18 @@ for gk in "${reap_groups[@]}"; do
   done
   reason="${group_reason[$gk]}"
   label=""
-  for m in "${members[@]}"; do label+="$(basename "$m") "; done
+  for m in "${members[@]}"; do label+="${m##*/} "; done
   label="${label% }"
+
+  # A follow-ups stub lists work nobody did; say so when it is archived.
+  followups=""
+  for m in "${members[@]}"; do
+    [[ "$m" == *-followups.md ]] && followups+="  follow-ups (triage what is still open; the PR body's Follow-ups section is current): ${m##*/}"$'\n'
+  done
 
   if (( dry_run )); then
     echo "would move ($reason) : $label -> $done_dir/"
+    printf '%s' "$followups"
     moved=$(( moved + ${#members[@]} ))
     continue
   fi
@@ -235,13 +274,14 @@ for gk in "${reap_groups[@]}"; do
   mkdir -p "$done_dir"
   for m in "${members[@]}"; do
     if [[ "$reason" != "abandoned" ]] && ! stamp_merged "$m"; then
-      echo "error: failed to stamp 'status: merged' into $(basename "$m"); not moving it" >&2
+      echo "error: failed to stamp 'status: merged' into ${m##*/}; not moving it" >&2
       continue
     fi
     mv "$m" "$done_dir/"
     moved=$(( moved + 1 ))
   done
   echo "moved ($reason)      : $label -> $done_dir/"
+  printf '%s' "$followups"
 done
 
 echo "---"
