@@ -85,7 +85,7 @@ to values first, and leave `<path>` for the verifier.
   lowest open slice. `<DECISIONS>` also has the `## Follow-ups` sections of
   the other open slices' bodies, and only that section, since another
   slice's `## Rulings` are not decisions for this PR:
-  `gh pr view <number> --json body -q .body | awk '/^## /{p=($0=="## Follow-ups")} p'`.
+  `gh pr view <number> --json body -q .body | awk '/^## /{p=/^## Follow-ups$/} p'`.
 
 Lines marked `(stack)` go in only for a stacked PR, and lines marked
 `(comments)` only when the findings are a PR's review comments; both without

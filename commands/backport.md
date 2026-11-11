@@ -99,7 +99,7 @@ closed one is ignored.
   ```bash
   git -C "$ROOT" worktree add --no-track -b "$BRANCH" "$WT" "origin/${TARGET}" \
     && WT="$(git -C "$ROOT" worktree list --porcelain \
-      | awk -v b="branch refs/heads/$BRANCH" '/^worktree /{p=substr($0,10)} $0==b{print p}')" \
+      | grep -B2 -Fx "branch refs/heads/$BRANCH" | sed -n 's/^worktree //p')" \
     && test "$(git -C "$WT" branch --show-current)" = "$BRANCH" \
     && printf 'WT=%s\n' "$WT" \
     && { ! command -v link-plans >/dev/null || link-plans "$WT"; }
