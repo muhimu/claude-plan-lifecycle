@@ -8,7 +8,7 @@ argument-hint: [stack or PR number — optional, auto-detects from the current b
 Run `/code-review` on each open PR of a stack, verify its findings, and report
 them slice by slice. This command reviews only — it never edits, commits or
 pushes. With `--comment`, it posts each slice's confirmed and plausible
-findings on that slice's PR, marked so `/plan-lifecycle:pr-fix <stack>` treats
+findings, nits left out, on that slice's PR, marked so `/plan-lifecycle:pr-fix <stack>` treats
 them as review findings to verify (not your own notes) and fixes each in the
 slice that owns it.
 
@@ -22,7 +22,9 @@ Split `$ARGUMENTS`: if the first token is a PR (a number, PR URL or `OWNER/REPO#
 target; everything after it (or all of `$ARGUMENTS` when the first token is
 not one) is `REVIEW_ARGS`, passed verbatim to every review (an effort level,
 `--max-findings <n>`). `--comment` is taken out of `REVIEW_ARGS` and sets
-`POST`: the reviews do not post, Step 3 does. `--fix` stops the command: each
+`POST`: the reviews do not post, Step 3 does. `--nits` is taken out too and
+sets `NITS`: nits (findings the verifier gave the kind `nit`) are then listed
+and posted like any other finding. `--fix` stops the command: each
 review would apply its findings to the same checkout. Tell the user to post
 with `--comment` and fix with `/plan-lifecycle:pr-fix` instead.
 
@@ -112,8 +114,8 @@ once every slice is through Steps 2 and 3.
 
 Posting here, not in the reviews, is what lets every comment carry the marker
 `<!-- plan-lifecycle:review-stack -->` that `/pr-fix` keys on. Post only
-CONFIRMED and PLAUSIBLE findings — REJECTED and unverified ones stay in the
-summary. For each slice with at least one finding to post, post one review:
+CONFIRMED and PLAUSIBLE findings, and nits only under `NITS` — REJECTED and
+unverified ones stay in the summary. For each slice with at least one finding to post, post one review:
 
 - **Where each finding goes.** In `gh pr diff <N>`, a hunk header
   `@@ -a,b +c,d @@` covers lines `c` to `c+d-1` of the new file (no `,d`
@@ -165,7 +167,9 @@ Posted: <the review's html_url>        (POST only)
 | # | Where | Verdict | Finding |
 |---|-------|---------|---------|
 | 1 | `path/to/file.go:123` | confirmed | <one-line summary> |
-| 2 | `path/to/file.go:140` | plausible, nit | <one-line summary> |
+| 2 | `path/to/file.go:140` | plausible | <one-line summary> |
+
+Nits: <n> not listed
 
 Rejected:
 - `path/to/file.go:88` <one-line summary> — <the verifier's reason, e.g. fixed in #M, or the ADR that records it>
@@ -174,14 +178,19 @@ Unverified:
 - `path/to/file.go:61` <one-line summary> — <its verifier failed | its verifier's answer did not match its findings>
 ```
 
-`No findings.` for a clean slice; leave out `Rejected:` and `Unverified:`
+The table has the confirmed and plausible findings that are not nits; the
+nits are one count, since most are dropped unread. Under `NITS` they are
+table rows too (`plausible, nit`) and the count line goes. `No findings.` for
+a clean slice; leave out the table, `Nits:`, `Rejected:` and `Unverified:`
 when empty. Keep
 each review's own ranking (most severe first) and its one-line summaries; the
 full failure scenarios and evidence stay in the results, so do not repeat them
 unless the user asks.
 
 End with one line: `Stack #<S>: <X> findings across <K> PRs (#<a>: <n>, #<b>: <m>, …), <R> rejected by verification`,
-counting confirmed and plausible findings in `<X>`; when any are
+counting the confirmed and plausible findings that are not nits in `<X>`;
+when there are nits add `, <N> nits` and, unless `NITS` is set, a line: "Ask
+for the nits to see them; `--nits` lists and posts them." When any are
 unverified add `, <U> unverified`.
 
 With `POST`, add: "Each comment carries the review-stack marker, so
