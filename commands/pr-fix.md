@@ -13,23 +13,34 @@ the user approves before it is posted; thread resolution stays with the user.
 
 ## Resolving the target
 
-Split `$ARGUMENTS`: if the first token is a PR (a number, PR URL or `OWNER/REPO#N` — the anchor forms in `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`) it is the
-target; everything after it (or all of `$ARGUMENTS` when the first token is
-not one) is `GUIDANCE` — the user's pre-brief, e.g. "skip the getattr nit; fix the
-absorb() indexing with a positional map". It is applied in Step 2. Under
-`/plan-lifecycle:pr-fix-loop`, `GUIDANCE` is only the text before
-` — run autonomously:`; what follows are the loop's rules for the whole run,
-not pre-rulings.
+Resolve the target with the first word of `$ARGUMENTS` (never create a PR):
 
-Run `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first (all of it with
-no target, its step 3 otherwise): this command pushes,
-needs the **head**, and may move — its step 3 also covers the
-verifiers' prompts.
+```bash
+"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" target --command pr-fix --needs head --pushes --moves -- '<first word>'
+```
 
-Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-which also resolves `OWNER/REPO`, with `ANCHOR` = the target (the one `session-pr.md` yielded) (never create a PR):
+Options go before the `--`; nothing may follow the first word. With no
+target in `$ARGUMENTS`, add one `--candidate OWNER/REPO#N` for each PR this
+conversation opened or worked on, in any repo, most recent first. With or
+without a target, add `--checkout <path>` for each checkout of another repo
+the session used: the script needs it to find the worktrees of a target in
+a repo the current directory is not a checkout of. The script prints JSON;
+on `stop` or `ask` do what its `message` says, and on `ok` print and follow
+its `notes`.
 
-- **The number was a stack** → **stack mode over the whole stack**:
+`given` true → the first word was the target and the rest of `$ARGUMENTS`
+is `GUIDANCE`; false → all of it is. `GUIDANCE` is the user's pre-brief,
+e.g. "skip the getattr nit; fix the absorb() indexing with a positional
+map". It is applied in Step 2. Under `/plan-lifecycle:pr-fix-loop`,
+`GUIDANCE` is only the text before ` — run autonomously:`; what follows are
+the loop's rules for the whole run, not pre-rulings.
+
+`repo` is `OWNER/REPO`; `slices` (bottom first, each with `number`,
+`state`, `title`, `head`, `base`, `sha`), `stacked`, `stack_num`,
+`anchor_pr` and `position`/`size` are `SLICES`, `STACKED`, `STACK_NUM`,
+`ANCHOR_PR` and `POSITION/SIZE` below.
+
+- **The number was a stack** (`anchor_pr` is null) → **stack mode over the whole stack**:
   `TARGET_PRS` = every open PR in `SLICES`, bottom first.
 - **`STACKED` false** → **single mode**. `TARGET_PRS = [ANCHOR_PR]`. Fixes
   are committed to the checked-out branch, so it must be the PR's head and
@@ -41,7 +52,8 @@ which also resolves `OWNER/REPO`, with `ANCHOR` = the target (the one `session-p
   that introduced the code, and to know whether a restack is due.
 
 Print the header: `PR #<N>` or `PR #<N> (stack #<S>, slice <POSITION>/<SIZE>)`
-or `Stack #<S> (<K> open PRs)`.
+or `Stack #<S> (<K> open PRs)`; a stack with no native number is written as
+the JSON's `label` says (`stack of #<bottom>`).
 
 **Stack-mode pre-flight** (both variants — the command may check out other
 slice branches): `git status --porcelain` must have no non-`??` lines (the

@@ -44,8 +44,10 @@ Resolve `OWNER/REPO` once: `gh repo view --json nameWithOwner -q .nameWithOwner`
   comments. Read
   `gh pr view <N> --json title,baseRefName,headRefName,headRefOid` — the
   head is `<sha>` — and
-  find its stack per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`
-  with `ANCHOR = <N>`. Fetch the head so its code can be read without a
+  find its stack with `"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" stack <N>`,
+  which prints JSON: `stacked`, `stack_num`, and `slices` (bottom first, each
+  with `number`, `state`, `head`, `sha`) as `STACKED`, `<S>` and `SLICES`
+  (`status` `stop` → stop with its `message`). Fetch the head so its code can be read without a
   checkout: `git fetch origin pull/<N>/head`.
   - `STACKED` false → the **PR** row below.
   - otherwise → the **Stacked PR** row. Record `<N>`'s position in `SLICES`

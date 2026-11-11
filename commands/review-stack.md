@@ -18,22 +18,36 @@ pre-flight below checks.
 
 ## Resolving the stack
 
-Split `$ARGUMENTS`: if the first token is a PR (a number, PR URL or `OWNER/REPO#N` — the anchor forms in `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`) it is the
-target; everything after it (or all of `$ARGUMENTS` when the first token is
-not one) is `REVIEW_ARGS`, passed verbatim to every review (an effort level,
-`--max-findings <n>`). `--comment` is taken out of `REVIEW_ARGS` and sets
-`POST`: the reviews do not post, Step 3 does. `--nits` is taken out too and
-sets `NITS`: nits (findings the verifier gave the kind `nit`) are then listed
-and posted like any other finding. `--fix` stops the command: each
-review would apply its findings to the same checkout. Tell the user to post
-with `--comment` and fix with `/plan-lifecycle:pr-fix` instead.
+Resolve the target with the first word of `$ARGUMENTS`; this command never
+moves to another checkout (see above):
 
-Run `${CLAUDE_PLUGIN_ROOT}/references/session-pr.md` first (all of it with
-no target, its step 3 otherwise): this command does
-not push, needs the **top**, and never moves (see above).
+```bash
+"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" target --command review-stack --needs top -- '<first word>'
+```
 
-Resolve the target per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`,
-which also resolves `OWNER/REPO`, with `ANCHOR` = the target (the one `session-pr.md` yielded).
+Options go before the `--`; nothing may follow the first word. With no
+target in `$ARGUMENTS`, add one `--candidate OWNER/REPO#N` for each PR this
+conversation opened or worked on, in any repo, most recent first. With or
+without a target, add `--checkout <path>` for each checkout of another repo
+the session used: the script needs it to find the worktrees of a target in
+a repo the current directory is not a checkout of. The script prints JSON;
+on `stop` or `ask` do what its `message` says, and on `ok` print and follow
+its `notes`.
+
+`given` true → the first word was the target and the rest of `$ARGUMENTS`
+is `REVIEW_ARGS`; false → all of it is. `REVIEW_ARGS` is passed verbatim to
+every review (an effort level, `--max-findings <n>`). `--comment` is taken
+out of `REVIEW_ARGS` and sets `POST`: the reviews do not post, Step 3 does.
+`--nits` is taken out too and sets `NITS`: nits (findings the verifier gave
+the kind `nit`) are then listed and posted like any other finding. `--fix`
+stops the command: each review would apply its findings to the same
+checkout. Tell the user to post with `--comment` and fix with
+`/plan-lifecycle:pr-fix` instead.
+
+`repo` is `OWNER/REPO`; `slices` (bottom first, each with `number`,
+`state`, `title`, `head`, `base`, `sha`), `stacked`, `stack_num`,
+`anchor_pr` and `position`/`size` are `SLICES`, `STACKED`, `STACK_NUM`,
+`ANCHOR_PR` and `POSITION/SIZE` below.
 
 - **`STACKED` false** → the PR is its own one-slice stack: `TARGET_PRS` is
   that PR alone, `SIZE = 1`. Wherever `slice <P>/<SIZE> of stack #<S>` or
