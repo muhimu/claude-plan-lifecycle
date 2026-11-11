@@ -269,10 +269,10 @@ a local file the user triages later.
 ```markdown
 ---
 title: Follow-ups from <PLAN_TITLE>
-slug: <slug>-followups
-issue:
+slug: <slug>
+issue: <the plan's frontmatter `issue`, copied as written; empty when it has none>
 status: draft
-pr:
+pr: <the PR number Step 7 stamped into the plan>
 ---
 # Follow-ups from <PLAN_TITLE>
 
@@ -281,7 +281,8 @@ Parent plan: <basename of PLAN_PATH> · PR <PR URL> · Issue <ISSUE_REF, or "non
 Discovered during execution and deliberately not done. Triage, then turn
 what survives into a plan (brainstorming → writing-plans). A snapshot from
 when the PR opened: `/pr-fix` later removes fixed entries from the PR body
-only, so check the body when you triage.
+only, so check the body when you triage. `reap-plans` archives this file
+with the parent plan once the PR merges.
 
 ## <one-liner of item 1>
 
@@ -291,10 +292,13 @@ only, so check the body when you triage.
 ...
 ```
 
-The stub gets its **own** slug: under the parent's slug `reap-plans` would
-archive it with the parent the moment the parent's PR merges. `issue:` stays
-empty: inheriting the parent's issue would demand a second `Closes` on an
-issue the parent PR already closes — the body links it instead.
+The stub carries the parent's `slug`, `issue` and `pr`: it is a local
+snapshot, and the PR body's Follow-ups section is the record. The shared
+slug keeps `stamp-plans` re-stamping it with the parent, and `reap-plans`
+archives it with the parent once the PR merges, naming it on a `follow-ups`
+line so open items get a look. It opens no PR of its own, so the inherited
+`issue` asks for no second `Closes`. Step 2 never picks it as a plan to
+execute (it skips `-followups.md`).
 
 ## Step 8 — Report
 
