@@ -1,6 +1,6 @@
 ---
 description: Run /pr-fix in an autonomous loop — apply fixes, push, wait for the automated review workflow to post a new review, repeat until the review is clean or the round cap is hit. Accepts a PR or stack number.
-argument-hint: [PR or stack number — optional, auto-detects from the current branch or this session's PRs] [free-text guidance, passed through to pr-fix]
+argument-hint: "[PR or stack number — optional, auto-detects from the current branch or this session's PRs] [free-text guidance, passed through to pr-fix]"
 ---
 
 # PR Fix Loop

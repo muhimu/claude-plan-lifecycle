@@ -1,6 +1,6 @@
 ---
 description: Rebase a stacked-PR chain after a squash-merge, new commits on a lower PR, or drift from the default branch, then push and retarget — asking first only when the rebase was not clean or rebased the bottom onto a moved trunk.
-argument-hint: [stack number, PR number, or branch — optional anchor when the current branch is not part of the stack] [--no-trunk]
+argument-hint: "[stack number, PR number, or branch — optional anchor when the current branch is not part of the stack] [--no-trunk]"
 ---
 
 # Restack

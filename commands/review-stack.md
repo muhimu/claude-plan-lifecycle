@@ -1,6 +1,6 @@
 ---
 description: Review every open PR of a stack (or one PR) with /code-review, verify each finding, and print one summary by slice; --comment posts them for /pr-fix.
-argument-hint: [stack or PR number — optional, auto-detects from the current branch or this session's PRs] [/code-review flags, e.g. high --comment]
+argument-hint: "[stack or PR number — optional, auto-detects from the current branch or this session's PRs] [/code-review flags, e.g. high --comment]"
 ---
 
 # Review Stack

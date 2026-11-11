@@ -1,6 +1,6 @@
 ---
 description: Backport a merged PR, or a stack's merged slices, to one release branch — check it isn't there already, pick with -x in a fresh worktree, ask include-or-rewrite for each missing prerequisite, regenerate and verify with the release branch's own tooling, compare with the source, and open a draft PR.
-argument-hint: [PR or stack number — optional, defaults to the current branch's PR] [release/X.Y — optional, defaults to the newest release/<n>.<n>]
+argument-hint: "[PR or stack number — optional, defaults to the current branch's PR] [release/X.Y — optional, defaults to the newest release/<n>.<n>]"
 ---
 
 # Backport

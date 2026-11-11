@@ -1,6 +1,6 @@
 ---
 description: Verify the findings of the latest /code-review in this session, or with a PR number the open review comments on that PR — verifier agents run in parallel (at most six per command, or one per target on stacks larger than six) and check each finding against the reviewed code, the PR body, the ADRs and CLAUDE.md files, the PR's commit messages and review threads and, on a stacked PR, the slices above, by the same rules /review-stack uses — then print each as confirmed, plausible or rejected. Read-only.
-argument-hint: [PR number — optional; verifies that PR's open review comments instead of the latest /code-review]
+argument-hint: "[PR number — optional; verifies that PR's open review comments instead of the latest /code-review]"
 ---
 
 # Verify Findings
