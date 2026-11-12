@@ -358,7 +358,7 @@ check "(r) no temp file is left" [ -z "$(find "$sd" -name '*.tmp.*')" ]
 check "(r) a stack with no number of its own is titled after its bottom PR" grep -qF '<title>Triage stack of #41</title>' "$sd/stack-of-41.html"
 check "(r) usage shows --stack" grep -qF 'render-report --stack <overview.md> <slice.md>...' <("$root/bin/render-report" --help)
 
-check "(r) pr-triage builds the stack page" grep -qF 'render-report" --stack local/triage/stack-<S>.md' "$root/commands/pr-triage.md"
+check "(r) pr-triage builds the stack page" grep -qF 'render-report" --stack <ROOT>/local/triage/stack-<S>.md' "$root/commands/pr-triage.md"
 check "(r) review-guide builds the stack page" grep -qF 'render-report" --stack <ROOT>/local/review-guide/stack-<S>.md' "$root/commands/review-guide.md"
 check "(t) the triage header links the PR" grep -qF 'PR [#<N>](<url>) "<title>"' "$root/references/pr-triage-brief.md"
 check "(t) the review guide header links the PR" grep -qxF '# [#<N>](<url>) <title>' "$root/commands/review-guide.md"
