@@ -26,7 +26,7 @@
 #   render-report --help
 #
 # Exits 2 with no arguments or a --stack with fewer than two files, and 1 if
-# any input is not an existing .md file; without --stack the valid ones are
+# any input is not a readable .md file; without --stack the valid ones are
 # still rendered.
 
 set -euo pipefail
@@ -70,6 +70,13 @@ page_kind() {
   esac
 }
 
+# stack_name NAME — stack-12 is "12"; a stack with no number of its own,
+# stack-of-12, is "of #12", named after its bottom PR.
+stack_name() {
+  local s="${1#stack-}"
+  echo "${s/#of-/of #}"
+}
+
 # page_title FILE — two to four words from the report's directory and name.
 page_title() {
   local name
@@ -77,14 +84,14 @@ page_title() {
   case "$(page_kind "$1")" in
     review-guide)
       if [[ "$name" == stack-* ]]; then
-        echo "Review guide stack ${name#stack-}"
+        echo "Review guide stack $(stack_name "$name")"
       else
         echo "Review guide #$name"
       fi
       ;;
     pr-triage)
       if [[ "$name" == stack-* ]]; then
-        echo "Triage stack ${name#stack-}"
+        echo "Triage stack $(stack_name "$name")"
       else
         echo "Triage #$name"
       fi
@@ -375,7 +382,7 @@ h1 a.num:hover { text-decoration: underline; }
 .tabs a:hover { color: var(--fg); }
 .tabs a[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
 .tabs .help-button { margin-left: auto; }
-.tab-panel, .tab-panel h2, .tab-panel details { scroll-margin-top: 56px; }
+.tabs ~ .help, .tab-panel, .tab-panel h2, .tab-panel details { scroll-margin-top: 56px; }
 
 @media (max-width: 640px) {
   main { padding-top: 24px; }
@@ -538,11 +545,11 @@ HTML
         badges.appendChild(b);
       });
       var meta = lead.nextElementSibling;
-      var stack = meta && meta.tagName === 'P' && !meta.children.length && /^Stack (?:of )?(#\d+), (.+)$/.exec(meta.textContent);
+      var stack = meta && meta.tagName === 'P' && !meta.children.length && /^(Stack (?:of )?#\d+), (.+)$/.exec(meta.textContent);
       lead.remove();
       top.appendChild(el('div', 'eyebrow', stack ? 'Stack triage' : 'PR triage'));
       if (stack) {
-        top.appendChild(el('h1', '', 'Stack ' + stack[1]));
+        top.appendChild(el('h1', '', stack[1]));
         meta.textContent = stack[2];
         meta.className = 'meta';
         top.appendChild(meta);
@@ -874,6 +881,11 @@ HTML
         dd.appendChild(b);
       });
     }
+    // On a stack page, a report's own #section link goes to its tab's copy.
+    if (prefix) all(page, 'a[href^="#"]').forEach(function (a) {
+      var id = prefix + a.getAttribute('href').slice(1);
+      if (document.getElementById(id)) a.setAttribute('href', '#' + id);
+    });
     t.top = top;
     t.toc = toc;
   }
@@ -913,6 +925,8 @@ HTML
       panel.hidden = !panel.hidden;
       helpButton.setAttribute('aria-expanded', String(!panel.hidden));
       helpButton.textContent = panel.hidden ? 'Help' : 'Close help';
+      // The stack page's Help button stays in view; its panel is at the top.
+      if (!single && !panel.hidden) panel.scrollIntoView();
     });
     helpButton.setAttribute('aria-expanded', 'false');
     helpButton.setAttribute('aria-controls', 'help-panel');
@@ -950,11 +964,12 @@ HTML
 
   // A page opened at, or moved to, a #section inside a collapsed box opens
   // it. On a stack page, #<tab> or a section in it shows that tab; any other
-  // hash shows the Stack tab.
+  // hash keeps the tab shown, the Stack tab at first.
   function openHash() {
     var target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
     if (!single) {
-      var shown = (target && target.closest('.tab-panel')) || tabs[0].panel;
+      var open = tabs.filter(function (t) { return !t.panel.hidden; })[0];
+      var shown = (target && target.closest('.tab-panel')) || open.panel;
       tabs.forEach(function (t) {
         t.panel.hidden = t.panel !== shown;
         t.link.setAttribute('aria-selected', String(t.panel === shown));
@@ -985,21 +1000,34 @@ valid() {
     echo "render-report: $1: no such file" >&2
     return 1
   fi
+  if [[ ! -r "$1" ]]; then
+    echo "render-report: $1: cannot read" >&2
+    return 1
+  fi
+}
+
+# publish OUT FILE... — write the page beside OUT, then move it into place:
+# a failure part-way leaves the old page as it was.
+tmp=""
+trap 'rm -f "$tmp"' EXIT
+publish() {
+  local out="$1"
+  shift
+  tmp="$out.tmp.$$"
+  write_page "$(page_title "$1" | html_escape)" "$(page_kind "$1")" "$@" > "$tmp"
+  mv "$tmp" "$out"
+  echo "$out"
 }
 
 rc=0
 if (( stack )); then
   for f in "$@"; do valid "$f" || rc=1; done
   (( rc == 0 )) || exit "$rc"
-  out="${1%.md}.html"
-  write_page "$(page_title "$1" | html_escape)" "$(page_kind "$1")" "$@" > "$out"
-  echo "$out"
+  publish "${1%.md}.html" "$@"
   exit 0
 fi
 for f in "$@"; do
   valid "$f" || { rc=1; continue; }
-  out="${f%.md}.html"
-  write_page "$(page_title "$f" | html_escape)" "$(page_kind "$f")" "$f" > "$out"
-  echo "$out"
+  publish "${f%.md}.html" "$f"
 done
 exit "$rc"

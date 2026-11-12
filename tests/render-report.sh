@@ -307,6 +307,8 @@ PR #42 "b" (slice 2/2 of stack #40), head 3, base x at 1. Triaged 2026-11-10.
 ## Findings
 
 1. **Must-fix: y.** `b.go:1`
+
+See [the finding](#findings).
 MD
 out="$("$root/bin/render-report" --stack "$sd/stack-40.md" "$sd/41.md" "$sd/42.md" 2>"$tmp/err")"
 rc=$?
@@ -339,6 +341,21 @@ rc=$?
 check "(r) --stack with a missing slice exits 1 (got $rc)" [ "$rc" -eq 1 ]
 check "(r) stderr names the missing slice" grep -qF '99.md: no such file' "$tmp/err"
 check "(r) --stack writes nothing on error" [ ! -e "$sp" ]
+"$root/bin/render-report" --stack "$sd/stack-40.md" "$sd/41.md" "$sd/42.md" >/dev/null
+cp "$sp" "$tmp/good.html"
+cp "$sd/42.md" "$sd/43.md"
+chmod 000 "$sd/43.md"
+"$root/bin/render-report" --stack "$sd/stack-40.md" "$sd/41.md" "$sd/43.md" >/dev/null 2>"$tmp/err"
+rc=$?
+chmod 600 "$sd/43.md"
+rm -f "$sd/43.md"
+check "(r) --stack with an unreadable slice exits 1 (got $rc)" [ "$rc" -eq 1 ]
+check "(r) stderr names the unreadable slice" grep -qF '43.md: cannot read' "$tmp/err"
+check "(r) an unreadable slice leaves the old page as it was" cmp -s "$tmp/good.html" "$sp"
+check "(r) no temp file is left" [ -z "$(find "$sd" -name '*.tmp.*')" ]
+{ printf 'Triage: ready · impact low · risk low · findings 0\n\nStack of #41, 1 open PRs, #41 → #41, top head 1, base main. Triaged 2026-11-10.\n'; } > "$sd/stack-of-41.md"
+"$root/bin/render-report" --stack "$sd/stack-of-41.md" "$sd/41.md" >/dev/null
+check "(r) a stack with no number of its own is titled after its bottom PR" grep -qF '<title>Triage stack of #41</title>' "$sd/stack-of-41.html"
 check "(r) usage shows --stack" grep -qF 'render-report --stack <overview.md> <slice.md>...' <("$root/bin/render-report" --help)
 
 check "(r) pr-triage builds the stack page" grep -qF 'render-report" --stack local/triage/stack-<S>.md' "$root/commands/pr-triage.md"
@@ -362,11 +379,14 @@ if [ -x "$chrome" ]; then
     check "(s) ids stay unique across tabs" grep -qF 'id="41-findings"' "$tmp/dom"
     check "(s) slice tab keeps its Must-fix pill" grep -qF 'pill red">Must-fix</span>' "$tmp/dom"
     check "(s) a Stack-wide slice list is a chip" grep -qF '<span class="chip">#41, #42</span>' "$tmp/dom"
+    check "(s) a report's own #section link stays in its tab" grep -qF 'href="#42-findings">the finding</a>' "$tmp/dom"
     check "(s) a row links to its tab" grep -qF 'href="#42">#42</a>' "$tmp/dom"
     check "(t) a linked PR number links to GitHub" grep -qF '<a class="num" href="https://github.com/o/r/pull/41">#41</a>' "$tmp/dom"
     check "(t) a linked PR header still gets its title" grep -qF '</a> a</h1>' "$tmp/dom"
     "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$sp#42-findings" > "$tmp/dom" 2>/dev/null
     check "(s) #42-findings opens tab 42" grep -qE '<a [^>]*href="#42"[^>]*aria-selected="true"|<a [^>]*aria-selected="true"[^>]*href="#42"' "$tmp/dom"
+    "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$sd/stack-of-41.html" > "$tmp/dom" 2>/dev/null
+    check "(s) a stack with no number of its own keeps its of" grep -qF '<h1>Stack of #41</h1>' "$tmp/dom"
   fi
   printf '# [#16](https://github.com/o/r/pull/16) x\n\nbody\n' > "$tmp/review-guide/16.md"
   "$root/bin/render-report" "$tmp/review-guide/16.md" >/dev/null
