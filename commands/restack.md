@@ -1,6 +1,6 @@
 ---
 description: Rebase a stacked-PR chain after a squash-merge, new commits on a lower PR, or drift from the default branch, then push and retarget — asking first only when the rebase was not clean or rebased the bottom onto a moved trunk.
-argument-hint: [stack number, PR number, or branch — optional anchor when the current branch is not part of the stack] [--no-trunk]
+argument-hint: "[stack number, PR number, or branch — optional anchor when the current branch is not part of the stack] [--no-trunk]"
 ---
 
 # Restack
@@ -59,9 +59,12 @@ the turn.
 
 1. **Anchor.** Take `--no-trunk` out of `$ARGUMENTS` first; what's left
    (possibly empty) is `ANCHOR`.
-2. **Find the stack** per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`.
-   `STACKED` false → stop: "PR #<N> is not part of a stack." `SLICES` is the
-   stack, bottom first; record `STACK_NUM` for the report.
+2. **Find the stack:** `"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" stack <ANCHOR>` prints JSON
+   (`status` `stop` → stop with its `message`). `stacked` false → stop:
+   "PR #<N> is not part of a stack." Its `slices` — each with `number`,
+   `state` (`open` / `closed` / `merged`), `title`, `head`, `base`, `sha` —
+   is `SLICES`, the stack, bottom first; record `stack_num` as `STACK_NUM`
+   for the report (null: write `stack of #<bottom>`).
 3. **Partition.** Walk bottom-up: merged PRs form the bottom prefix;
    everything after the first non-merged PR must be open — if a merged PR
    appears *above* an open one, stop: "Stack merged out of order (#<N> merged
@@ -190,7 +193,7 @@ If no verify commands resolve (no CLAUDE.md declaration, no make targets),
 stop: "No verify commands found. Verify manually, then push by hand per the plan-frontmatter
 recipe."
 
-## Step 5 — Confirm, then push
+## Step 5 — Push
 
 1. **Summary.** For each rebased `B[i]` print: `OLD_HEAD[i]` → `NEW_HEAD[i]` (short
    SHAs), commit count `git rev-list --count "<new-base>..B[i]"`, and a
@@ -205,8 +208,9 @@ recipe."
    - `RESOLVED` is not empty — a conflict was resolved or a commit skipped;
    - a range-diff shows an added or dropped commit, or could not be run.
 
-   A clean replay leaves each lower branch's patches as they were; Step 4
-   tested only the tip. When one holds, ask via `AskUserQuestion` (header
+   A clean replay leaves each lower branch's patches as they were, and
+   Step 4 passed at the tip: there is nothing to confirm, so no question,
+   whoever invoked this command. When one holds, ask via `AskUserQuestion` (header
    "Push", multi-select disabled): "Force-with-lease push <S> rebased
    branch(es)? <which of the above, and the branches or commits concerned>"
    Options: "Push all (Recommended)" / "Abort (keep local rebase)". Anything
@@ -257,8 +261,8 @@ recipe."
 ## Hard rules
 
 - **Worktree only; never on the default branch; clean tree required.**
-- **`--force-with-lease` only** — never bare `--force`; only after the Step 5
-  gate; only on the stack's own branches. A lease failure is a full
+- **`--force-with-lease` only** — never bare `--force`; only in Step 5;
+  only on the stack's own branches. A lease failure is a full
   stop, never a retry. Step 5.2 says when the gate asks.
 - **Nothing remote changes before Step 5.** Steps 1–4 are read-only towards
   origin and GitHub.

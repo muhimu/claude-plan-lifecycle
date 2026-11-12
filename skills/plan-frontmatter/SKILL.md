@@ -26,9 +26,10 @@ pr:
   follow-up docs) for the SAME unit of work carry the SAME slug. `reap-plans`
   groups files by slug and reaps a whole group together. Pick the slug once
   (kebab-case, e.g. `split-state-enum`) and reuse it verbatim on every related
-  file. Exception: a `-followups.md` stub written by `/execute-plan` is new,
-  not-yet-done work and takes its own slug `<slug>-followups`, so it is not
-  reaped with its parent.
+  file. A `-followups.md` stub written by `/execute-plan` carries its
+  parent's `slug`, `issue` and `pr` too: it is a local snapshot of the PR
+  body's Follow-ups section, re-stamped and reaped with its parent, and
+  `reap-plans` names it when it moves.
 - **issue** — the root issue the effort addresses. Bare number (`issue: 3178`)
   for an issue in the same repo; `org/repo#N` form for cross-repo. Shared
   across the slug group like `title`. Leave empty (`issue:`) only when the
@@ -45,8 +46,11 @@ pr:
      exception is a stack whose slices finish separate issues: there each
      slice declares the issues it closes with a `PR N closes:` line (see PR
      slicing), and `issue:` is the one the tip closes.
-- **status** — one of `draft` | `in-progress` | `merged` | `abandoned`. A bare
-  plain scalar — no quotes (`status: draft`, not `status: "draft"`).
+- **status** — one of `draft` | `merged` | `abandoned`. A bare plain scalar —
+  no quotes (`status: draft`, not `status: "draft"`). It records only how a
+  plan ended: it stays `draft` from creation until `reap-plans` archives the
+  plan. Whether work has started or a PR is open is not in `status`: read
+  `pr:` and the PR's state on GitHub.
 - **pr** — the PR number once a PR is opened, as a bare number (`pr: 2297`) — it
   is a YAML integer, so no quotes and no `#`. Leave empty (`pr:`, parses as null)
   until then. (`reap-plans` tolerates a stray quote or leading `#`, but the clean
@@ -57,12 +61,14 @@ pr:
 | Value | You (Claude) set it | When |
 |---|---|---|
 | `draft` | yes | at plan creation |
-| `in-progress` | yes, optional | by hand when you start executing the plan — `/execute-plan` never sets it, since it edits nothing in the plan but `pr:` |
 | `merged` | **NO — never write this** | `reap-plans` owns it; it stamps `merged` just before archiving |
 | `abandoned` | yes | only when the user says the work is dropped or superseded |
 
 Never write `status: merged` yourself. That value is owned solely by
 `reap-plans`, which sets it from GitHub merge state so it cannot drift.
+Nothing else changes `status`: `/execute-plan` and `stamp-plans` write only
+`pr:`, so a plan with an open PR still says `draft`. There is no
+`in-progress` value; no script or command reads one.
 
 ## When to fill `pr`
 
@@ -86,7 +92,9 @@ first `/` — never on a stacked slice branch (`alice/odm-2-api`), and not when 
 picked a different slug. Prefer `-f`.
 
 It stamps `pr: <N>` as a bare YAML integer into every frontmatter-bearing
-member of the slug group and errors if it finds none.
+member of the slug group and errors if it finds none. It ends with a `hint:`
+line when `reap-plans -n` finds plans in the plans dir that can be archived;
+pass that on to the user. It moves nothing itself.
 
 ## PR slicing (stacked PRs)
 

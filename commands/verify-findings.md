@@ -1,6 +1,6 @@
 ---
 description: Verify the findings of the latest /code-review in this session, or with a PR number the open review comments on that PR — verifier agents run in parallel (at most six per command, or one per target on stacks larger than six) and check each finding against the reviewed code, the PR body, the ADRs and CLAUDE.md files, the PR's commit messages and review threads and, on a stacked PR, the slices above, by the same rules /review-stack uses — then print each as confirmed, plausible or rejected. Read-only.
-argument-hint: [PR number — optional; verifies that PR's open review comments instead of the latest /code-review]
+argument-hint: "[PR number — optional; verifies that PR's open review comments instead of the latest /code-review]"
 ---
 
 # Verify Findings
@@ -44,8 +44,10 @@ Resolve `OWNER/REPO` once: `gh repo view --json nameWithOwner -q .nameWithOwner`
   comments. Read
   `gh pr view <N> --json title,baseRefName,headRefName,headRefOid` — the
   head is `<sha>` — and
-  find its stack per `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`
-  with `ANCHOR = <N>`. Fetch the head so its code can be read without a
+  find its stack with `"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" stack <N>`,
+  which prints JSON: `stacked`, `stack_num`, and `slices` (bottom first, each
+  with `number`, `state`, `head`, `sha`) as `STACKED`, `<S>` and `SLICES`
+  (`status` `stop` → stop with its `message`). Fetch the head so its code can be read without a
   checkout: `git fetch origin pull/<N>/head`.
   - `STACKED` false → the **PR** row below.
   - otherwise → the **Stacked PR** row. Record `<N>`'s position in `SLICES`
@@ -85,7 +87,7 @@ to values first, and leave `<path>` for the verifier.
   lowest open slice. `<DECISIONS>` also has the `## Follow-ups` sections of
   the other open slices' bodies, and only that section, since another
   slice's `## Rulings` are not decisions for this PR:
-  `gh pr view <number> --json body -q .body | awk '/^## /{p=($0=="## Follow-ups")} p'`.
+  `gh pr view <number> --json body -q .body | awk '/^## /{p=/^## Follow-ups$/} p'`.
 
 Lines marked `(stack)` go in only for a stacked PR, and lines marked
 `(comments)` only when the findings are a PR's review comments; both without
@@ -179,7 +181,9 @@ same way; each says when it launches a target's groups.
 | # | Where | Verdict | Finding |
 |---|-------|---------|---------|
 | 1 | `path/to/file.go:123` | confirmed | <one-line summary> |
-| 2 | `path/to/file.go:140` | plausible, nit | <one-line summary> |
+| 2 | `path/to/file.go:140` | plausible | <one-line summary> |
+
+Nits: <n> not listed — ask for them to see them
 
 Rejected:
 - `path/to/file.go:88` <one-line summary> — <the verifier's reason, e.g. fixed in #M, or the ADR that records it>
@@ -193,13 +197,16 @@ Unverified:
 
 For a local target the heading is `## Changes on <branch>`, with no
 `<base> ← <head>` line. For PR comments, each `Finding` starts with
-`@<author>` and its one-line summary is yours, from the comment's body. Leave
-out `Rejected:`, `Not claims:` and `Unverified:` when empty; unverified
-findings are not table rows. Keep the findings' order and
+`@<author>` and its one-line summary is yours, from the comment's body. The
+table has the confirmed and plausible findings that are not nits; those of
+kind `nit` are one count, and listed the same way when the user asks. Leave
+out the table, `Nits:`, `Rejected:`, `Not claims:` and `Unverified:` when
+empty; unverified findings are not table rows. Keep the findings' order and
 their one-line summaries; the full failure scenarios and evidence stay in the
 verifier's result, so do not repeat them unless the user asks.
 
 End with one line: `<X> of <T> findings hold up, <R> rejected by verification`,
-counting confirmed and plausible findings in `<X>` and leaving NOT_A_CLAIM
+counting confirmed and plausible findings, nits included, in `<X>` (when
+there are nits add `, <N> of them nits`) and leaving NOT_A_CLAIM
 out of `<T>`; for PR comments add `, <Q> not claims`; when any are
 unverified add `, <U> unverified`, counted in `<T>`.

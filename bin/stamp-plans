@@ -25,6 +25,9 @@
 #
 # Files without frontmatter are ignored. A member already stamped with a
 # DIFFERENT PR is overwritten with a warning.
+#
+# Ends with a one-line hint when `reap-plans -n` finds plans in the plans dir
+# that can be archived. It only reports; nothing is moved.
 
 set -euo pipefail
 
@@ -40,7 +43,7 @@ while getopts "ns:f:d:h" opt; do
     f) from_file="$OPTARG" ;;
     d) plans_dir="$OPTARG" ;;
     h)
-      sed -n '3,27p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,30p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) echo "stamp-plans: unknown option" >&2; exit 2 ;;
@@ -170,4 +173,14 @@ done
 if (( stamped == 0 )); then
   echo "stamp-plans: no frontmatter-bearing plans with slug '$slug' in $plans_dir" >&2
   exit 1
+fi
+
+# Stamping happens on every PR open, so it is where a reminder to reap gets
+# seen. Best effort: no hint if reap-plans or gh cannot run.
+if (( ! dry_run )); then
+  reapable="$("$(dirname "$0")/reap-plans" -n -d "$plans_dir" 2>/dev/null |
+    sed -n 's/^dry run: \([0-9]*\) would move.*/\1/p' || true)"
+  if [[ "${reapable:-0}" -gt 0 ]]; then
+    echo "hint: $reapable plan file(s) in $plans_dir can be archived (merged or abandoned) — run reap-plans"
+  fi
 fi

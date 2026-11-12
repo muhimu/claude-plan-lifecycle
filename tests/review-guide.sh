@@ -36,9 +36,8 @@ check "(b) Review branches on targets, not STACKED" not grep -qF 'STACKED' <<<"$
 check "(b) Review reads each head just before the review" grep -qF 'gh pr view <n> -R <OWNER/REPO> --json headRefOid -q .headRefOid' <<<"$review"
 check "(b) template keeps unverified findings" grep -qF -- '- `<file:line>` <summary> — not verified: <why>' "$cmd"
 
-# (d) /review-stack accepts the detached worktree the guide makes at the top
-check "(d) session-pr accepts a detached HEAD at a wanted branch's head" grep -qF 'HEAD is detached at the head of a wanted branch' "$root/references/session-pr.md"
-check "(d) only for a caller that does not push" grep -qF 'for a caller that does not push, HEAD is detached' "$root/references/session-pr.md"
+# (d) /review-stack accepts the detached worktree the guide makes at the top:
+# tests/resolve-target.sh runs that case ("a detached HEAD at the top's head").
 
 # (i) follow-ups: findings left out keep Riskiest code; the table has a cap;
 # <f> is defined; the sticky effort is said

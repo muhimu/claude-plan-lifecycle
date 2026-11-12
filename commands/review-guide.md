@@ -1,6 +1,6 @@
 ---
 description: Read a colleague's PR or PR stack without running it and write a local guide — where the code differs from the PR body, at most 5 spots that need design judgement, and what is safe to skim.
-argument-hint: [PR or stack number — optional, defaults to the current branch's PR] [head sha] [--expert | --new] [--review [effort]]
+argument-hint: "[PR or stack number — optional, defaults to the current branch's PR] [head sha] [--expert | --new] [--review [effort]]"
 ---
 
 # Review guide
@@ -53,9 +53,11 @@ number."
 ### Stack
 
 `N` may be a PR or a stack, and a PR may be one slice of a stack. Find out
-with `${CLAUDE_PLUGIN_ROOT}/references/stack-discovery.md`, steps 1–4 only
-(they are `gh` GET calls), run with `ANCHOR = N`. It gives `SLICES` (bottom
-first), `STACKED` and `STACK_NUM`.
+with `"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" stack <N>` (only `gh` GET
+calls). Its JSON gives `slices` (`SLICES`, bottom first, each with `number`,
+`state`, `head`, `base`, `sha`), `stacked` (`STACKED`) and `stack_num`
+(`STACK_NUM`, null for a stack without one); `status` `stop` → stop with
+its `message`.
 
 - **`STACKED` false, or `<head-sha>` given and `N` a PR:** one PR, `N`. A
   head sha pins that PR alone, even when it is a slice of a stack.
