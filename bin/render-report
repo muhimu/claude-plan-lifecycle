@@ -14,12 +14,20 @@
 # plugin's references/<type>-help.md; other reports get neither. A picture
 # in references/<type>-help/<section>.svg sits under that Help section.
 #
+# With --stack, it writes one page for a stack instead: the first file is the
+# Stack tab, each other file a slice tab in the order given, and the page is
+# the first file's .html. A tab's id is its file name, so #12 opens 12.md's
+# tab and #12-findings its Findings. The type and Help come from the first
+# file's folder. Nothing is written when any input is bad.
+#
 # Usage:
 #   render-report <file.md>...
+#   render-report --stack <overview.md> <slice.md>...
 #   render-report --help
 #
-# Exits 2 with no arguments, and 1 if any input is not an existing .md
-# file; the valid ones are still rendered.
+# Exits 2 with no arguments or a --stack with fewer than two files, and 1 if
+# any input is not a readable .md file; without --stack the valid ones are
+# still rendered.
 
 set -euo pipefail
 
@@ -31,6 +39,15 @@ usage() {
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   usage
   exit 0
+fi
+stack=0
+if [[ "${1:-}" == "--stack" ]]; then
+  stack=1
+  shift
+  if (( $# < 2 )); then
+    usage >&2
+    exit 2
+  fi
 fi
 if (( $# == 0 )); then
   usage >&2
@@ -53,6 +70,13 @@ page_kind() {
   esac
 }
 
+# stack_name NAME — stack-12 is "12"; a stack with no number of its own,
+# stack-of-12, is "of #12", named after its bottom PR.
+stack_name() {
+  local s="${1#stack-}"
+  echo "${s/#of-/of #}"
+}
+
 # page_title FILE — two to four words from the report's directory and name.
 page_title() {
   local name
@@ -60,22 +84,36 @@ page_title() {
   case "$(page_kind "$1")" in
     review-guide)
       if [[ "$name" == stack-* ]]; then
-        echo "Review guide stack ${name#stack-}"
+        echo "Review guide stack $(stack_name "$name")"
       else
         echo "Review guide #$name"
       fi
       ;;
-    pr-triage) echo "Triage #$name" ;;
+    pr-triage)
+      if [[ "$name" == stack-* ]]; then
+        echo "Triage stack $(stack_name "$name")"
+      else
+        echo "Triage #$name"
+      fi
+      ;;
     *) echo "$name" ;;
   esac
 }
 
 html_escape() {
-  sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+  sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
 }
 
+# embed FILE — the file as one line of base64.
+embed() {
+  base64 < "$1" | tr -d '\n'
+}
+
+# write_page TITLE KIND FILE... — one file is a single page; with --stack,
+# the files are the tabs, the first one the Stack tab.
 write_page() {
-  local md="$1" title="$2" kind="$3" help=""
+  local title="$1" kind="$2" help="" name id label i=0
+  shift 2
   [[ -n "$kind" && -f "$plugin_root/references/$kind-help.md" ]] && help="$plugin_root/references/$kind-help.md"
   cat <<'HTML'
 <!doctype html>
@@ -330,6 +368,22 @@ button.filter { margin: 0 0 8px; }
 .sample > :last-child { margin-bottom: 0; }
 .sample blockquote { padding: 12px 16px; border: 0; border-radius: 6px; background: var(--accent-soft); color: var(--fg); }
 
+/* A PR number in the title links to the PR */
+h1 a.num { color: var(--accent); text-decoration: none; }
+h1 a.num:hover { text-decoration: underline; }
+
+/* Stack page: a tab bar over one panel per report */
+.tabs { position: sticky; top: 0; z-index: 1; background: var(--surface); border-bottom: 1px solid var(--line); }
+.tabs .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; padding-top: 6px; }
+.tabs a {
+  padding: 6px 12px 7px; border-bottom: 2px solid transparent; color: var(--muted);
+  font-weight: 600; text-decoration: none; white-space: nowrap;
+}
+.tabs a:hover { color: var(--fg); }
+.tabs a[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.tabs .help-button { margin-left: auto; }
+.tabs ~ .help, .tab-panel, .tab-panel h2, .tab-panel details { scroll-margin-top: 56px; }
+
 @media (max-width: 640px) {
   main { padding-top: 24px; }
   .top .wrap { padding-top: 20px; padding-bottom: 18px; }
@@ -347,13 +401,31 @@ button.filter { margin: 0 0 8px; }
 </head>
 HTML
   if [[ -n "$kind" ]]; then printf '<body data-kind="%s">\n' "$kind"; else echo '<body>'; fi
-  echo '<main id="page"></main>'
-  printf '<script type="text/plain" id="md">'
-  base64 < "$md" | tr -d '\n'
-  printf '</script>\n'
+  if (( stack )); then
+    for f in "$@"; do
+      i=$((i + 1))
+      name="$(basename "$f" .md)"
+      if (( i == 1 )); then
+        id=stack label=Stack
+      elif [[ "$name" =~ ^[0-9]+$ ]]; then
+        id="$name" label="#$name"
+      else
+        id="$(printf %s "$name" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g')"
+        label="$(printf %s "$name" | html_escape)"
+      fi
+      printf '<script type="text/plain" class="md" data-tab="%s" data-label="%s">' "$id" "$label"
+      embed "$f"
+      printf '</script>\n'
+    done
+  else
+    echo '<main id="page"></main>'
+    printf '<script type="text/plain" id="md">'
+    embed "$1"
+    printf '</script>\n'
+  fi
   if [[ -n "$help" ]]; then
     printf '<script type="text/plain" id="help">'
-    base64 < "$help" | tr -d '\n'
+    embed "$help"
     printf '</script>\n'
     # The plugin's own pictures, not report content: they go in verbatim.
     for pic in "$plugin_root/references/$kind-help"/*.svg; do
@@ -367,21 +439,38 @@ HTML
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script>
 (function () {
-  function decode(id) {
-    var node = document.getElementById(id);
-    if (!node) return '';
+  function text(node) {
     var b64 = node.textContent.trim();
     return new TextDecoder('utf-8').decode(Uint8Array.from(atob(b64), function (c) { return c.charCodeAt(0); }));
   }
-  var md = decode('md');
+  function decode(id) {
+    var node = document.getElementById(id);
+    return node ? text(node) : '';
+  }
   var help = decode('help');
   var kind = document.body.getAttribute('data-kind') || '';
-  var page = document.getElementById('page');
+  // One report, or on a stack page one tab per report, each in a panel of
+  // its own: { id, label, md, page, panel }.
+  var single = document.getElementById('md');
+  var tabs = single ? [{ md: text(single), page: document.getElementById('page') }]
+    : Array.prototype.map.call(document.querySelectorAll('script.md'), function (s) {
+      var panel = document.createElement('section'), page = document.createElement('main');
+      panel.className = 'tab-panel';
+      panel.id = s.getAttribute('data-tab');
+      panel.setAttribute('role', 'tabpanel');
+      page.className = 'page';
+      panel.appendChild(page);
+      document.body.appendChild(panel);
+      return { id: panel.id, label: s.getAttribute('data-label'), md: text(s), page: page, panel: panel };
+    });
 
   if (!window.marked) {
-    var pre = document.createElement('pre');
-    pre.textContent = md;
-    page.appendChild(pre);
+    tabs.forEach(function (t) {
+      var pre = document.createElement('pre');
+      pre.textContent = t.md;
+      if (t.label) t.page.appendChild(document.createElement('h2')).textContent = t.label;
+      t.page.appendChild(pre);
+    });
     return;
   }
 
@@ -401,7 +490,6 @@ HTML
       if (!/^(https?:|mailto:|#)/i.test(a.getAttribute('href'))) a.removeAttribute('href');
     });
   }
-  render(page, md);
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -423,66 +511,85 @@ HTML
     while (n && (n.nodeType === 3 ? !n.nodeValue.trim() : /\b(tag|pill)\b/.test(n.className))) n = n.nextSibling;
     return n && n.nodeName === 'P' ? first(n) : n;
   }
-  // "#12 title" as a muted number and the title.
-  function numbered(h1, num, text) {
+  // A header line is plain text, or links only its PR number: "[#12](url)".
+  function plain(node, num) {
+    var a = node.firstElementChild;
+    return !a || (node.children.length === 1 && a.tagName === 'A' && a.textContent === num);
+  }
+  // "#12 title" as a muted number, a link to the PR when the line had one,
+  // and the title.
+  function numbered(h1, from, num, text) {
+    var a = from.querySelector('a'), href = a && a.getAttribute('href');
+    var n = el(href ? 'a' : 'span', 'num', num);
+    if (href) n.href = href;
     h1.textContent = ' ' + text;
-    h1.insertBefore(el('span', 'num', num), h1.firstChild);
+    h1.insertBefore(n, h1.firstChild);
   }
 
   // Header band: the kind of report, the title, the line under it, then the
   // verdict (triage) or the summary (review guide). Other shapes stay put.
-  var top = el('div', 'wrap');
-  var lead = page.firstElementChild;
-  if (lead && lead.tagName === 'P' && /^Triage:/.test(lead.textContent)) {
-    // Verdict line: "Triage: x · impact y · ..." becomes tiles.
-    var badges = el('div', 'badges');
-    lead.textContent.split(' · ').forEach(function (part) {
-      var colour = /\b(high|needs-changes|failed)\b/.test(part) ? 'red'
-        : /\b(medium|needs-human)\b/.test(part) ? 'amber'
-        : /\b(low|none|ready)/.test(part) ? 'green' : '';
-      var kv = /^(\w+):?\s+(.+)$/.exec(part.trim()) || ['', '', part.trim()];
-      var b = el('span', 'badge ' + colour);
-      if (kv[1]) b.appendChild(el('span', 'k', kv[1]));
-      b.appendChild(el('b', '', kv[2]));
-      badges.appendChild(b);
-    });
-    var meta = lead.nextElementSibling;
-    lead.remove();
-    top.appendChild(el('div', 'eyebrow', 'PR triage'));
-    if (meta && meta.tagName === 'P' && /^PR #\d+/.test(meta.textContent)) {
-      var pr = !meta.children.length && /^PR (#\d+) "(.+)" \(([^)]*)\), (.+)$/.exec(meta.textContent);
-      if (pr) {
-        var h1 = el('h1');
-        numbered(h1, pr[1], pr[2]);
-        top.appendChild(h1);
-        meta.textContent = pr[3] + ', ' + pr[4];
+  function header(page) {
+    var top = el('div', 'wrap');
+    var lead = page.firstElementChild;
+    if (lead && lead.tagName === 'P' && /^Triage:/.test(lead.textContent)) {
+      // Verdict line: "Triage: x · impact y · ..." becomes tiles.
+      var badges = el('div', 'badges');
+      lead.textContent.split(' · ').forEach(function (part) {
+        var colour = /\b(high|needs-changes|failed)\b/.test(part) ? 'red'
+          : /\b(medium|needs-human)\b/.test(part) ? 'amber'
+          : /\b(low|none|ready)/.test(part) ? 'green' : '';
+        var kv = /^(\w+):?\s+(.+)$/.exec(part.trim()) || ['', '', part.trim()];
+        var b = el('span', 'badge ' + colour);
+        if (kv[1]) b.appendChild(el('span', 'k', kv[1]));
+        b.appendChild(el('b', '', kv[2]));
+        badges.appendChild(b);
+      });
+      var meta = lead.nextElementSibling;
+      var stack = meta && meta.tagName === 'P' && !meta.children.length && /^(Stack (?:of )?#\d+), (.+)$/.exec(meta.textContent);
+      lead.remove();
+      top.appendChild(el('div', 'eyebrow', stack ? 'Stack triage' : 'PR triage'));
+      if (stack) {
+        top.appendChild(el('h1', '', stack[1]));
+        meta.textContent = stack[2];
+        meta.className = 'meta';
+        top.appendChild(meta);
+      } else if (meta && meta.tagName === 'P' && /^PR #\d+/.test(meta.textContent)) {
+        var pr = /^PR (#\d+) "(.+)" \(([^)]*)\), (.+)$/.exec(meta.textContent);
+        if (pr && plain(meta, pr[1])) {
+          var h1 = el('h1');
+          numbered(h1, meta, pr[1], pr[2]);
+          top.appendChild(h1);
+          meta.textContent = pr[3] + ', ' + pr[4];
+        }
+        meta.className = 'meta';
+        top.appendChild(meta);
       }
-      meta.className = 'meta';
-      top.appendChild(meta);
+      top.appendChild(badges);
+    } else if (lead && lead.tagName === 'H1') {
+      if (/^Review guide/.test(document.title)) top.appendChild(el('div', 'eyebrow', 'Review guide'));
+      var text = lead.textContent, num = /^(#\d+) (.+)$/.exec(text), cut = text.indexOf(' · ');
+      if (num && plain(lead, num[1])) {
+        numbered(lead, lead, num[1], num[2]);
+      } else if (!lead.children.length && cut > 0) {
+        lead.textContent = text.slice(0, cut);
+        lead.appendChild(el('span', 'sub', text.slice(cut + 3)));
+      }
+      top.appendChild(lead);
+      var line = page.firstElementChild, quote = line && line.nextElementSibling;
+      if (line && line.tagName === 'P' && / · /.test(line.textContent) && quote && quote.tagName === 'BLOCKQUOTE') {
+        line.className = 'meta';
+        quote.classList.add('card');
+        top.appendChild(line);
+        top.appendChild(quote);
+      }
     }
-    top.appendChild(badges);
-  } else if (lead && lead.tagName === 'H1') {
-    if (/^Review guide/.test(document.title)) top.appendChild(el('div', 'eyebrow', 'Review guide'));
-    var text = lead.textContent, num = /^(#\d+) (.+)$/.exec(text), cut = text.indexOf(' · ');
-    if (!lead.children.length && num) {
-      numbered(lead, num[1], num[2]);
-    } else if (!lead.children.length && cut > 0) {
-      lead.textContent = text.slice(0, cut);
-      lead.appendChild(el('span', 'sub', text.slice(cut + 3)));
-    }
-    top.appendChild(lead);
-    var line = page.firstElementChild, quote = line && line.nextElementSibling;
-    if (line && line.tagName === 'P' && / · /.test(line.textContent) && quote && quote.tagName === 'BLOCKQUOTE') {
-      line.className = 'meta';
-      quote.classList.add('card');
-      top.appendChild(line);
-      top.appendChild(quote);
-    }
+    return top;
   }
 
-  // ⚑ and 🔒 become tags, a slice reference, "(#12)" or "(#12, used by
-  // #13)", a chip, and a decision's "Agree, or push back on:" starts a line.
-  var mark = /(⚑|🔒|\(#\d+(?:, used by #\d+)?\)|Agree, or push back on:)/;
+  // ⚑ and 🔒 become tags, a slice reference, "(#12)", "(#12, used by
+  // #13)" or "(#12, #13)", a chip, and a decision's "Agree, or push back
+  // on:" starts a line.
+  var mark = /(⚑|🔒|\(#\d+(?:, used by #\d+|(?:, #\d+)+)?\)|Agree, or push back on:)/;
   function marks(root) {
     var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     var texts = [];
@@ -664,66 +771,8 @@ HTML
       wrap.appendChild(table);
     });
   }
-  marks(top);
-  dress(page);
-
 HTML
   cat <<'HTML'
-  // Section headings: an id and a contents link; "x — y" is a title and a
-  // hint; the asks under "For a human" become callouts.
-  var toc = el('nav', 'toc'), taken = Object.create(null);
-  taken['help-panel'] = 1; // added to the page after this loop
-  all(page, 'h2').forEach(function (h2) {
-    var label = h2.textContent.split(' — ')[0].trim();
-    var base = slug(label) || 'section', id = base, k = 1;
-    while (taken[id] || document.getElementById(id)) id = base + '-' + (++k);
-    taken[id] = 1;
-    h2.id = id;
-    var a = el('a', '', label);
-    a.href = '#' + h2.id;
-    toc.appendChild(a);
-    var t = h2.firstChild, at = t && t.nodeType === 3 ? t.nodeValue.indexOf(' — ') : -1;
-    if (at > 0 && !t.nextSibling) {
-      h2.appendChild(el('span', 'hint', t.nodeValue.slice(at + 3)));
-      t.nodeValue = t.nodeValue.slice(0, at);
-    }
-    if (/^For a human/.test(label)) {
-      for (var n = h2.nextElementSibling; n && n.tagName !== 'H2'; n = n.nextElementSibling) {
-        if (n.tagName === 'P') n.classList.add('ask');
-      }
-    }
-  });
-
-  // Reference sections start collapsed; a contents link opens one. A triage
-  // keeps Checked / Not checked open: what was not proven matters there.
-  var collapse = kind === 'pr-triage' ? /^$/
-    : kind === 'review-guide' ? /^(Skip|Hot files|Riskiest code)/
-    : /^(Skip|Hot files|Riskiest code|Checked \/ Not checked)/;
-
-  all(page, 'h2').forEach(function (h2) {
-    if (!collapse.test(h2.textContent.trim())) return;
-    var details = document.createElement('details');
-    var summary = document.createElement('summary');
-    details.id = h2.id;
-    while (h2.firstChild) summary.appendChild(h2.firstChild);
-    details.appendChild(summary);
-    while (h2.nextSibling && !/^H[12]$/.test(h2.nextSibling.nodeName)) {
-      details.appendChild(h2.nextSibling);
-    }
-    h2.replaceWith(details);
-  });
-  toc.addEventListener('click', function (e) {
-    var target = e.target.hash && document.getElementById(e.target.hash.slice(1));
-    if (target && target.tagName === 'DETAILS') target.open = true;
-  });
-  // A page opened at, or moved to, a #section inside a collapsed box opens it.
-  function openHash() {
-    var target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
-    var box = target && target.closest('details');
-    if (box) { box.open = true; target.scrollIntoView(); }
-  }
-  window.addEventListener('hashchange', openHash);
-
   function button(cls, text, onclick) {
     var b = el('button', 'tool ' + cls, text);
     b.type = 'button';
@@ -731,49 +780,119 @@ HTML
     return b;
   }
 
-  // A triage's claim ledger can hide the reproduced rows.
-  if (kind === 'pr-triage') {
-    all(page, '.scroll').forEach(function (wrap) {
-      var rows = all(wrap, 'tbody tr');
-      var ok = rows.filter(function (tr) { return tr.querySelector('td.ok'); });
-      if (!ok.length || ok.length === rows.length) return;
-      ok.forEach(function (tr) { tr.classList.add('ok-row'); });
-      var label = 'Show only failed and not reproducible';
-      var b = button('filter', label, function () {
-        b.textContent = wrap.classList.toggle('only-open') ? 'Show all claims' : label;
-      });
-      wrap.parentNode.insertBefore(b, wrap);
-    });
-  }
+  // Reference sections start collapsed; a contents link opens one. A triage
+  // keeps Checked / Not checked open: what was not proven matters there.
+  var collapse = kind === 'pr-triage' ? /^$/
+    : kind === 'review-guide' ? /^(Skip|Hot files|Riskiest code)/
+    : /^(Skip|Hot files|Riskiest code|Checked \/ Not checked)/;
 
-  // A review guide's questions for the author copy as plain text.
-  if (kind === 'review-guide') {
-    all(page, 'dd.ask').forEach(function (dd) {
-      var q = el('span', 'q');
-      while (dd.firstChild) q.appendChild(dd.firstChild);
-      dd.appendChild(q);
-      var b = button('copy', 'Copy', function () {
-        function done() {
-          b.textContent = 'Copied';
-          setTimeout(function () { b.textContent = 'Copy'; }, 1500);
-        }
-        function select() {
-          var range = document.createRange(), sel = window.getSelection();
-          range.selectNodeContents(q);
-          sel.removeAllRanges();
-          sel.addRange(range);
-          b.textContent = 'Selected: press Ctrl/Cmd+C';
-        }
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(q.textContent.trim()).then(done, select);
-        } else {
-          select();
-        }
-      });
-      dd.appendChild(b);
-    });
-  }
+  // One report into its page: the header band, the report's shapes, section
+  // ids and contents. On a stack page an id starts with its tab's, so ids
+  // stay unique across tabs.
+  var taken = Object.create(null);
+  taken['help-panel'] = 1; // added to the page after the tabs
+  function build(t) {
+    var page = t.page, prefix = t.id ? t.id + '-' : '';
+    render(page, t.md);
+    var top = header(page);
+    marks(top);
+    dress(page);
 
+    // Section headings: an id and a contents link; "x — y" is a title and a
+    // hint; the asks under "For a human" become callouts.
+    var toc = el('nav', 'toc');
+    all(page, 'h2').forEach(function (h2) {
+      var label = h2.textContent.split(' — ')[0].trim();
+      var base = prefix + (slug(label) || 'section'), id = base, k = 1;
+      while (taken[id] || document.getElementById(id)) id = base + '-' + (++k);
+      taken[id] = 1;
+      h2.id = id;
+      var a = el('a', '', label);
+      a.href = '#' + h2.id;
+      toc.appendChild(a);
+      var t = h2.firstChild, at = t && t.nodeType === 3 ? t.nodeValue.indexOf(' — ') : -1;
+      if (at > 0 && !t.nextSibling) {
+        h2.appendChild(el('span', 'hint', t.nodeValue.slice(at + 3)));
+        t.nodeValue = t.nodeValue.slice(0, at);
+      }
+      if (/^For a human/.test(label)) {
+        for (var n = h2.nextElementSibling; n && n.tagName !== 'H2'; n = n.nextElementSibling) {
+          if (n.tagName === 'P') n.classList.add('ask');
+        }
+      }
+    });
+
+    all(page, 'h2').forEach(function (h2) {
+      if (!collapse.test(h2.textContent.trim())) return;
+      var details = document.createElement('details');
+      var summary = document.createElement('summary');
+      details.id = h2.id;
+      while (h2.firstChild) summary.appendChild(h2.firstChild);
+      details.appendChild(summary);
+      while (h2.nextSibling && !/^H[12]$/.test(h2.nextSibling.nodeName)) {
+        details.appendChild(h2.nextSibling);
+      }
+      h2.replaceWith(details);
+    });
+    toc.addEventListener('click', function (e) {
+      var target = e.target.hash && document.getElementById(e.target.hash.slice(1));
+      if (target && target.tagName === 'DETAILS') target.open = true;
+    });
+
+    // A triage's claim ledger can hide the reproduced rows.
+    if (kind === 'pr-triage') {
+      all(page, '.scroll').forEach(function (wrap) {
+        var rows = all(wrap, 'tbody tr');
+        var ok = rows.filter(function (tr) { return tr.querySelector('td.ok'); });
+        if (!ok.length || ok.length === rows.length) return;
+        ok.forEach(function (tr) { tr.classList.add('ok-row'); });
+        var label = 'Show only failed and not reproducible';
+        var b = button('filter', label, function () {
+          b.textContent = wrap.classList.toggle('only-open') ? 'Show all claims' : label;
+        });
+        wrap.parentNode.insertBefore(b, wrap);
+      });
+    }
+
+    // A review guide's questions for the author copy as plain text.
+    if (kind === 'review-guide') {
+      all(page, 'dd.ask').forEach(function (dd) {
+        var q = el('span', 'q');
+        while (dd.firstChild) q.appendChild(dd.firstChild);
+        dd.appendChild(q);
+        var b = button('copy', 'Copy', function () {
+          function done() {
+            b.textContent = 'Copied';
+            setTimeout(function () { b.textContent = 'Copy'; }, 1500);
+          }
+          function select() {
+            var range = document.createRange(), sel = window.getSelection();
+            range.selectNodeContents(q);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            b.textContent = 'Selected: press Ctrl/Cmd+C';
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(q.textContent.trim()).then(done, select);
+          } else {
+            select();
+          }
+        });
+        dd.appendChild(b);
+      });
+    }
+    // On a stack page, a report's own #section link goes to its tab's copy.
+    if (prefix) all(page, 'a[href^="#"]').forEach(function (a) {
+      var id = prefix + a.getAttribute('href').slice(1);
+      if (document.getElementById(id)) a.setAttribute('href', '#' + id);
+    });
+    t.top = top;
+    t.toc = toc;
+  }
+  tabs.forEach(build);
+
+HTML
+  cat <<'HTML'
   // Help: the type's reading guide, behind a button in the header band. Its
   // examples are styled by the same code as the report.
   var panel = null;
@@ -806,23 +925,63 @@ HTML
       panel.hidden = !panel.hidden;
       helpButton.setAttribute('aria-expanded', String(!panel.hidden));
       helpButton.textContent = panel.hidden ? 'Help' : 'Close help';
+      // The stack page's Help button stays in view; its panel is at the top.
+      if (!single && !panel.hidden) panel.scrollIntoView();
     });
     helpButton.setAttribute('aria-expanded', 'false');
     helpButton.setAttribute('aria-controls', 'help-panel');
-    var bar = el('div', 'bar');
-    var eyebrow = top.querySelector('.eyebrow');
-    bar.appendChild(eyebrow || el('span'));
-    bar.appendChild(helpButton);
-    top.insertBefore(bar, top.firstChild);
+    if (single) {
+      var top = tabs[0].top, bar = el('div', 'bar');
+      bar.appendChild(top.querySelector('.eyebrow') || el('span'));
+      bar.appendChild(helpButton);
+      top.insertBefore(bar, top.firstChild);
+    }
   }
 
-  if (top.children.length) {
-    if (toc.children.length > 2) top.appendChild(toc);
-    var header = el('header', 'top');
-    header.appendChild(top);
-    document.body.insertBefore(header, page);
+  tabs.forEach(function (t) {
+    if (!t.top.children.length) return;
+    if (t.toc.children.length > 2) t.top.appendChild(t.toc);
+    var band = el('header', 'top');
+    band.appendChild(t.top);
+    t.page.parentNode.insertBefore(band, t.page);
+  });
+  // A stack page's tab bar: a link per tab, then Help.
+  if (!single) {
+    var nav = el('nav', 'tabs'), row = el('div', 'wrap');
+    row.setAttribute('role', 'tablist');
+    tabs.forEach(function (t) {
+      t.link = el('a', '', t.label);
+      t.link.href = '#' + t.id;
+      t.link.setAttribute('role', 'tab');
+      t.link.setAttribute('aria-controls', t.id);
+      row.appendChild(t.link);
+    });
+    if (helpButton) row.appendChild(helpButton);
+    nav.appendChild(row);
+    document.body.insertBefore(nav, tabs[0].panel);
   }
-  if (panel) document.body.insertBefore(panel, page);
+  if (panel) document.body.insertBefore(panel, tabs[0].panel || tabs[0].page);
+
+  // A page opened at, or moved to, a #section inside a collapsed box opens
+  // it. On a stack page, #<tab> or a section in it shows that tab; any other
+  // hash keeps the tab shown, the Stack tab at first.
+  function openHash() {
+    var target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (!single) {
+      var open = tabs.filter(function (t) { return !t.panel.hidden; })[0];
+      var shown = (target && target.closest('.tab-panel')) || open.panel;
+      tabs.forEach(function (t) {
+        t.panel.hidden = t.panel !== shown;
+        t.link.setAttribute('aria-selected', String(t.panel === shown));
+      });
+    }
+    // A hash change scrolls before the tab shows, so scroll again here.
+    var box = target && target.closest('details');
+    if (box) box.open = true;
+    if (!single && target === shown) window.scrollTo(0, 0);
+    else if (box || (!single && target)) target.scrollIntoView();
+  }
+  window.addEventListener('hashchange', openHash);
   openHash();
 })();
 </script>
@@ -831,20 +990,44 @@ HTML
 HTML
 }
 
-rc=0
-for f in "$@"; do
-  if [[ "$f" != *.md ]]; then
-    echo "render-report: $f: not a .md file" >&2
-    rc=1
-    continue
+# valid FILE — an existing .md file, or a message on stderr.
+valid() {
+  if [[ "$1" != *.md ]]; then
+    echo "render-report: $1: not a .md file" >&2
+    return 1
   fi
-  if [[ ! -f "$f" ]]; then
-    echo "render-report: $f: no such file" >&2
-    rc=1
-    continue
+  if [[ ! -f "$1" ]]; then
+    echo "render-report: $1: no such file" >&2
+    return 1
   fi
-  out="${f%.md}.html"
-  write_page "$f" "$(page_title "$f" | html_escape)" "$(page_kind "$f")" > "$out"
+  if [[ ! -r "$1" ]]; then
+    echo "render-report: $1: cannot read" >&2
+    return 1
+  fi
+}
+
+# publish OUT FILE... — write the page beside OUT, then move it into place:
+# a failure part-way leaves the old page as it was.
+tmp=""
+trap 'rm -f "$tmp"' EXIT
+publish() {
+  local out="$1"
+  shift
+  tmp="$out.tmp.$$"
+  write_page "$(page_title "$1" | html_escape)" "$(page_kind "$1")" "$@" > "$tmp"
+  mv "$tmp" "$out"
   echo "$out"
+}
+
+rc=0
+if (( stack )); then
+  for f in "$@"; do valid "$f" || rc=1; done
+  (( rc == 0 )) || exit "$rc"
+  publish "${1%.md}.html" "$@"
+  exit 0
+fi
+for f in "$@"; do
+  valid "$f" || { rc=1; continue; }
+  publish "${f%.md}.html" "$f"
 done
 exit "$rc"

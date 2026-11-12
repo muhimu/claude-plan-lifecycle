@@ -10,7 +10,10 @@ test themselves. For each PR this command writes one page to
 `local/triage/<N>.md`, and renders it to `local/triage/<N>.html` beside it: what the change does, how costly it is if wrong and how
 likely it is to break, every claim with how it was re-proved and the result,
 at most five proven findings, the decisions a human has to make, and what was
-and was not checked.
+and was not checked. For a stack it also writes `local/triage/stack-<S>.md`
+and opens one page for the stack: a Stack tab (each slice's verdict, issues
+that span slices, facts true of the whole stack said once), then a tab per
+slice's report.
 
 - **Local only.** It never writes to GitHub — no comments, reviews, labels,
   edits or pushes — and never posts a report or calls anything verified
@@ -152,13 +155,68 @@ and not retried.
 
 ## Handed-up deferrals
 
-Only when more than one target was triaged. A slice often defers a check to
+Only when two or more open slices of the stack have a report in
+`<ROOT>/local/triage/`, from this run or an earlier one, so a run on one
+slice still carries the stack's hand-offs. A slice often defers a check to
 a slice above it ("the wiring is in #M; triage it there"), and agents running
-in parallel cannot pass it on. In each report, find the Not checked items
-that name another PR of the stack. For each, read that PR's report:
+in parallel cannot pass it on. In each of those reports, find the Not
+checked items that name another PR of the stack. For each, read that PR's
+report:
 **covered** if its ledger, Checked list or For a human addresses the same
 behaviour,
-**not covered** if not, or "#M not triaged in this run".
+**not covered** if not, or "#M has no report".
+
+## Stack page
+
+Only when `STACKED` (for one target too) and at least one open slice has a
+report; that sets `STACK_PAGE`. Write `<ROOT>/local/triage/stack-<S>.md`
+(no native number: `stack-of-<bottom PR>.md`), rebuilt from scratch on every
+run from the current `<ROOT>/local/triage/<N>.md` of every open slice in `SLICES`,
+including reports of earlier runs. It is the first tab of the stack's page;
+each slice's report is a tab after it, unchanged. Change no slice report.
+
+```markdown
+Triage: <worst outcome> · impact <highest> · risk <highest> · findings <total>
+
+Stack #<S>, <n> open PRs, #<bottom> → #<top>, top head <TOP, 8 chars>, base <DEFAULT>. Triaged <date>.
+
+## Slices
+
+| PR | Triage | Ledger | Findings | Triaged |
+|---|---|---|---|---|
+| [#<N>](#<N>) <a few words of its title> | <its verdict line after "Triage: "> | <its Totals, short: "15 reproduced, 1 failed"> | <count> | <its Triaged date> at <its head, 8 chars> |
+
+## Across slices
+
+1. **<one issue that spans slices>** (#<N>, used by #<M>) — <evidence from each slice's report>. Fix in #<K>: <what>.
+
+## Stack-wide
+
+1. <a fact that holds on two or more slices: a CI gap, a flake, an environment Not checked item> (#<N>, #<M>) — <next step, when it is Not checked>
+
+## Handed up
+
+- #<a> → #<b>: <the item> — <covered | not covered | #b has no report>
+```
+
+- Outcome order: `needs-changes` > `needs-human` > `ready`; impact and risk:
+  high > medium > low. The outcome is `incomplete` instead when an open
+  slice has no report or its row is marked `head moved`: part of the stack
+  is unproven. Impact, risk and findings come from the reports there are.
+- **Slices:** one row per open slice, bottom first. A slice with no report
+  has no tab: its row is a plain `#<N>` with its title, `not triaged` in the
+  Triage cell and empty cells after it. A report
+  this run did not write adds `, earlier run` to its Triaged cell, and
+  `, head moved` when its head is not the slice's `sha` in `SLICES`.
+- **Across slices:** read each report's Findings, Checked / Not checked and
+  For a human. One issue reported in parts on two slices (a lower slice sets
+  something an upper slice relies on, and neither tests it) is one item here,
+  naming both. A Finding stays on its slice's tab; an item here may point at it.
+- **Stack-wide:** the same fact in two or more reports, written once with
+  the slices it came from.
+- **Handed up:** the Handed-up deferrals results.
+- Leave out a section with nothing in it. Never merge the slices' For a human
+  or Owner check sections here: they stay on the slice tabs.
 
 ## Clean up
 
@@ -230,15 +288,22 @@ A new `/pr-triage` run rewrites the report, and the section with it.
 
 ## Summary
 
-Run `"${CLAUDE_PLUGIN_ROOT}/bin/render-report"` on every report that exists,
-after Handed-up deferrals (that step reads the `.md`) and, with `QUIZ`,
-after Owner check. Open one page with
+Run `"${CLAUDE_PLUGIN_ROOT}/bin/render-report"` on every slice report that
+exists, after Handed-up deferrals (that step reads the `.md`) and, with
+`QUIZ`, after Owner check. With `STACK_PAGE`, then build the stack's page from
+the Stack page and every open slice's report that exists, bottom first:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/bin/render-report" --stack <ROOT>/local/triage/stack-<S>.md <ROOT>/local/triage/<a>.md <ROOT>/local/triage/<b>.md …
+```
+
+Open one page with
 `open` on macOS (`uname` is `Darwin`), else `xdg-open`; skip this when that
 command is not on PATH (on Linux, `open` can be the console tool `openvt`).
-For one PR, open that PR's
-page. For a stack, open the first report with a failed claim or a finding,
-else the bottom slice's. The Report column shows the `.html` path; everything
-else keeps reading the `.md`.
+With `STACK_PAGE`, open `<ROOT>/local/triage/stack-<S>.html`; else that PR's page,
+when it has a report. The Report column shows each slice's `.html` path;
+everything else keeps reading the `.md`. With `STACK_PAGE`, add
+`Stack page: local/triage/stack-<S>.html` after the table.
 
 ```
 Stack #<S> — triaged <K> open PRs
@@ -247,6 +312,8 @@ Stack #<S> — triaged <K> open PRs
 |----|--------|--------|----------|--------|
 | #<a> | needs-changes · impact medium · risk medium · decisions none | 11 reproduced, 1 failed, 1 not reproducible here | 1 | local/triage/<a>.html |
 | #<b> | failed: <reason> | | | |
+
+Stack page: local/triage/stack-<S>.html
 
 Handed up:
 - #<a> → #<b>: <the item> — not covered

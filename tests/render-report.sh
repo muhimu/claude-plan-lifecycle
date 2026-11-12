@@ -84,7 +84,7 @@ check "(g) no args prints usage on stderr" grep -qF 'render-report <file.md>...'
 # (h) -h prints the whole header comment and nothing after it
 "$root/bin/render-report" -h >"$tmp/out" 2>&1
 check "(h) -h starts with the name line" grep -q '^render-report — ' "$tmp/out"
-check "(h) -h ends with the exit-code note" last_line_is "$tmp/out" 'file; the valid ones are still rendered.'
+check "(h) -h ends with the exit-code note" last_line_is "$tmp/out" 'still rendered.'
 
 # (i) --help and -h print usage, exit 0 and write nothing
 for flag in --help -h; do
@@ -277,6 +277,127 @@ if [ -x "$chrome" ]; then
   fi
 else
   echo "skip: (q) needs Chrome at \$CHROME"
+fi
+
+# (r) --stack: one page, the first file the Stack tab, the rest slice tabs
+sd="$tmp/s/triage"
+mkdir -p "$sd"
+cat > "$sd/stack-40.md" <<'MD'
+Triage: needs-changes · impact high · risk high · findings 1
+
+Stack #40, 2 open PRs, #41 → #42, top head abcd1234, base main. Triaged 2026-11-10.
+
+## Slices
+
+| PR | Triage | Ledger | Findings |
+|---|---|---|---|
+| [#41](#41) a | ready | 1 reproduced | 0 |
+| [#42](#42) b | needs-changes | 1 reproduced | 1 |
+
+## Stack-wide
+
+1. CI runs no tests (#41, #42).
+MD
+printf 'Triage: ready · impact low · risk low · decisions none\n\nPR [#41](https://github.com/o/r/pull/41) "a" (slice 1/2 of stack #40), head 1, base main at 2. Triaged 2026-11-10.\n\n## Findings\n\nNone.\n' > "$sd/41.md"
+cat > "$sd/42.md" <<'MD'
+Triage: needs-changes · impact high · risk high · decisions none
+
+PR #42 "b" (slice 2/2 of stack #40), head 3, base x at 1. Triaged 2026-11-10.
+
+## Findings
+
+1. **Must-fix: y.** `b.go:1`
+
+See [the finding](#findings).
+MD
+out="$("$root/bin/render-report" --stack "$sd/stack-40.md" "$sd/41.md" "$sd/42.md" 2>"$tmp/err")"
+rc=$?
+sp="$sd/stack-40.html"
+check "(r) --stack exits 0 (got $rc)" [ "$rc" -eq 0 ]
+check "(r) --stack prints the overview's html path (got: $out)" [ "$out" = "$sp" ]
+check "(r) --stack writes no slice page" [ ! -e "$sd/41.html" ]
+if [ -f "$sp" ]; then
+  check "(r) title is Triage stack 40" grep -qF '<title>Triage stack 40</title>' "$sp"
+  check "(r) triage kind and help" grep -qF '<body data-kind="pr-triage">' "$sp"
+  i=0
+  for f in stack-40 41 42; do
+    i=$((i + 1))
+    blk="$(grep -o '<script type="text/plain" class="md"[^>]*>[^<]*</script>' "$sp" | sed -n "${i}p")"
+    check "(r) tab $i is $f" grep -qF "data-tab=\"$( [ "$f" = stack-40 ] && echo stack || echo "$f")\"" <<<"$blk"
+    b64="${blk%</script>}"; b64="${b64##*>}"
+    printf %s "$b64" | base64 --decode > "$tmp/decoded" 2>/dev/null
+    check "(r) tab $i round-trips $f.md" cmp -s "$sd/$f.md" "$tmp/decoded"
+  done
+  check "(r) slice tab labels are #N" grep -qF 'data-label="#42"' "$sp"
+  check "(r) the first tab is labelled Stack" grep -qF 'data-label="Stack"' "$sp"
+  check "(r) no single-page md block" not grep -qF 'id="md"' "$sp"
+fi
+rm -f "$sp"
+"$root/bin/render-report" --stack "$sd/stack-40.md" >/dev/null 2>"$tmp/err"
+rc=$?
+check "(r) --stack with one file exits 2 (got $rc)" [ "$rc" -eq 2 ]
+"$root/bin/render-report" --stack "$sd/stack-40.md" "$sd/99.md" >/dev/null 2>"$tmp/err"
+rc=$?
+check "(r) --stack with a missing slice exits 1 (got $rc)" [ "$rc" -eq 1 ]
+check "(r) stderr names the missing slice" grep -qF '99.md: no such file' "$tmp/err"
+check "(r) --stack writes nothing on error" [ ! -e "$sp" ]
+"$root/bin/render-report" --stack "$sd/stack-40.md" "$sd/41.md" "$sd/42.md" >/dev/null
+cp "$sp" "$tmp/good.html"
+cp "$sd/42.md" "$sd/43.md"
+chmod 000 "$sd/43.md"
+"$root/bin/render-report" --stack "$sd/stack-40.md" "$sd/41.md" "$sd/43.md" >/dev/null 2>"$tmp/err"
+rc=$?
+chmod 600 "$sd/43.md"
+rm -f "$sd/43.md"
+check "(r) --stack with an unreadable slice exits 1 (got $rc)" [ "$rc" -eq 1 ]
+check "(r) stderr names the unreadable slice" grep -qF '43.md: cannot read' "$tmp/err"
+check "(r) an unreadable slice leaves the old page as it was" cmp -s "$tmp/good.html" "$sp"
+check "(r) no temp file is left" [ -z "$(find "$sd" -name '*.tmp.*')" ]
+{ printf 'Triage: ready · impact low · risk low · findings 0\n\nStack of #41, 1 open PRs, #41 → #41, top head 1, base main. Triaged 2026-11-10.\n'; } > "$sd/stack-of-41.md"
+"$root/bin/render-report" --stack "$sd/stack-of-41.md" "$sd/41.md" >/dev/null
+check "(r) a stack with no number of its own is titled after its bottom PR" grep -qF '<title>Triage stack of #41</title>' "$sd/stack-of-41.html"
+check "(r) usage shows --stack" grep -qF 'render-report --stack <overview.md> <slice.md>...' <("$root/bin/render-report" --help)
+
+check "(r) pr-triage builds the stack page" grep -qF 'render-report" --stack <ROOT>/local/triage/stack-<S>.md' "$root/commands/pr-triage.md"
+check "(r) review-guide builds the stack page" grep -qF 'render-report" --stack <ROOT>/local/review-guide/stack-<S>.md' "$root/commands/review-guide.md"
+check "(t) the triage header links the PR" grep -qF 'PR [#<N>](<url>) "<title>"' "$root/references/pr-triage-brief.md"
+check "(t) the review guide header links the PR" grep -qxF '# [#<N>](<url>) <title>' "$root/commands/review-guide.md"
+
+# (s) tabs and PR links in a real browser
+if [ -x "$chrome" ]; then
+  "$root/bin/render-report" --stack "$sd/stack-40.md" "$sd/41.md" "$sd/42.md" >/dev/null
+  "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$sp" > "$tmp/dom" 2>/dev/null
+  if ! grep -qF '<h1' "$tmp/dom"; then
+    echo "skip: (s) needs marked.js from the network"
+  else
+    check "(s) three tab links" [ "$(grep -oE '<a [^>]*role="tab"' "$tmp/dom" | wc -l | tr -d ' ')" = 3 ]
+    check "(s) Stack tab selected by default" grep -qE '<a [^>]*href="#stack"[^>]*aria-selected="true"|<a [^>]*aria-selected="true"[^>]*href="#stack"' "$tmp/dom"
+    check "(s) slice panels hidden by default" grep -qE '<section [^>]*id="42"[^>]*hidden' "$tmp/dom"
+    check "(s) overview gets tiles" grep -qF 'class="badges"' "$tmp/dom"
+    check "(s) overview h1 names the stack" grep -qF 'Stack #40</h1>' "$tmp/dom"
+    check "(s) heading ids are prefixed per tab" grep -qF 'id="42-findings"' "$tmp/dom"
+    check "(s) ids stay unique across tabs" grep -qF 'id="41-findings"' "$tmp/dom"
+    check "(s) slice tab keeps its Must-fix pill" grep -qF 'pill red">Must-fix</span>' "$tmp/dom"
+    check "(s) a Stack-wide slice list is a chip" grep -qF '<span class="chip">#41, #42</span>' "$tmp/dom"
+    check "(s) a report's own #section link stays in its tab" grep -qF 'href="#42-findings">the finding</a>' "$tmp/dom"
+    check "(s) a row links to its tab" grep -qF 'href="#42">#42</a>' "$tmp/dom"
+    check "(t) a linked PR number links to GitHub" grep -qF '<a class="num" href="https://github.com/o/r/pull/41">#41</a>' "$tmp/dom"
+    check "(t) a linked PR header still gets its title" grep -qF '</a> a</h1>' "$tmp/dom"
+    "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$sp#42-findings" > "$tmp/dom" 2>/dev/null
+    check "(s) #42-findings opens tab 42" grep -qE '<a [^>]*href="#42"[^>]*aria-selected="true"|<a [^>]*aria-selected="true"[^>]*href="#42"' "$tmp/dom"
+    "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$sd/stack-of-41.html" > "$tmp/dom" 2>/dev/null
+    check "(s) a stack with no number of its own keeps its of" grep -qF '<h1>Stack of #41</h1>' "$tmp/dom"
+  fi
+  printf '# [#16](https://github.com/o/r/pull/16) x\n\nbody\n' > "$tmp/review-guide/16.md"
+  "$root/bin/render-report" "$tmp/review-guide/16.md" >/dev/null
+  "$chrome" --headless=new --disable-gpu --virtual-time-budget=5000 --dump-dom "file://$tmp/review-guide/16.html" > "$tmp/dom" 2>/dev/null
+  if grep -qF '<h1' "$tmp/dom"; then
+    check "(t) review guide #N links to GitHub" grep -qF '<a class="num" href="https://github.com/o/r/pull/16">#16</a> x</h1>' "$tmp/dom"
+  else
+    echo "skip: (t) needs marked.js from the network"
+  fi
+else
+  echo "skip: (s) needs Chrome at \$CHROME"
 fi
 
 exit "$fail"

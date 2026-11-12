@@ -14,7 +14,8 @@ does not hunt bugs, and the risky-code list it ends with is a pointer for it.
 With `--review`, it runs `/plan-lifecycle:review-stack` itself and puts its verified findings
 on the page instead. It writes one page per PR to `local/review-guide/<N>.md`, and
 for a stack one more, `local/review-guide/stack-<S>.md`, each rendered to an
-`.html` page beside it.
+`.html` page beside it; a stack's page has the stack page as its first tab and
+a tab per PR after it.
 
 ## Rules
 
@@ -71,7 +72,7 @@ its `message`.
 ### Each PR
 
 ```bash
-gh pr view <N> -R <OWNER/REPO> --json number,title,author,baseRefName,headRefOid,commits,additions,deletions,changedFiles,body,closingIssuesReferences
+gh pr view <N> -R <OWNER/REPO> --json number,url,title,author,baseRefName,headRefOid,commits,additions,deletions,changedFiles,body,closingIssuesReferences
 ```
 
 Not found → stop: "PR #<N> not found in <OWNER/REPO>." `H` is the commit of
@@ -405,7 +406,7 @@ author, so it reads as the decisions to make, in order, then the code to hand
 to the bug-hunting tools.
 
 ```markdown
-# #<N> <title>
+# [#<N>](<url>) <title>
 
 `<author>` · head `<H, 8 chars>` · base `<baseRefName>@<B, 8 chars>` · <date> · <MODE>: <why> · updated from `<old head, 8 chars>`
 
@@ -598,8 +599,15 @@ Then `rm -rf <RUN>` for every target.
 
 ## Finish
 
-Run `"${CLAUDE_PLUGIN_ROOT}/bin/render-report"` on every page written. Open
-the stack page for a stack, else `<N>.html`, with `open` on macOS (`uname`
+Run `"${CLAUDE_PLUGIN_ROOT}/bin/render-report"` on every `<N>.md` written.
+For a stack, then build one tabbed page, the stack page first and each
+target's page after it, bottom first; it writes `stack-<S>.html`:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/bin/render-report" --stack <ROOT>/local/review-guide/stack-<S>.md <ROOT>/local/review-guide/<a>.md …
+```
+
+Open `stack-<S>.html` for a stack, else `<N>.html`, with `open` on macOS (`uname`
 is `Darwin`), else `xdg-open`; skip this when that command is not on PATH.
 
 Print one line:

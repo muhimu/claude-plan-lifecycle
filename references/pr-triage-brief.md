@@ -330,7 +330,7 @@ Write it to the report path, about 80 lines at most:
 ```markdown
 Triage: <outcome> · impact <low|medium|high> · risk <low|medium|high> · decisions <list|none>
 
-PR #<N> "<title>" (<slice P/SIZE of stack #S | not stacked>), head <H, 8 chars>, base <baseRefName> at <B, 8 chars>. Triaged <date>.
+PR [#<N>](<url>) "<title>" (<slice P/SIZE of stack #S | not stacked>), head <H, 8 chars>, base <baseRefName> at <B, 8 chars>. Triaged <date>.
 
 ## Summary
 
