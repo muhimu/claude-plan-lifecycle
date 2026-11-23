@@ -1,6 +1,6 @@
 ---
 description: Rebase a stacked-PR chain after a squash-merge, new commits on a lower PR, or drift from the default branch, then push and retarget — asking first only when the rebase was not clean or rebased the bottom onto a moved trunk.
-argument-hint: "[stack number, PR number, or branch — optional anchor when the current branch is not part of the stack] [--no-trunk]"
+argument-hint: "[stack number or URL, PR number, or branch — optional anchor when the current branch is not part of the stack] [--no-trunk]"
 ---
 
 # Restack
@@ -63,8 +63,8 @@ the turn.
    (`status` `stop` → stop with its `message`). `stacked` false → stop:
    "PR #<N> is not part of a stack." Its `slices` — each with `number`,
    `state` (`open` / `closed` / `merged`), `title`, `head`, `base`, `sha` —
-   is `SLICES`, the stack, bottom first; record `stack_num` as `STACK_NUM`
-   for the report (null: write `stack of #<bottom>`).
+   is `SLICES`, the stack, bottom first; record `stack_num` and `stack_url` as `STACK_NUM` and
+   `STACK_URL` for the report (null: write `stack of #<bottom>`).
 3. **Partition.** Walk bottom-up: merged PRs form the bottom prefix;
    everything after the first non-merged PR must be open — if a merged PR
    appears *above* an open one, stop: "Stack merged out of order (#<N> merged
@@ -123,7 +123,7 @@ the turn.
 5. **Print the plan of record** before touching anything:
 
    ```
-   Stack #<STACK_NUM> (or "stack of #<bottom>"): <plan/stack name if evident from titles>
+   Stack #<STACK_NUM> <STACK_URL> (or "stack of #<bottom>"): <plan/stack name if evident from titles>
    Merged:    #<n> <title> … (old base SHA <short OLD_BASE[1]>)   [or: none]
    Restack:   B[1] ← origin/$DEFAULT_BRANCH        (bottom merged | conflicts with trunk | behind trunk)
               B[2] ← B[1]                         (parent gained 9 commits)
@@ -249,7 +249,7 @@ recipe."
 3. **Report:**
 
    ```
-   Restacked stack #<STACK_NUM> (<R> of <S> branches rebased):
+   Restacked stack #<STACK_NUM> <STACK_URL> (<R> of <S> branches rebased):
    B[1]  <old-short> → <new-short>  pushed   PR #<n> base: $DEFAULT_BRANCH
    B[2]  <old-short> → <new-short>  pushed   PR #<n> base: B[1]
    B[3]  <short>                    skipped  PR #<n> base: B[2]  (already current)

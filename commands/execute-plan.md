@@ -473,6 +473,7 @@ merge order:
 REPO_URL="$(gh repo view --json url -q .url)"
 gh stack link "$REPO_URL/pull/<PR_NUM[1]>" "$REPO_URL/pull/<PR_NUM[2]>" ... "$REPO_URL/pull/<PR_NUM[M]>"
 STACK_NUM="$(gh api repos/{owner}/{repo}/pulls/<PR_NUM[1]> --jq '.stack.number // empty')"
+STACK_URL="$REPO_URL/stack/$STACK_NUM"
 ```
 
 Pass PR URLs, never bare numbers or branch names: `gh stack link` takes a
@@ -501,7 +502,7 @@ file; if lines outside the `## Stack` section (any heading starting
   ```markdown
   ## Stack
 
-  Part <N> of <M> in stack #<STACK_NUM>.
+  Part <N> of <M> in [stack #<STACK_NUM>](<STACK_URL>).
   ```
 
 - **No native stack** — the full table:
@@ -533,7 +534,7 @@ linking every stack PR in the header and noting each item's slice.
 Final report:
 
 ```
-Stack opened (<M> draft PRs, native stack #<STACK_NUM>):   # or "no native stack"
+Stack opened (<M> draft PRs, native stack #<STACK_NUM> <STACK_URL>):   # or "no native stack"
 #<PR_NUM[1]>  <slice 1 title>   base: <DEFAULT_BRANCH>  test/lint: passed
 #<PR_NUM[2]>  <slice 2 title>   base: <BRANCH[1]>   test/lint: passed
 ...

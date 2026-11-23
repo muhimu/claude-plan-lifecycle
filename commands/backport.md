@@ -1,6 +1,6 @@
 ---
 description: Backport a merged PR, or a stack's merged slices, to one release branch — check it isn't there already, pick with -x in a fresh worktree, ask include-or-rewrite for each missing prerequisite, regenerate and verify with the release branch's own tooling, compare with the source, and open a draft PR.
-argument-hint: "[PR or stack number — optional, defaults to the current branch's PR] [release/X.Y — optional, defaults to the newest release/<n>.<n>]"
+argument-hint: "[PR or stack number or URL — optional, defaults to the current branch's PR] [release/X.Y — optional, defaults to the newest release/<n>.<n>]"
 ---
 
 # Backport
@@ -36,7 +36,7 @@ command makes lands on the release branch as it is.
    prints JSON (`status` `stop` → stop with its `message`): `slices`, bottom
    first with each PR's `number` and `state`, `anchor_pr`, `stack_num` and
    `position` are `SLICES`, `ANCHOR_PR`, `STACK_NUM` and `POSITION`. Then pick:
-   - **Stack number** (`anchor_pr` null): every merged slice. Print the
+   - **Stack number or URL** (`anchor_pr` null): every merged slice. Print the
      others as "#M not merged — left out."
    - **PR inside a stack:** that slice and every slice below it
      (`SLICES[1..POSITION]`). Slices above it are left out.
@@ -50,7 +50,7 @@ command makes lands on the release branch as it is.
    `state` not `MERGED` or `base` not `DEFAULT` → stop: "#<n> is not merged
    into `<DEFAULT>`. Backport merged PRs of the default branch only."
    `SOURCES` is the list sorted by `mergedAt`, oldest first. `A` is the
-   number the user passed: `ANCHOR_PR`, or `STACK_NUM` for a stack number.
+   number the user passed: `ANCHOR_PR`, or `STACK_NUM` for a stack number or URL.
 
 ## Step 1 — Already on the release branch?
 

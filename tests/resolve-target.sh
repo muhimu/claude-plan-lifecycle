@@ -57,7 +57,7 @@ g -C "$main" worktree add -q "$wt" s2
 other="$tmp/elsewhere"   # a checkout of another repo
 g init -q "$other"
 
-pr() { printf '{"number":%s,"state":"%s","merged_at":%s,"title":"t%s","head":{"ref":"%s","sha":"%s"},"base":{"ref":"%s"}}' "$@"; }
+pr() { printf '{"number":%s,"state":"%s","merged_at":%s,"title":"t%s","head":{"ref":"%s","sha":"%s"},"base":{"ref":"%s"},"html_url":"https://github.com/acme/app/pull/%s"}' "$@" "$1"; }
 stack7="{\"pull_requests\":[$(pr 11 closed '"2026-01-01T00:00:00Z"' 11 s1 "$sha1" main),$(pr 12 open null 12 s2 "$sha2" s1),$(pr 13 open null 13 s3 "$sha3" s2)]}"
 fix repo_view_--json_nameWithOwner '{"nameWithOwner":"acme/app"}'
 fix repo_view_acme_app_--json_nameWithOwner '{"nameWithOwner":"acme/app"}'
@@ -74,6 +74,7 @@ check "stack number: no anchor PR, three slices bottom first" has '.status == "o
 check "a merged PR the API calls closed reads merged" has '.slices[0].state == "merged" and .slices[1].state == "open"'
 check "slices carry head, base and sha" has ".slices[1] | .head == \"s2\" and .base == \"s1\" and .sha == \"$sha2\""
 check "label of a native stack" has '.label == "stack #7" and .repo == "acme/app"'
+check "a native stack has its web URL" has '.stack_url == "https://github.com/acme/app/stack/7"'
 
 run "$main" stack 12
 check "PR of a native stack: position 2/3" has '.anchor_pr == 12 and .stack_num == 7 and .position == 2 and .size == 3'
@@ -81,6 +82,10 @@ run "$other" stack acme/app#12
 check "OWNER/REPO#N works from another repo's checkout" has '.repo == "acme/app" and .anchor_pr == 12 and .stack_num == 7'
 run "$other" stack https://github.com/acme/app/pull/13/files
 check "a PR URL is a PR, never tried as a stack" has '.anchor_pr == 13 and .position == 3'
+run "$other" stack https://github.com/acme/app/stack/7
+check "a stack URL is a stack, from another repo's checkout" has '.repo == "acme/app" and .anchor_pr == null and .stack_num == 7 and .size == 3'
+run "$main" stack https://github.com/acme/app/stack/12
+check "a stack URL that is no stack stops, it is not read as a PR" has '.status == "stop" and (.message | contains("404"))'
 
 fixerr api_repos_acme_app_stacks_99 'gh: Bad credentials (HTTP 401)'
 run "$main" stack 99
@@ -96,7 +101,7 @@ fix repo_view_acme_app_--json_defaultBranchRef '{"defaultBranchRef":{"name":"mai
 fix "pr_view_20_-R_acme_app_$V" "$(slice 20 OPEN null 20 solo main abc)"
 fix pr_list_-R_acme_app_--base_solo_--state_open_--json_number_headRefName '[]'
 run "$main" stack 20
-check "unstacked PR: one slice, not stacked, no label" has '.stacked == false and .size == 1 and .position == 1 and .stack_num == null and .label == null and .slices[0].state == "open"'
+check "unstacked PR: one slice, not stacked, no label" has '.stacked == false and .size == 1 and .position == 1 and .stack_num == null and .stack_url == null and .label == null and .slices[0].state == "open"'
 
 # --- fallback: the "## Stack" table of the body
 fix api_repos_acme_app_pulls_31 '{"number":31,"stack":null}'
@@ -165,6 +170,8 @@ run "$wt" "${T[@]}" -- 12
 check "a number is the target" has '.status == "ok" and .given == true and .target == "acme/app#12" and .anchor_pr == 12 and .dir == null'
 run "$wt" "${T[@]}" -- 7
 check "a stack number is the target; any stack branch serves head" has '.given == true and .anchor_pr == null and .target == "acme/app#7" and .dir == null'
+run "$wt" "${T[@]}" -- https://github.com/acme/app/stack/7
+check "a stack URL is the target" has '.given == true and .anchor_pr == null and .target == "acme/app#7" and .stack_url == "https://github.com/acme/app/stack/7"'
 fix wt-s2/pr_view_--json_number_state_url '{"number":12,"state":"OPEN","url":"https://github.com/acme/app/pull/12"}'
 run "$wt" "${T[@]}" -- skip
 check "a first word that is no target: the current branch's open PR, given false" has '.given == false and .target == "acme/app#12" and .position == 2 and .dir == null'
