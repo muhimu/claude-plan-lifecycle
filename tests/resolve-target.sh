@@ -26,6 +26,7 @@ cat > "$tmp/bin/gh" <<'GH'
 #!/usr/bin/env bash
 key="$(printf '%s_' "$@" | tr '/#,' '___' | tr -cd 'A-Za-z0-9_.-')"
 key="${key%_}"
+[ -z "${GH_HOST:-}" ] || echo "$GH_HOST" >> "$GH_FIX/hosts"
 for d in "$GH_FIX/$(basename "$PWD")" "$GH_FIX"; do
   if [ -f "$d/$key.err" ]; then cat "$d/$key.err" >&2; exit 1; fi
   if [ -f "$d/$key" ]; then cat "$d/$key"; exit 0; fi
@@ -86,6 +87,15 @@ run "$other" stack https://github.com/acme/app/stack/7
 check "a stack URL is a stack, from another repo's checkout" has '.repo == "acme/app" and .anchor_pr == null and .stack_num == 7 and .size == 3'
 run "$main" stack https://github.com/acme/app/stack/12
 check "a stack URL that is no stack stops, it is not read as a PR" has '.status == "stop" and (.message | contains("404"))'
+rm -f "$GH_FIX/hosts"
+run "$other" stack https://ghe.example.com/acme/app/stack/7
+check "a URL's host is the host gh asks" grep -qx ghe.example.com "$GH_FIX/hosts"
+rm -f "$GH_FIX/hosts"
+run "$main" stack 7
+check "no URL: gh asks its own default host" [ ! -e "$GH_FIX/hosts" ]
+fix api_repos_acme_app_stacks_9 "{\"pull_requests\":[{\"number\":11,\"state\":\"open\",\"merged_at\":null,\"title\":\"t\",\"head\":{\"ref\":\"s1\",\"sha\":\"$sha1\"},\"base\":{\"ref\":\"main\"},\"html_url\":\"https://github.com/acme/app/issues/11\"}]}"
+run "$main" stack 9
+check "a PR web URL of another shape gives no stack URL, not that URL" has '.stack_num == 9 and .stack_url == null'
 
 fixerr api_repos_acme_app_stacks_99 'gh: Bad credentials (HTTP 401)'
 run "$main" stack 99
@@ -170,6 +180,10 @@ run "$wt" "${T[@]}" -- 12
 check "a number is the target" has '.status == "ok" and .given == true and .target == "acme/app#12" and .anchor_pr == 12 and .dir == null'
 run "$wt" "${T[@]}" -- 7
 check "a stack number is the target; any stack branch serves head" has '.given == true and .anchor_pr == null and .target == "acme/app#7" and .dir == null'
+for u in https://github.com/acme/app/stacks/7 https://github.com/acme/app/pulls/7 github.com/acme/app/stack/7; do
+  run "$wt" "${T[@]}" -- "$u"
+  check "a URL of another shape stops, it is not read as no target: $u" has '.status == "stop" and (.message | contains("not a PR or stack URL"))'
+done
 run "$wt" "${T[@]}" -- https://github.com/acme/app/stack/7
 check "a stack URL is the target" has '.given == true and .anchor_pr == null and .target == "acme/app#7" and .stack_url == "https://github.com/acme/app/stack/7"'
 fix wt-s2/pr_view_--json_number_state_url '{"number":12,"state":"OPEN","url":"https://github.com/acme/app/pull/12"}'
