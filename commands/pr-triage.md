@@ -1,6 +1,6 @@
 ---
 description: Re-prove a PR's or a stack's claims by running them, and write a one-page local report per PR. Never posts to GitHub.
-argument-hint: "[--quiz] [stack or PR number — optional, defaults to the current branch's PR or this session's PRs]"
+argument-hint: "[--quiz] [stack or PR number or URL — optional, defaults to the current branch's PR or this session's PRs]"
 ---
 
 # PR Triage
@@ -33,7 +33,7 @@ slice's report.
 ## Resolving the target
 
 `$ARGUMENTS` may hold `--quiz` anywhere: set `QUIZ` and drop it. What is
-left is empty or one target (a number, PR URL or `OWNER/REPO#N`). Resolve it:
+left is empty or one target (a number, PR or stack URL or `OWNER/REPO#N`). Resolve it:
 
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" target --command pr-triage --needs any --moves -- '<target>'

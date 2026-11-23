@@ -6,13 +6,14 @@
 #
 # Usage:
 #   resolve-target stack [ANCHOR]
-#       ANCHOR is a stack or PR number, OWNER/REPO#N, a PR URL, a branch
-#       name, or empty (the current branch's PR).
+#       ANCHOR is a stack or PR number, OWNER/REPO#N, a PR or stack URL
+#       (.../pull/N, .../stack/N), a branch name, or empty (the current
+#       branch's PR).
 #   resolve-target target --command NAME --needs head|top|any [--pushes]
 #                         [--moves] [--checkout DIR]... [--candidate OWNER/REPO#N]...
 #                         [--] [FIRST_WORD]
 #       FIRST_WORD is the first word of the command's arguments. When it is
-#       a number, #N, OWNER/REPO#N or a PR URL it is the target ("given":
+#       a number, #N, OWNER/REPO#N or a PR or stack URL it is the target ("given":
 #       true). Nothing may follow it: the options go before "--".
 #       Otherwise the target is the current branch's open PR, or else one of
 #       the --candidate PRs (the PRs the session worked on, most recent
@@ -31,6 +32,7 @@
 #    "anchor_pr":N|null,      null when the number was a stack
 #    "stack_num":N|null,      the native stack number; null for a stack found
 #                             from a "## Stack" table or the base-branch chain
+#    "stack_url":URL|null,    the native stack's page, .../OWNER/REPO/stack/N
 #    "stacked":bool, "size":K, "position":P|null, "label":"stack #N"|"stack of #N"|null,
 #    "slices":[{number,state,merged_at,title,head,base,sha}],   bottom first;
 #                             state is open, closed or merged
@@ -57,15 +59,20 @@ ghx() { out="$(gh "$@" 2>"$errf")"; }
 # must ARGS... — ghx, stopping with gh's own error when it fails.
 must() { ghx "$@" || stop "\`gh $*\` failed: $(cat "$errf")"; }
 
-# parse_anchor TOKEN — sets kind (empty|number|qualified|url|other), repo, num.
+# parse_anchor TOKEN — sets kind (empty|number|qualified|url|stack_url|other),
+# repo, num. A URL's host becomes GH_HOST, so gh asks that host (a GitHub
+# Enterprise one too) outside a checkout of the repo.
 parse_anchor() {
   local q='^([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)#([0-9]+)$'
-  local u='^https?://[^/]+/([^/]+/[^/]+)/pull/([0-9]+)'
+  local u='^https?://([^/]+)/([^/]+/[^/]+)/(pull|stack)/([0-9]+)'
   kind=other repo="" num=""
   if [ -z "$1" ]; then kind=empty
   elif [[ "$1" =~ ^#?([0-9]+)$ ]]; then kind=number num="${BASH_REMATCH[1]}"
   elif [[ "$1" =~ $q ]]; then kind=qualified repo="${BASH_REMATCH[1]}" num="${BASH_REMATCH[2]}"
-  elif [[ "$1" =~ $u ]]; then kind=url repo="${BASH_REMATCH[1]}" num="${BASH_REMATCH[2]}"
+  elif [[ "$1" =~ $u ]]; then
+    export GH_HOST="${BASH_REMATCH[1]}"
+    repo="${BASH_REMATCH[2]}" num="${BASH_REMATCH[4]}"
+    if [ "${BASH_REMATCH[3]}" = pull ]; then kind=url; else kind=stack_url; fi
   fi
 }
 
@@ -116,7 +123,7 @@ chain() {
 # discover — from kind/repo/num/token, sets repo, anchor_pr, stack_num, slices.
 discover() {
   local n
-  stack_num="" anchor_pr="" slices=""
+  stack_num="" stack_url="" anchor_pr="" slices=""
   # A typed repo may differ in case or be a renamed repo's old name: take
   # the name gh reports, as here_repo does.
   if [ -z "$repo" ]; then must repo view --json nameWithOwner
@@ -131,6 +138,7 @@ discover() {
       else stop "\`gh api repos/$repo/stacks/$num\` failed: $(cat "$errf")"; fi
       ;;
     url) anchor_pr="$num" ;;
+    stack_url) must api "repos/$repo/stacks/$num"; stack_num="$num" ;;
     empty)
       ghx pr view --json number || stop "No PR for the current branch: $(cat "$errf")"
       anchor_pr="$(jq -r .number <<<"$out")"
@@ -152,6 +160,10 @@ discover() {
     # The API reports a merged PR as closed.
     slices="$(jq -c '[.pull_requests[] | {number, state: (if .merged_at then "merged" else .state end),
       merged_at, title, head: .head.ref, base: .base.ref, sha: .head.sha}]' <<<"$out")"
+    # The API gives the stack no web URL: a PR's, with /stack/N for /pull/N.
+    # No PR URL of that shape: no stack URL.
+    stack_url="$(jq -r --arg n "$stack_num" '.pull_requests[0].html_url // ""
+      | if test("/pull/[0-9]+$") then sub("/pull/[0-9]+$"; "/stack/\($n)") else empty end' <<<"$out")"
     return
   fi
 
@@ -266,12 +278,14 @@ checkout() {
 
 emit() {
   jq -n --arg repo "$repo" --arg num "$num" --arg anchor "$anchor_pr" --arg stack "$stack_num" \
+    --arg stack_url "$stack_url" \
     --arg dir "${dir:-}" --arg mode "$mode" --arg given "${given:-}" --argjson slices "$slices" \
     '($slices | length) as $size
      | {status: "ok", repo: $repo, target: "\($repo)#\(if $num != "" then $num else $anchor end)"}
      + (if $mode == "target" then {given: ($given == "1")} else {} end)
      + {anchor_pr: (if $anchor == "" then null else ($anchor | tonumber) end),
         stack_num: (if $stack == "" then null else ($stack | tonumber) end),
+        stack_url: (if $stack_url == "" then null else $stack_url end),
         stacked: ($size > 1), size: $size,
         position: (if $anchor == "" then null
                    else (($slices | map(.number) | index($anchor | tonumber)) as $i | if $i == null then null else $i + 1 end) end),
@@ -281,7 +295,7 @@ emit() {
      + {notes: $ARGS.positional}' --args ${notes[@]+"${notes[@]}"}
 }
 
-usage() { sed -n '3,41p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '3,44p' "$0" | sed 's/^# \{0,1\}//'; }
 
 mode="${1:-}"
 [ $# -eq 0 ] || shift
@@ -323,9 +337,13 @@ case "$mode" in
     # A PR written in a form parse_anchor does not know must not fall through
     # to the current branch's PR.
     [[ ! "$token" =~ ^[A-Za-z0-9_.-]+#[0-9]+$ ]] ||
-      stop "\`$token\` is not a target: write it as N, OWNER/REPO#N or a PR URL."
+      stop "\`$token\` is not a target: write it as N, OWNER/REPO#N or a PR or stack URL."
+    # Nor may a URL of another shape (.../stacks/N, .../pulls/N, no scheme).
+    if [ "$kind" = other ] && [[ "$token" =~ ^https?:// || "$token" =~ (^|[./])github\.com/ ]]; then
+      stop "\`$token\` is not a PR or stack URL: write it as https://HOST/OWNER/REPO/pull/N or https://HOST/OWNER/REPO/stack/N."
+    fi
     case "$kind" in
-      number | qualified | url) given=1 ;;
+      number | qualified | url | stack_url) given=1 ;;
       *) given=0 token=""; session_target ;;
     esac
     discover

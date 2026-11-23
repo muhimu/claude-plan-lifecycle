@@ -1,6 +1,6 @@
 ---
 description: Read a colleague's PR or PR stack without running it and write a local guide — where the code differs from the PR body, at most 5 spots that need design judgement, and what is safe to skim.
-argument-hint: "[PR or stack number — optional, defaults to the current branch's PR] [head sha] [--expert | --new] [--review [effort]]"
+argument-hint: "[PR or stack number or URL — optional, defaults to the current branch's PR] [head sha] [--expert | --new] [--review [effort]]"
 ---
 
 # Review guide
@@ -44,7 +44,8 @@ gh repo view --json nameWithOwner,defaultBranchRef -q '.nameWithOwner+" "+.defau
 That gives `OWNER/REPO` and `DEFAULT`. Not in a repository → stop: "Run this
 from a checkout of the PR's repository."
 
-`$ARGUMENTS` is `<N> [<head-sha>] [--expert | --new] [--review [<effort>]]`.
+`$ARGUMENTS` is `<N> [<head-sha>] [--expert | --new] [--review [<effort>]]`,
+`<N>` a number, `OWNER/REPO#N`, or a PR or stack URL.
 `<effort>` is `low`, `medium`, `high`, `xhigh` or `max`, the token right after
 `--review`; it defaults to `high`. With no `N`, use the current branch's PR
 (`gh pr view --json number -q .number`); none → stop: "Pass a PR or stack
@@ -57,7 +58,8 @@ with `"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" stack <N>` (only `gh` GET
 calls). Its JSON gives `slices` (`SLICES`, bottom first, each with `number`,
 `state`, `head`, `base`, `sha`), `stacked` (`STACKED`) and `stack_num`
 (`STACK_NUM`, null for a stack without one); `status` `stop` → stop with
-its `message`.
+its `message`. `repo` is not this checkout's `OWNER/REPO` (`gh repo view --json nameWithOwner -q .nameWithOwner`) → stop: "`<N>` is in `<repo>`. Run this from a checkout of `<repo>`." From here on `N` is the
+number: `anchor_pr` for a PR, `STACK_NUM` for a stack.
 
 - **`STACKED` false, or `<head-sha>` given and `N` a PR:** one PR, `N`. A
   head sha pins that PR alone, even when it is a slice of a stack.

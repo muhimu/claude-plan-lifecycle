@@ -481,7 +481,9 @@ makes it push and open a PR. A URL is always resolved as a PR, so a bad
 `PR_NUM` fails the link instead. Never pass `--open` (the PRs stay drafts).
 It needs no local `gh stack` tracking, and on a resumed run it adds missing
 PRs to the existing stack. If `link` succeeded but `STACK_NUM` is empty, wait
-a few seconds and query again — a new stack may not be readable yet. If
+a few seconds and query again — a new stack may not be readable yet. Once
+`STACK_NUM` is non-empty, and not before, set
+`STACK_URL="$REPO_URL/stack/$STACK_NUM"`. If
 `gh stack` is not installed, `link` fails, or `STACK_NUM` is still empty, say
 so in one line and continue without a native stack.
 
@@ -501,7 +503,7 @@ file; if lines outside the `## Stack` section (any heading starting
   ```markdown
   ## Stack
 
-  Part <N> of <M> in stack #<STACK_NUM>.
+  Part <N> of <M> in [stack #<STACK_NUM>](<STACK_URL>).
   ```
 
 - **No native stack** — the full table:
@@ -533,7 +535,7 @@ linking every stack PR in the header and noting each item's slice.
 Final report:
 
 ```
-Stack opened (<M> draft PRs, native stack #<STACK_NUM>):   # or "no native stack"
+Stack opened (<M> draft PRs, native stack #<STACK_NUM> <STACK_URL>):   # or "no native stack"
 #<PR_NUM[1]>  <slice 1 title>   base: <DEFAULT_BRANCH>  test/lint: passed
 #<PR_NUM[2]>  <slice 2 title>   base: <BRANCH[1]>   test/lint: passed
 ...
