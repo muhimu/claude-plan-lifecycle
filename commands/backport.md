@@ -35,7 +35,9 @@ command makes lands on the release branch as it is.
    `"${CLAUDE_PLUGIN_ROOT}/bin/resolve-target" stack <ANCHOR>` (run in `ROOT`), which
    prints JSON (`status` `stop` → stop with its `message`): `slices`, bottom
    first with each PR's `number` and `state`, `anchor_pr`, `stack_num` and
-   `position` are `SLICES`, `ANCHOR_PR`, `STACK_NUM` and `POSITION`. Then pick:
+   `position` are `SLICES`, `ANCHOR_PR`, `STACK_NUM` and `POSITION`. Its
+   `repo` is not this checkout's `OWNER/REPO` (`gh repo view --json nameWithOwner -q .nameWithOwner`) → stop: "`<ANCHOR>` is in `<repo>`. Run this from a checkout of `<repo>`."
+   Then pick:
    - **Stack number or URL** (`anchor_pr` null): every merged slice. Print the
      others as "#M not merged — left out."
    - **PR inside a stack:** that slice and every slice below it

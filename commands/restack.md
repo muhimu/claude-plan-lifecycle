@@ -64,7 +64,9 @@ the turn.
    "PR #<N> is not part of a stack." Its `slices` — each with `number`,
    `state` (`open` / `closed` / `merged`), `title`, `head`, `base`, `sha` —
    is `SLICES`, the stack, bottom first; record `stack_num` and `stack_url` as `STACK_NUM` and
-   `STACK_URL` for the report (null: write `stack of #<bottom>`).
+   `STACK_URL` for the report (`STACK_NUM` null: write `stack of #<bottom>`;
+   `STACK_URL` null: leave it out). A URL anchor names its repo:
+   `repo` is not this checkout's `OWNER/REPO` (`gh repo view --json nameWithOwner -q .nameWithOwner`) → stop: "`<ANCHOR>` is in `<repo>`. Run `/restack` from a checkout of `<repo>`."
 3. **Partition.** Walk bottom-up: merged PRs form the bottom prefix;
    everything after the first non-merged PR must be open — if a merged PR
    appears *above* an open one, stop: "Stack merged out of order (#<N> merged
